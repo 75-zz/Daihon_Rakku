@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.5.0] - 2026-02-06
+
+### Added
+- **ストーリー性強化**
+  - シーン詳細説明（description）100字
+  - 場所詳細（location_detail）
+  - キャラ心情（character_feelings）
+  - 心の声（inner_thought）各セリフに追加
+  - ストーリーフロー（story_flow）次シーンへの繋がり
+  - 視聴者興奮ポイント（viewer_hook）
+- **背景SDプロンプト強化**
+  - sd_background: 背景専用タグ（人物なし生成用）
+  - 場所別タグテンプレート（教室、寝室、浴室等）
+  - 時間帯別タグ（朝、放課後、夜等）
+- **Excel出力機能**
+  - openpyxl対応
+  - 折り返し表示自動設定
+  - 列幅最適化
+  - ヘッダー固定
+
+### Changed
+- generate_outline: 4幕構成（導入→展開→本番→余韻）
+- generate_scene_draft: 背景タグ自動生成
+- export_csv: 新フィールド対応（16カラム）
+
+### Fixed
+- JSONパースエラー修正（モデルの前置きテキスト除去）
+
+---
+
+## [0.4.0] - 2026-02-06
+
+### Added
+- **キャラクター自動生成システム**
+  - 作品名＋キャラ名入力でキャラバイブル自動生成
+  - Sonnetによる高品質キャラ分析
+  - エロシーン用設定（when_aroused, when_climax, moaning_light等）
+  - Danbooruタグ20個自動生成
+  - .skill.md自動生成
+- **プロファイル管理機能**
+  - 設定の保存/読込
+  - プロファイルのコピー/削除
+- **キャラ設定プレビュー**
+  - キャラ選択時にログに詳細設定表示
+
+### Changed
+- analyze_character: Sonnet使用で高品質化
+- generate_scene_draft: intensity別モデル選択（4+でSonnet）
+- generate_scene_draft: キャラプロファイルフル活用
+- 5段階エロ指示（intensity 1-5）
+
+### Fixed
+- キャラ名部分一致対応
+- APIタイムアウト設定（120秒）
+- 順次処理で安定化
+
+---
+
 ## [0.3.0] - 2026-02-06
 
 ### Added

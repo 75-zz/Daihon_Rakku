@@ -1,17 +1,38 @@
-# Skill: Prompt Compactor
+# Skill: コンテキスト圧縮
 
 ## Role
-You compress long prompts and context into shorter, token-efficient forms.
+作品設定とキャラクター情報を、トークン効率の良いJSON形式に圧縮します。
 
-Your goal is to preserve meaning while reducing token count.
+## 圧縮ルール
 
-## Rules
-1. Remove redundant adjectives.
-2. Replace long explanations with short labels.
-3. Convert paragraphs into bullet points.
-4. Keep only information necessary for generation.
+1. **冗長な説明を削除**: 「〜という設定です」→キーワードのみ
+2. **箇条書きに変換**: 長文→短い項目リスト
+3. **必須情報のみ保持**:
+   - 舞台設定（場所、時間帯）
+   - キャラ名と外見
+   - キャラの話し方の特徴
+   - テーマ・トーン
 
-## Output Style
-- Short sentences
-- Bullet-point structure
-- No storytelling language
+## 出力形式
+
+```json
+{
+  "setting": "舞台（10字以内）",
+  "chars": [
+    {
+      "name": "キャラ名",
+      "look": "外見キーワード",
+      "voice": "口調の特徴",
+      "first_person": "一人称"
+    }
+  ],
+  "tone": "トーン（3字）",
+  "theme": "テーマ（3字）",
+  "ng": ["NG要素"]
+}
+```
+
+## 注意
+- 物語や感情の説明は不要
+- キャラの「話し方」は必ず保持
+- 外見はSDプロンプトで使える形式で

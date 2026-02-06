@@ -32,3 +32,13 @@ Thumbs.db
 
 # Tool specific
 .serena/
+.claude/
+
+# Generated data
+characters/
+profiles/
+sources/
+skills/characters/
+
+# Misc
+nul
