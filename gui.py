@@ -64,13 +64,13 @@ for d in [CONTEXT_DIR, DRAFTS_DIR, FINAL_DIR, EXPORTS_DIR]:
 
 # モデル設定
 MODELS = {
-    "haiku": "claude-3-5-haiku-20241022",
+    "haiku": "claude-3-haiku-20240307",
     "sonnet": "claude-sonnet-4-20250514",
 }
 
 # コスト（USD per 1M tokens）
 COSTS = {
-    "claude-3-5-haiku-20241022": {"input": 0.80, "output": 4.00},
+    "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
     "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00},
 }
 
@@ -745,6 +745,7 @@ class App(ctk.CTk):
         self.configure(fg_color=MaterialColors.BACKGROUND)
         self.config_data = load_config()
         self.is_generating = False
+        self.stop_requested = False
 
         self.create_widgets()
         self.load_saved_config()
@@ -888,7 +889,22 @@ class App(ctk.CTk):
             variant="filled",
             command=self.start_generation
         )
-        self.generate_btn.pack(side="left", fill="x", expand=True)
+        self.generate_btn.pack(side="left", fill="x", expand=True, padx=(0, 8))
+
+        self.stop_btn = MaterialButton(
+            button_frame,
+            text="⏹ 停止",
+            variant="outlined",
+            command=self.stop_generation,
+            width=100
+        )
+        self.stop_btn.pack(side="left")
+        self.stop_btn.configure(
+            state="disabled",
+            fg_color="transparent",
+            border_color=MaterialColors.OUTLINE,
+            text_color=MaterialColors.OUTLINE
+        )
 
         # Progress Card
         progress_card = MaterialCard(self.main_container, title="📊 進捗")
@@ -1007,7 +1023,13 @@ class App(ctk.CTk):
         self.save_settings()
 
         self.is_generating = True
+        self.stop_requested = False
         self.generate_btn.configure(state="disabled", text="生成中...")
+        self.stop_btn.configure(
+            state="normal",
+            border_color=MaterialColors.ERROR,
+            text_color=MaterialColors.ERROR
+        )
         self.progress.set(0)
         self.log_text.delete("1.0", "end")
 
@@ -1018,12 +1040,20 @@ class App(ctk.CTk):
         )
         thread.start()
 
+    def stop_generation(self):
+        if self.is_generating:
+            self.stop_requested = True
+            self.update_status("⏹ 停止リクエスト送信...")
+            self.stop_btn.configure(state="disabled", text="停止中...")
+
     def run_generation(self, api_key: str, concept: str, characters: str, num_scenes: int):
         try:
             theme_jp = self.theme_combo.get()
             theme = THEME_OPTIONS.get(theme_jp, "")
 
             def callback(msg):
+                if self.stop_requested:
+                    raise InterruptedError("ユーザーによる停止")
                 self.after(0, lambda: self.update_status(msg))
 
             self.after(0, lambda: self.update_status("🚀 パイプライン開始..."))
@@ -1031,6 +1061,10 @@ class App(ctk.CTk):
             results, cost_tracker = generate_pipeline(
                 api_key, concept, characters, num_scenes, theme, callback
             )
+
+            if self.stop_requested:
+                self.after(0, lambda: self.on_stopped())
+                return
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             csv_path = EXPORTS_DIR / f"script_{timestamp}.csv"
@@ -1041,12 +1075,24 @@ class App(ctk.CTk):
 
             self.after(0, lambda: self.on_complete(results, cost_tracker, csv_path, json_path))
 
+        except InterruptedError:
+            self.after(0, lambda: self.on_stopped())
         except Exception as e:
             self.after(0, lambda: self.on_error(str(e)))
 
-    def on_complete(self, results, cost_tracker, csv_path, json_path):
+    def reset_buttons(self):
         self.is_generating = False
+        self.stop_requested = False
         self.generate_btn.configure(state="normal", text="🚀 生成開始")
+        self.stop_btn.configure(
+            state="disabled",
+            text="⏹ 停止",
+            border_color=MaterialColors.OUTLINE,
+            text_color=MaterialColors.OUTLINE
+        )
+
+    def on_complete(self, results, cost_tracker, csv_path, json_path):
+        self.reset_buttons()
         self.progress.set(1)
 
         self.cost_label.configure(text=cost_tracker.summary())
@@ -1056,9 +1102,14 @@ class App(ctk.CTk):
         self.log(f"💰 {cost_tracker.summary()}")
         self.snackbar.show(f"✅ {len(results)}シーン生成完了!", type="success")
 
+    def on_stopped(self):
+        self.reset_buttons()
+        self.progress.set(0)
+        self.update_status("⏹ 生成を停止しました")
+        self.snackbar.show("⏹ 生成を停止しました", type="warning")
+
     def on_error(self, error: str):
-        self.is_generating = False
-        self.generate_btn.configure(state="normal", text="🚀 生成開始")
+        self.reset_buttons()
         self.progress.set(0)
         self.update_status(f"❌ エラー: {error}")
         self.snackbar.show(f"❌ エラー: {error[:50]}", type="error")
