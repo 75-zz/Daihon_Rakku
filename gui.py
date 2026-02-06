@@ -2545,9 +2545,13 @@ class Snackbar(ctk.CTkFrame):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("脚本生成パイプライン")
-        self.geometry("720x900")
-        self.configure(fg_color=MaterialColors.BACKGROUND)
+        self.title("Daihon Rakku")
+        self.geometry("820x950")
+        self.minsize(720, 800)
+        
+        # M3 Surface background
+        self.configure(fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST)
+        
         self.config_data = load_config()
         self.is_generating = False
         self.stop_requested = False
@@ -2556,122 +2560,290 @@ class App(ctk.CTk):
         self.load_saved_config()
 
     def create_widgets(self):
-        # Main container
+        # ══════════════════════════════════════════════════════════════
+        # TOP APP BAR - Google Style Header
+        # ══════════════════════════════════════════════════════════════
+        top_bar = ctk.CTkFrame(
+            self,
+            height=72,
+            fg_color=MaterialColors.PRIMARY,
+            corner_radius=0
+        )
+        top_bar.pack(fill="x")
+        top_bar.pack_propagate(False)
+
+        # App title in header
+        header_content = ctk.CTkFrame(top_bar, fg_color="transparent")
+        header_content.pack(fill="both", expand=True, padx=24, pady=12)
+
+        app_icon = ctk.CTkLabel(
+            header_content,
+            text="🎬",
+            font=ctk.CTkFont(size=28),
+            text_color=MaterialColors.ON_PRIMARY
+        )
+        app_icon.pack(side="left")
+
+        title_block = ctk.CTkFrame(header_content, fg_color="transparent")
+        title_block.pack(side="left", padx=(12, 0))
+
+        app_title = ctk.CTkLabel(
+            title_block,
+            text="Daihon Rakku",
+            font=ctk.CTkFont(family="Segoe UI", size=22, weight="bold"),
+            text_color=MaterialColors.ON_PRIMARY
+        )
+        app_title.pack(anchor="w")
+
+        app_subtitle = ctk.CTkLabel(
+            title_block,
+            text="FANZA同人CG集 脚本・プロンプト自動生成",
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=MaterialColors.INVERSE_PRIMARY
+        )
+        app_subtitle.pack(anchor="w")
+
+        # Version badge
+        version_badge = ctk.CTkLabel(
+            header_content,
+            text="v0.8",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=MaterialColors.PRIMARY,
+            fg_color=MaterialColors.ON_PRIMARY,
+            corner_radius=12,
+            padx=10,
+            pady=4
+        )
+        version_badge.pack(side="right")
+
+        # ══════════════════════════════════════════════════════════════
+        # MAIN CONTENT AREA
+        # ══════════════════════════════════════════════════════════════
         self.main_container = ctk.CTkScrollableFrame(
             self,
-            fg_color=MaterialColors.BACKGROUND,
-            scrollbar_button_color=MaterialColors.SURFACE_VARIANT
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
+            scrollbar_button_color=MaterialColors.SURFACE_CONTAINER_HIGH,
+            scrollbar_button_hover_color=MaterialColors.OUTLINE
         )
-        self.main_container.pack(fill="both", expand=True, padx=24, pady=24)
+        self.main_container.pack(fill="both", expand=True, padx=0, pady=0)
 
-        # Header（アプリ名を目立たせる）
-        header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 20))
+        # Inner content with padding
+        content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=28, pady=24)
 
-        title_row = ctk.CTkFrame(header_frame, fg_color="transparent")
-        title_row.pack(fill="x")
-
-        title = ctk.CTkLabel(
-            title_row,
-            text="🎬 Daihon Rakku",
-            font=ctk.CTkFont(size=32, weight="bold"),
-            text_color=MaterialColors.ACCENT
+        # ══════════════════════════════════════════════════════════════
+        # GENERATE BUTTON - Hero Section (TOP PROMINENT)
+        # ══════════════════════════════════════════════════════════════
+        hero_section = ctk.CTkFrame(
+            content_frame,
+            fg_color=MaterialColors.PRIMARY_CONTAINER,
+            corner_radius=28
         )
-        title.pack(side="left")
+        hero_section.pack(fill="x", pady=(0, 20))
 
-        version_label = ctk.CTkLabel(
-            title_row,
-            text="v0.5",
-            font=ctk.CTkFont(size=12),
-            text_color=MaterialColors.SECONDARY,
-            fg_color=MaterialColors.SURFACE_VARIANT,
-            corner_radius=8,
-            padx=8,
-            pady=2
+        hero_inner = ctk.CTkFrame(hero_section, fg_color="transparent")
+        hero_inner.pack(fill="x", padx=24, pady=20)
+
+        # Status and progress at top
+        status_row = ctk.CTkFrame(hero_inner, fg_color="transparent")
+        status_row.pack(fill="x", pady=(0, 12))
+
+        self.status_label = ctk.CTkLabel(
+            status_row,
+            text="準備完了",
+            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            text_color=MaterialColors.ON_PRIMARY_CONTAINER
         )
-        version_label.pack(side="left", padx=(12, 0))
+        self.status_label.pack(side="left")
 
-        subtitle = ctk.CTkLabel(
-            header_frame,
-            text="FANZA同人CG集向け 脚本・SDプロンプト自動生成ツール",
-            font=ctk.CTkFont(size=13),
-            text_color=MaterialColors.SECONDARY
+        # Phase indicators
+        phase_frame = ctk.CTkFrame(status_row, fg_color="transparent")
+        phase_frame.pack(side="right")
+
+        self.phase_labels = []
+        phases = ["圧縮", "生成", "完了"]
+        for i, phase in enumerate(phases):
+            pill = ctk.CTkFrame(
+                phase_frame,
+                fg_color=MaterialColors.SURFACE_CONTAINER if i > 0 else MaterialColors.PRIMARY,
+                corner_radius=12
+            )
+            pill.pack(side="left", padx=3)
+            
+            lbl = ctk.CTkLabel(
+                pill,
+                text=phase,
+                font=ctk.CTkFont(size=11),
+                text_color=MaterialColors.ON_SURFACE_VARIANT if i > 0 else MaterialColors.ON_PRIMARY,
+                padx=10,
+                pady=4
+            )
+            lbl.pack()
+            self.phase_labels.append((pill, lbl))
+
+        # Progress bar - modern style
+        self.progress = ctk.CTkProgressBar(
+            hero_inner,
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            progress_color=MaterialColors.PRIMARY,
+            height=8,
+            corner_radius=4
         )
-        subtitle.pack(anchor="w", pady=(4, 0))
+        self.progress.pack(fill="x", pady=(0, 16))
+        self.progress.set(0)
 
-        # API Card（折りたたみ可能）
-        api_card = MaterialCard(self.main_container, title="🔑 API設定", collapsible=True)
+        # Main generate button - LARGE AND PROMINENT
+        self.generate_btn = ctk.CTkButton(
+            hero_inner,
+            text="脚本を生成",
+            font=ctk.CTkFont(family="Segoe UI", size=18, weight="bold"),
+            height=56,
+            corner_radius=28,
+            fg_color=MaterialColors.PRIMARY,
+            hover_color="#5B3D99",
+            text_color=MaterialColors.ON_PRIMARY,
+            command=self.start_generation
+        )
+        self.generate_btn.pack(fill="x")
+
+        # Sub buttons row
+        sub_btn_row = ctk.CTkFrame(hero_inner, fg_color="transparent")
+        sub_btn_row.pack(fill="x", pady=(12, 0))
+
+        self.save_btn = MaterialButton(
+            sub_btn_row,
+            text="設定保存",
+            variant="filled_tonal",
+            size="small",
+            command=self.save_settings,
+            width=90
+        )
+        self.save_btn.pack(side="left", padx=(0, 8))
+
+        self.stop_btn = MaterialButton(
+            sub_btn_row,
+            text="停止",
+            variant="outlined",
+            size="small",
+            command=self.stop_generation,
+            width=70
+        )
+        self.stop_btn.pack(side="right")
+        self.stop_btn.configure(state="disabled")
+
+        # ══════════════════════════════════════════════════════════════
+        # TWO COLUMN LAYOUT
+        # ══════════════════════════════════════════════════════════════
+        columns = ctk.CTkFrame(content_frame, fg_color="transparent")
+        columns.pack(fill="both", expand=True)
+
+        # LEFT COLUMN
+        left_col = ctk.CTkFrame(columns, fg_color="transparent")
+        left_col.pack(side="left", fill="both", expand=True, padx=(0, 10))
+
+        # API Settings - Compact
+        api_card = ctk.CTkFrame(
+            left_col,
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOW,
+            corner_radius=16
+        )
         api_card.pack(fill="x", pady=(0, 12))
 
+        api_header = ctk.CTkLabel(
+            api_card,
+            text="🔑 API設定",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        )
+        api_header.pack(anchor="w", padx=16, pady=(12, 8))
+
         self.api_field = MaterialTextField(
-            api_card.content_frame,
+            api_card,
             label="Anthropic API Key",
             placeholder="sk-ant-...",
-            show="*"
+            show="*",
+            height=44,
+            variant="filled"
         )
-        self.api_field.pack(fill="x")
+        self.api_field.pack(fill="x", padx=16, pady=(0, 12))
 
-        # Character Generator Card（アクセント付き）
-        char_card = MaterialCard(self.main_container, title="🎭 キャラクター自動生成", accent=True)
+        # Character Generator
+        char_card = ctk.CTkFrame(
+            left_col,
+            fg_color=MaterialColors.SECONDARY_CONTAINER,
+            corner_radius=16
+        )
         char_card.pack(fill="x", pady=(0, 12))
 
-        char_row = ctk.CTkFrame(char_card.content_frame, fg_color="transparent")
-        char_row.pack(fill="x", pady=(0, 8))
+        char_header = ctk.CTkLabel(
+            char_card,
+            text="🎭 キャラクター自動生成",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            text_color=MaterialColors.ON_SECONDARY_CONTAINER
+        )
+        char_header.pack(anchor="w", padx=16, pady=(12, 8))
 
-        # 作品名
-        work_frame = ctk.CTkFrame(char_row, fg_color="transparent")
-        work_frame.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        char_inputs = ctk.CTkFrame(char_card, fg_color="transparent")
+        char_inputs.pack(fill="x", padx=16, pady=(0, 8))
+
+        # Work title
+        work_frame = ctk.CTkFrame(char_inputs, fg_color="transparent")
+        work_frame.pack(side="left", fill="x", expand=True, padx=(0, 6))
 
         ctk.CTkLabel(
             work_frame,
             text="作品名",
-            font=ctk.CTkFont(size=12),
-            text_color=MaterialColors.PRIMARY
-        ).pack(anchor="w", pady=(0, 4))
+            font=ctk.CTkFont(size=11),
+            text_color=MaterialColors.ON_SECONDARY_CONTAINER
+        ).pack(anchor="w")
 
         self.work_title_entry = ctk.CTkEntry(
             work_frame,
             height=40,
-            placeholder_text="例: 五等分の花嫁",
-            fg_color=MaterialColors.SURFACE_VARIANT,
+            placeholder_text="五等分の花嫁",
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
             text_color=MaterialColors.ON_SURFACE,
-            corner_radius=8,
-            border_width=1,
-            border_color=MaterialColors.OUTLINE
+            corner_radius=12,
+            border_width=0
         )
-        self.work_title_entry.pack(fill="x")
+        self.work_title_entry.pack(fill="x", pady=(4, 0))
 
-        # キャラ名
-        char_name_frame = ctk.CTkFrame(char_row, fg_color="transparent")
-        char_name_frame.pack(side="left", fill="x", expand=True, padx=(8, 0))
+        # Character name
+        char_name_frame = ctk.CTkFrame(char_inputs, fg_color="transparent")
+        char_name_frame.pack(side="left", fill="x", expand=True, padx=(6, 0))
 
         ctk.CTkLabel(
             char_name_frame,
-            text="キャラクター名",
-            font=ctk.CTkFont(size=12),
-            text_color=MaterialColors.PRIMARY
-        ).pack(anchor="w", pady=(0, 4))
+            text="キャラ名",
+            font=ctk.CTkFont(size=11),
+            text_color=MaterialColors.ON_SECONDARY_CONTAINER
+        ).pack(anchor="w")
 
         self.char_name_entry = ctk.CTkEntry(
             char_name_frame,
             height=40,
-            placeholder_text="例: 中野一花",
-            fg_color=MaterialColors.SURFACE_VARIANT,
+            placeholder_text="中野一花",
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
             text_color=MaterialColors.ON_SURFACE,
-            corner_radius=8,
-            border_width=1,
-            border_color=MaterialColors.OUTLINE
+            corner_radius=12,
+            border_width=0
         )
-        self.char_name_entry.pack(fill="x")
+        self.char_name_entry.pack(fill="x", pady=(4, 0))
 
-        # キャラ生成ボタン
-        char_btn_frame = ctk.CTkFrame(char_card.content_frame, fg_color="transparent")
-        char_btn_frame.pack(fill="x")
+        # Char buttons
+        char_btn_frame = ctk.CTkFrame(char_card, fg_color="transparent")
+        char_btn_frame.pack(fill="x", padx=16, pady=(0, 12))
 
-        self.char_generate_btn = MaterialButton(
+        self.char_generate_btn = ctk.CTkButton(
             char_btn_frame,
-            text="✨ キャラ生成",
-            variant="filled",
+            text="✨ 生成",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            height=36,
+            width=80,
+            corner_radius=18,
+            fg_color=MaterialColors.PRIMARY,
+            hover_color="#5B3D99",
+            text_color=MaterialColors.ON_PRIMARY,
             command=self.start_char_generation
         )
         self.char_generate_btn.pack(side="left", padx=(0, 8))
@@ -2679,327 +2851,254 @@ class App(ctk.CTk):
         self.char_select_combo = ctk.CTkComboBox(
             char_btn_frame,
             values=["（キャラ選択）"],
-            height=40,
-            fg_color=MaterialColors.SURFACE_VARIANT,
+            height=36,
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
             text_color=MaterialColors.ON_SURFACE,
-            button_color=MaterialColors.PRIMARY,
-            button_hover_color=MaterialColors.PRIMARY_VARIANT,
+            button_color=MaterialColors.SECONDARY,
+            button_hover_color=MaterialColors.ON_SECONDARY_CONTAINER,
             dropdown_fg_color=MaterialColors.SURFACE,
             dropdown_text_color=MaterialColors.ON_SURFACE,
-            dropdown_hover_color=MaterialColors.SURFACE_VARIANT,
-            corner_radius=8,
-            border_width=1,
-            border_color=MaterialColors.OUTLINE,
+            dropdown_hover_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=12,
+            border_width=0,
             command=self.on_char_selected
         )
         self.char_select_combo.pack(side="left", fill="x", expand=True)
 
         self.refresh_char_list()
 
+        # RIGHT COLUMN
+        right_col = ctk.CTkFrame(columns, fg_color="transparent")
+        right_col.pack(side="left", fill="both", expand=True, padx=(10, 0))
+
         # Concept Card
-        concept_card = MaterialCard(self.main_container, title="📖 作品設定")
+        concept_card = ctk.CTkFrame(
+            right_col,
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOW,
+            corner_radius=16
+        )
         concept_card.pack(fill="x", pady=(0, 12))
 
+        ctk.CTkLabel(
+            concept_card,
+            text="📖 作品設定",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        ).pack(anchor="w", padx=16, pady=(12, 8))
+
         self.concept_field = MaterialTextField(
-            concept_card.content_frame,
+            concept_card,
             label="コンセプト",
-            height=80,
-            multiline=True
+            height=60,
+            multiline=True,
+            variant="filled"
         )
-        self.concept_field.pack(fill="x", pady=(0, 12))
+        self.concept_field.pack(fill="x", padx=16, pady=(0, 8))
 
         self.characters_field = MaterialTextField(
-            concept_card.content_frame,
+            concept_card,
             label="登場人物",
-            height=80,
-            multiline=True
+            height=60,
+            multiline=True,
+            variant="filled"
         )
-        self.characters_field.pack(fill="x")
+        self.characters_field.pack(fill="x", padx=16, pady=(0, 12))
 
         # Settings Card
-        settings_card = MaterialCard(self.main_container, title="⚙️ 生成設定")
+        settings_card = ctk.CTkFrame(
+            right_col,
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOW,
+            corner_radius=16
+        )
         settings_card.pack(fill="x", pady=(0, 12))
 
-        settings_row = ctk.CTkFrame(settings_card.content_frame, fg_color="transparent")
-        settings_row.pack(fill="x")
+        ctk.CTkLabel(
+            settings_card,
+            text="⚙️ 生成設定",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        ).pack(anchor="w", padx=16, pady=(12, 8))
+
+        settings_row = ctk.CTkFrame(settings_card, fg_color="transparent")
+        settings_row.pack(fill="x", padx=16, pady=(0, 12))
 
         # Scenes
         scenes_frame = ctk.CTkFrame(settings_row, fg_color="transparent")
-        scenes_frame.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        scenes_frame.pack(side="left", fill="x", expand=True, padx=(0, 6))
 
         ctk.CTkLabel(
             scenes_frame,
             text="シーン数",
-            font=ctk.CTkFont(size=12),
-            text_color=MaterialColors.PRIMARY
-        ).pack(anchor="w", pady=(0, 4))
+            font=ctk.CTkFont(size=11),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(anchor="w")
 
         self.scenes_entry = ctk.CTkEntry(
             scenes_frame,
             height=40,
-            fg_color=MaterialColors.SURFACE_VARIANT,
+            fg_color=MaterialColors.SURFACE_CONTAINER,
             text_color=MaterialColors.ON_SURFACE,
-            corner_radius=8,
-            border_width=1,
-            border_color=MaterialColors.OUTLINE
+            corner_radius=12,
+            border_width=0
         )
-        self.scenes_entry.pack(fill="x")
+        self.scenes_entry.pack(fill="x", pady=(4, 0))
         self.scenes_entry.insert(0, "10")
 
         # Theme
         theme_frame = ctk.CTkFrame(settings_row, fg_color="transparent")
-        theme_frame.pack(side="left", fill="x", expand=True, padx=(8, 0))
+        theme_frame.pack(side="left", fill="x", expand=True, padx=(6, 0))
 
         ctk.CTkLabel(
             theme_frame,
             text="テーマ",
-            font=ctk.CTkFont(size=12),
-            text_color=MaterialColors.PRIMARY
-        ).pack(anchor="w", pady=(0, 4))
+            font=ctk.CTkFont(size=11),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(anchor="w")
 
         self.theme_combo = ctk.CTkComboBox(
             theme_frame,
             values=list(THEME_OPTIONS.keys()),
             height=40,
-            fg_color=MaterialColors.SURFACE_VARIANT,
+            fg_color=MaterialColors.SURFACE_CONTAINER,
             text_color=MaterialColors.ON_SURFACE,
             button_color=MaterialColors.PRIMARY,
-            button_hover_color=MaterialColors.PRIMARY_VARIANT,
+            button_hover_color="#5B3D99",
             dropdown_fg_color=MaterialColors.SURFACE,
             dropdown_text_color=MaterialColors.ON_SURFACE,
-            dropdown_hover_color=MaterialColors.SURFACE_VARIANT,
-            corner_radius=8,
-            border_width=1,
-            border_color=MaterialColors.OUTLINE
+            dropdown_hover_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=12,
+            border_width=0
         )
-        self.theme_combo.pack(fill="x")
+        self.theme_combo.pack(fill="x", pady=(4, 0))
         self.theme_combo.set("指定なし")
 
-        # コスト予測表示
-        cost_preview_frame = ctk.CTkFrame(settings_card.content_frame, fg_color="transparent")
-        cost_preview_frame.pack(fill="x", pady=(12, 0))
-
+        # Cost preview
         self.cost_preview_label = ctk.CTkLabel(
-            cost_preview_frame,
-            text="💰 予想コスト: シーン数を入力すると表示",
-            font=ctk.CTkFont(size=12),
-            text_color=MaterialColors.SECONDARY
+            settings_card,
+            text="💰 予想: シーン数入力で表示",
+            font=ctk.CTkFont(size=11),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
         )
-        self.cost_preview_label.pack(anchor="w")
+        self.cost_preview_label.pack(anchor="w", padx=16, pady=(0, 12))
 
-        # シーン数変更時にコスト更新
         self.scenes_entry.bind("<KeyRelease>", self.update_cost_preview)
 
-        # Profile Management Card（折りたたみ可能）
-        profile_card = MaterialCard(self.main_container, title="📁 プロファイル管理", collapsible=True)
+        # ══════════════════════════════════════════════════════════════
+        # PROFILE MANAGEMENT - Collapsible
+        # ══════════════════════════════════════════════════════════════
+        profile_card = MaterialCard(content_frame, title="📁 プロファイル管理", collapsible=True, variant="outlined")
         profile_card.pack(fill="x", pady=(0, 12))
 
         profile_row = ctk.CTkFrame(profile_card.content_frame, fg_color="transparent")
         profile_row.pack(fill="x")
 
-        # プロファイル選択
         self.profile_combo = ctk.CTkComboBox(
             profile_row,
             values=["（新規）"] + get_profile_list(),
             height=36,
-            width=200,
-            fg_color=MaterialColors.SURFACE_VARIANT,
+            width=160,
+            fg_color=MaterialColors.SURFACE_CONTAINER,
             text_color=MaterialColors.ON_SURFACE,
             button_color=MaterialColors.PRIMARY,
-            corner_radius=8,
+            corner_radius=10,
+            border_width=0,
             command=self.on_profile_selected
         )
         self.profile_combo.pack(side="left", padx=(0, 8))
         self.profile_combo.set("（新規）")
 
-        # プロファイル名入力
         self.profile_name_entry = ctk.CTkEntry(
             profile_row,
             height=36,
-            width=150,
-            placeholder_text="プロファイル名",
-            fg_color=MaterialColors.SURFACE_VARIANT,
+            width=120,
+            placeholder_text="名前",
+            fg_color=MaterialColors.SURFACE_CONTAINER,
             text_color=MaterialColors.ON_SURFACE,
-            corner_radius=8
+            corner_radius=10,
+            border_width=0
         )
         self.profile_name_entry.pack(side="left", padx=(0, 8))
 
-        # ボタン群
-        profile_btn_frame = ctk.CTkFrame(profile_row, fg_color="transparent")
-        profile_btn_frame.pack(side="left")
-
-        self.profile_save_btn = MaterialButton(
-            profile_btn_frame,
-            text="保存",
-            variant="filled",
-            command=self.save_current_profile,
-            width=60
-        )
+        self.profile_save_btn = MaterialButton(profile_row, text="保存", variant="filled", size="small", command=self.save_current_profile, width=50)
         self.profile_save_btn.pack(side="left", padx=(0, 4))
 
-        self.profile_load_btn = MaterialButton(
-            profile_btn_frame,
-            text="読込",
-            variant="outlined",
-            command=self.load_selected_profile,
-            width=60
-        )
+        self.profile_load_btn = MaterialButton(profile_row, text="読込", variant="outlined", size="small", command=self.load_selected_profile, width=50)
         self.profile_load_btn.pack(side="left", padx=(0, 4))
 
-        self.profile_copy_btn = MaterialButton(
-            profile_btn_frame,
-            text="複製",
-            variant="text",
-            command=self.copy_selected_profile,
-            width=60
-        )
+        self.profile_copy_btn = MaterialButton(profile_row, text="複製", variant="text", size="small", command=self.copy_selected_profile, width=50)
         self.profile_copy_btn.pack(side="left", padx=(0, 4))
 
-        self.profile_delete_btn = MaterialButton(
-            profile_btn_frame,
-            text="削除",
-            variant="text",
-            command=self.delete_selected_profile,
-            width=60
-        )
+        self.profile_delete_btn = MaterialButton(profile_row, text="削除", variant="text", size="small", command=self.delete_selected_profile, width=50)
         self.profile_delete_btn.pack(side="left")
 
-        # ═══════════════════════════════════════════════════════════
-        # 🚀 メイン生成セクション（大きく目立たせる）
-        # ═══════════════════════════════════════════════════════════
-
-        generate_section = ctk.CTkFrame(
-            self.main_container,
-            fg_color=MaterialColors.SURFACE,
-            corner_radius=20,
-            border_width=2,
-            border_color=MaterialColors.ACCENT
-        )
-        generate_section.pack(fill="x", pady=(8, 16))
-
-        # 生成ボタンを大きく
-        self.generate_btn = MaterialButton(
-            generate_section,
-            text="🚀 脚本を生成する",
-            variant="accent",
-            size="xlarge",
-            command=self.start_generation
-        )
-        self.generate_btn.pack(fill="x", padx=16, pady=(16, 8))
-
-        # サブボタン行
-        sub_btn_frame = ctk.CTkFrame(generate_section, fg_color="transparent")
-        sub_btn_frame.pack(fill="x", padx=16, pady=(0, 8))
-
-        self.save_btn = MaterialButton(
-            sub_btn_frame,
-            text="💾 設定保存",
-            variant="outlined",
-            size="small",
-            command=self.save_settings,
-            width=100
-        )
-        self.save_btn.pack(side="left", padx=(0, 8))
-
-        self.stop_btn = MaterialButton(
-            sub_btn_frame,
-            text="⏹ 停止",
-            variant="danger",
-            size="small",
-            command=self.stop_generation,
-            width=80
-        )
-        self.stop_btn.pack(side="right")
-        self.stop_btn.configure(state="disabled")
-
-        # プログレスバー（大きく）
-        self.progress = ctk.CTkProgressBar(
-            generate_section,
-            fg_color=MaterialColors.OUTLINE_VARIANT,
-            progress_color=MaterialColors.ACCENT,
-            height=12,
-            corner_radius=6
-        )
-        self.progress.pack(fill="x", padx=16, pady=(0, 8))
-        self.progress.set(0)
-
-        # ステータス表示
-        status_frame = ctk.CTkFrame(generate_section, fg_color="transparent")
-        status_frame.pack(fill="x", padx=16, pady=(0, 12))
-
-        self.status_label = ctk.CTkLabel(
-            status_frame,
-            text="⏳ 待機中...",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            text_color=MaterialColors.SECONDARY
-        )
-        self.status_label.pack(side="left")
-
-        # Phase indicators
-        phase_frame = ctk.CTkFrame(status_frame, fg_color="transparent")
-        phase_frame.pack(side="right")
-
-        self.phase_labels = []
-        phases = ["1️⃣ 圧縮", "2️⃣ 生成", "3️⃣ 完了"]
-        for i, phase in enumerate(phases):
-            lbl = ctk.CTkLabel(
-                phase_frame,
-                text=phase,
-                font=ctk.CTkFont(size=11),
-                text_color=MaterialColors.OUTLINE,
-                width=60
-            )
-            lbl.pack(side="left", padx=4)
-            self.phase_labels.append(lbl)
+        # ══════════════════════════════════════════════════════════════
+        # COST & LOG SECTION
+        # ══════════════════════════════════════════════════════════════
+        info_row = ctk.CTkFrame(content_frame, fg_color="transparent")
+        info_row.pack(fill="both", expand=True, pady=(0, 12))
 
         # Cost Card
-        cost_card = MaterialCard(self.main_container, title="💰 コスト情報")
-        cost_card.pack(fill="x", pady=(0, 12))
+        cost_card = ctk.CTkFrame(
+            info_row,
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOW,
+            corner_radius=16,
+            width=200
+        )
+        cost_card.pack(side="left", fill="y", padx=(0, 10))
+        cost_card.pack_propagate(False)
+
+        ctk.CTkLabel(
+            cost_card,
+            text="💰 コスト",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        ).pack(anchor="w", padx=16, pady=(12, 8))
 
         self.cost_label = ctk.CTkLabel(
-            cost_card.content_frame,
-            text="生成後に表示されます",
-            font=ctk.CTkFont(family="Consolas", size=12),
-            text_color=MaterialColors.ON_SURFACE,
+            cost_card,
+            text="生成後に表示",
+            font=ctk.CTkFont(family="Consolas", size=11),
+            text_color=MaterialColors.ON_SURFACE_VARIANT,
             justify="left"
         )
-        self.cost_label.pack(anchor="w")
+        self.cost_label.pack(anchor="w", padx=16)
 
-        # Log Card（ダーク背景で見やすく）
-        log_card = MaterialCard(self.main_container, title="📋 実行ログ")
-        log_card.pack(fill="both", expand=True)
+        # Log Card
+        log_card = ctk.CTkFrame(
+            info_row,
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOW,
+            corner_radius=16
+        )
+        log_card.pack(side="left", fill="both", expand=True)
+
+        ctk.CTkLabel(
+            log_card,
+            text="📋 ログ",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        ).pack(anchor="w", padx=16, pady=(12, 8))
 
         self.log_text = ctk.CTkTextbox(
-            log_card.content_frame,
-            height=180,
-            fg_color=MaterialColors.SURFACE_DARK,
-            text_color=MaterialColors.ON_DARK,
+            log_card,
+            height=150,
+            fg_color=MaterialColors.INVERSE_SURFACE,
+            text_color=MaterialColors.INVERSE_ON_SURFACE,
             corner_radius=12,
-            font=ctk.CTkFont(family="Consolas", size=12),
+            font=ctk.CTkFont(family="Consolas", size=11),
             border_width=0
         )
-        self.log_text.pack(fill="both", expand=True)
+        self.log_text.pack(fill="both", expand=True, padx=16, pady=(0, 12))
 
-        # Disclaimer
-        disclaimer_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        disclaimer_frame.pack(fill="x", pady=(16, 0))
-
-        disclaimer_text = (
-            "⚠️ 免責事項: 本ツールはAIによる二次創作支援ツールです。\n"
-            "・生成されたコンテンツの著作権・法的責任はユーザーに帰属します\n"
-            "・キャラクター情報はAIの学習データに基づく推定であり、正確性を保証しません\n"
-            "・原作の直接引用は自動的に回避されますが、完全な保証はできません\n"
-            "・商用利用の際は各作品の二次創作ガイドラインをご確認ください"
-        )
-
-        self.disclaimer_label = ctk.CTkLabel(
-            disclaimer_frame,
-            text=disclaimer_text,
+        # ══════════════════════════════════════════════════════════════
+        # FOOTER
+        # ══════════════════════════════════════════════════════════════
+        footer = ctk.CTkLabel(
+            content_frame,
+            text="⚠️ AI生成コンテンツ | 著作権・法的責任はユーザーに帰属 | 商用利用時は二次創作ガイドライン確認",
             font=ctk.CTkFont(size=10),
-            text_color=MaterialColors.OUTLINE,
-            justify="left"
+            text_color=MaterialColors.OUTLINE
         )
-        self.disclaimer_label.pack(anchor="w")
+        footer.pack(pady=(0, 8))
 
         # Snackbar
         self.snackbar = Snackbar(self)
@@ -3188,17 +3287,26 @@ class App(ctk.CTk):
 
     def update_phase_indicator(self, message: str):
         """フェーズインジケーターを更新"""
-        # リセット
-        for lbl in self.phase_labels:
-            lbl.configure(text_color=MaterialColors.OUTLINE)
+        # リセット - 新構造: (pill, lbl)のタプル
+        for pill, lbl in self.phase_labels:
+            pill.configure(fg_color=MaterialColors.SURFACE_CONTAINER)
+            lbl.configure(text_color=MaterialColors.ON_SURFACE_VARIANT)
 
         # 現在のフェーズをハイライト
         if "Phase 1" in message or "圧縮" in message:
-            self.phase_labels[0].configure(text_color=MaterialColors.PRIMARY)
+            pill, lbl = self.phase_labels[0]
+            pill.configure(fg_color=MaterialColors.PRIMARY)
+            lbl.configure(text_color=MaterialColors.ON_PRIMARY)
             self.progress.set(0.15)
         elif "Phase 2" in message or "アウトライン" in message or "シーン" in message:
-            self.phase_labels[0].configure(text_color=MaterialColors.SUCCESS)
-            self.phase_labels[1].configure(text_color=MaterialColors.PRIMARY)
+            # Phase 1 complete
+            pill0, lbl0 = self.phase_labels[0]
+            pill0.configure(fg_color=MaterialColors.SUCCESS)
+            lbl0.configure(text_color=MaterialColors.ON_PRIMARY)
+            # Phase 2 active
+            pill1, lbl1 = self.phase_labels[1]
+            pill1.configure(fg_color=MaterialColors.PRIMARY)
+            lbl1.configure(text_color=MaterialColors.ON_PRIMARY)
             # シーン進捗を計算
             if "シーン" in message:
                 import re
@@ -3210,13 +3318,18 @@ class App(ctk.CTk):
             else:
                 self.progress.set(0.3)
         elif "Phase 3" in message or "品質" in message:
-            self.phase_labels[0].configure(text_color=MaterialColors.SUCCESS)
-            self.phase_labels[1].configure(text_color=MaterialColors.SUCCESS)
-            self.phase_labels[2].configure(text_color=MaterialColors.PRIMARY)
+            for i in range(2):
+                pill, lbl = self.phase_labels[i]
+                pill.configure(fg_color=MaterialColors.SUCCESS)
+                lbl.configure(text_color=MaterialColors.ON_PRIMARY)
+            pill2, lbl2 = self.phase_labels[2]
+            pill2.configure(fg_color=MaterialColors.PRIMARY)
+            lbl2.configure(text_color=MaterialColors.ON_PRIMARY)
             self.progress.set(0.9)
         elif "完了" in message:
-            for lbl in self.phase_labels:
-                lbl.configure(text_color=MaterialColors.SUCCESS)
+            for pill, lbl in self.phase_labels:
+                pill.configure(fg_color=MaterialColors.SUCCESS)
+                lbl.configure(text_color=MaterialColors.ON_PRIMARY)
             self.progress.set(1.0)
 
     def start_generation(self):
@@ -3310,7 +3423,7 @@ class App(ctk.CTk):
     def reset_buttons(self):
         self.is_generating = False
         self.stop_requested = False
-        self.generate_btn.configure(state="normal", text="🚀 生成開始")
+        self.generate_btn.configure(state="normal", text="脚本を生成")
         self.stop_btn.configure(
             state="disabled",
             text="⏹ 停止",
@@ -3318,8 +3431,9 @@ class App(ctk.CTk):
             text_color=MaterialColors.OUTLINE
         )
         # フェーズインジケーターをリセット
-        for lbl in self.phase_labels:
-            lbl.configure(text_color=MaterialColors.OUTLINE)
+        for pill, lbl in self.phase_labels:
+            pill.configure(fg_color=MaterialColors.SURFACE_CONTAINER)
+            lbl.configure(text_color=MaterialColors.ON_SURFACE_VARIANT)
 
     def on_complete(self, results, cost_tracker, csv_path, json_path, xlsx_path=None):
         self.reset_buttons()

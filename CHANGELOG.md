@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.9.0] - 2026-02-06
+
+### Added
+- **Google風 UI 大幅刷新**
+  - Top App Bar（Primary色ヘッダー）
+  - Hero Section（プログレス+生成ボタン）
+  - 2カラムレイアウト
+  - モダンなフェーズインジケーター（ピル型）
+  - Secondary Container使用のキャラ生成カード
+
+### Changed
+- ウィンドウサイズ拡大（820x950）
+- 生成ボタンを画面上部に移動（Hero Section）
+- カード角丸を28dp/16dpに統一
+- 入力フィールドのborder廃止（M3 filled style）
+- プログレスバーをHero内に配置
+- ログをダークテーマ（Inverse Surface）に
+
+### UI/UX
+- より直感的なレイアウト
+- 視認性の高いフェーズ表示
+- コンパクトなフッター
+
+---
+
 ## [0.8.0] - 2026-02-06
 
 ### Added
