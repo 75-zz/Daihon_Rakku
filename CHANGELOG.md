@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.0] - 2026-02-06
+
+### Added
+- **UIデザインブラッシュアップ**
+  - アクセントカラー（ピンク）追加
+  - 生成ボタンを大型化・目立たせる（xlarge, accent）
+  - プログレスバー強化（大きく、色変更）
+  - ログ表示改善（ダーク背景、視認性向上）
+  - カード折りたたみ機能（API設定、プロファイル管理）
+  - バージョン表示追加
+
+### Changed
+- カラーパレット強化
+  - PRIMARY: より鮮やかな紫 `#7C3AED`
+  - ACCENT: ピンク `#EC4899`
+  - SURFACE_VARIANT: 薄紫 `#F3E8FF`
+- MaterialButton: size/variant拡張（accent, danger, success, xlarge）
+- MaterialCard: collapsible/accent対応
+- Snackbar: ダーク背景でモダンに
+- アプリ名「Daihon Rakku」に変更
+
+---
+
 ## [0.5.0] - 2026-02-06
 
 ### Added

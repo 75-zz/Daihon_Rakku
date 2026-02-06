@@ -35,20 +35,40 @@ except ImportError:
 
 # === Material Design 3 カラーパレット ===
 class MaterialColors:
-    # Light Theme (Material Design 3)
-    BACKGROUND = "#FFFBFE"
-    SURFACE = "#FFFBFE"
-    SURFACE_VARIANT = "#E7E0EC"
-    PRIMARY = "#6750A4"
-    PRIMARY_VARIANT = "#7F67BE"
-    SECONDARY = "#625B71"
-    ERROR = "#B3261E"
-    SUCCESS = "#386A20"
-    WARNING = "#7D5700"
-    ON_BACKGROUND = "#1C1B1F"
-    ON_SURFACE = "#1C1B1F"
+    # Light Theme (Material Design 3) - Enhanced for FANZA Doujin Tool
+    BACKGROUND = "#FAFAFA"
+    SURFACE = "#FFFFFF"
+    SURFACE_VARIANT = "#F3E8FF"  # 薄紫に変更
+    SURFACE_DARK = "#1E1E2E"     # ダーク背景（ログ用）
+    
+    # Primary - Purple
+    PRIMARY = "#7C3AED"          # より鮮やかな紫
+    PRIMARY_VARIANT = "#8B5CF6"
+    PRIMARY_LIGHT = "#A78BFA"
+    
+    # Accent - Pink/Magenta（生成ボタン用）
+    ACCENT = "#EC4899"           # ピンク
+    ACCENT_VARIANT = "#F472B6"
+    ACCENT_DARK = "#DB2777"
+    
+    # Secondary
+    SECONDARY = "#64748B"
+    
+    # Status Colors
+    ERROR = "#EF4444"
+    SUCCESS = "#22C55E"
+    WARNING = "#F59E0B"
+    
+    # Text
+    ON_BACKGROUND = "#1F2937"
+    ON_SURFACE = "#374151"
     ON_PRIMARY = "#FFFFFF"
-    OUTLINE = "#79747E"
+    ON_ACCENT = "#FFFFFF"
+    ON_DARK = "#E5E7EB"
+    
+    # Outline
+    OUTLINE = "#D1D5DB"
+    OUTLINE_VARIANT = "#E5E7EB"
 
 
 # === 設定 ===
@@ -1725,41 +1745,97 @@ ctk.set_default_color_theme("blue")
 
 
 class MaterialCard(ctk.CTkFrame):
-    """Material Design Card Component"""
-    def __init__(self, master, title: str = "", **kwargs):
+    """Material Design Card Component - Enhanced"""
+    def __init__(self, master, title: str = "", collapsible: bool = False, accent: bool = False, **kwargs):
+        bg_color = MaterialColors.SURFACE
+        border_color = MaterialColors.OUTLINE_VARIANT
+        
+        if accent:
+            border_color = MaterialColors.PRIMARY_LIGHT
+        
         super().__init__(
             master,
-            fg_color=MaterialColors.SURFACE,
-            corner_radius=12,  # 16→12に統一
-            border_width=0,    # ボーダーなしでシンプルに
+            fg_color=bg_color,
+            corner_radius=16,
+            border_width=1,
+            border_color=border_color,
             **kwargs
         )
-
+        
+        self.collapsible = collapsible
+        self.is_collapsed = False
+        
         if title:
+            title_frame = ctk.CTkFrame(self, fg_color="transparent")
+            title_frame.pack(fill="x", padx=16, pady=(12, 6))
+            
             self.title_label = ctk.CTkLabel(
-                self,
+                title_frame,
                 text=title,
-                font=ctk.CTkFont(size=14, weight="bold"),
-                text_color=MaterialColors.ON_SURFACE
+                font=ctk.CTkFont(size=15, weight="bold"),
+                text_color=MaterialColors.PRIMARY if accent else MaterialColors.ON_SURFACE
             )
-            self.title_label.pack(anchor="w", padx=16, pady=(12, 6))
+            self.title_label.pack(side="left")
+            
+            if collapsible:
+                self.collapse_btn = ctk.CTkButton(
+                    title_frame,
+                    text="▼",
+                    width=24,
+                    height=24,
+                    fg_color="transparent",
+                    hover_color=MaterialColors.SURFACE_VARIANT,
+                    text_color=MaterialColors.SECONDARY,
+                    command=self.toggle_collapse
+                )
+                self.collapse_btn.pack(side="right")
 
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
-        self.content_frame.pack(fill="both", expand=True, padx=16, pady=(0, 12))
+        self.content_frame.pack(fill="both", expand=True, padx=16, pady=(0, 16))
+    
+    def toggle_collapse(self):
+        if self.is_collapsed:
+            self.content_frame.pack(fill="both", expand=True, padx=16, pady=(0, 16))
+            self.collapse_btn.configure(text="▼")
+        else:
+            self.content_frame.pack_forget()
+            self.collapse_btn.configure(text="▶")
+        self.is_collapsed = not self.is_collapsed
 
 
 class MaterialButton(ctk.CTkButton):
-    """Material Design Button Component"""
-    def __init__(self, master, variant: str = "filled", **kwargs):
+    """Material Design Button Component - Enhanced"""
+    def __init__(self, master, variant: str = "filled", size: str = "medium", **kwargs):
+        # サイズ設定
+        sizes = {
+            "small": {"height": 32, "font_size": 12, "corner": 6},
+            "medium": {"height": 40, "font_size": 13, "corner": 8},
+            "large": {"height": 52, "font_size": 15, "corner": 12},
+            "xlarge": {"height": 64, "font_size": 18, "corner": 16}
+        }
+        size_config = sizes.get(size, sizes["medium"])
+        
         if variant == "filled":
             super().__init__(
                 master,
                 fg_color=MaterialColors.PRIMARY,
                 hover_color=MaterialColors.PRIMARY_VARIANT,
                 text_color=MaterialColors.ON_PRIMARY,
-                corner_radius=8,  # 12→8に統一
-                height=36,
-                font=ctk.CTkFont(size=13, weight="bold"),
+                corner_radius=size_config["corner"],
+                height=size_config["height"],
+                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
+                **kwargs
+            )
+        elif variant == "accent":
+            # アクセント色（生成ボタン用）
+            super().__init__(
+                master,
+                fg_color=MaterialColors.ACCENT,
+                hover_color=MaterialColors.ACCENT_DARK,
+                text_color=MaterialColors.ON_ACCENT,
+                corner_radius=size_config["corner"],
+                height=size_config["height"],
+                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
                 **kwargs
             )
         elif variant == "outlined":
@@ -1768,11 +1844,11 @@ class MaterialButton(ctk.CTkButton):
                 fg_color="transparent",
                 hover_color=MaterialColors.SURFACE_VARIANT,
                 text_color=MaterialColors.PRIMARY,
-                border_width=1,
+                border_width=2,
                 border_color=MaterialColors.PRIMARY,
-                corner_radius=8,
-                height=36,
-                font=ctk.CTkFont(size=13, weight="bold"),
+                corner_radius=size_config["corner"],
+                height=size_config["height"],
+                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
                 **kwargs
             )
         elif variant == "text":
@@ -1781,9 +1857,31 @@ class MaterialButton(ctk.CTkButton):
                 fg_color="transparent",
                 hover_color=MaterialColors.SURFACE_VARIANT,
                 text_color=MaterialColors.PRIMARY,
-                corner_radius=8,
-                height=36,
-                font=ctk.CTkFont(size=13),
+                corner_radius=size_config["corner"],
+                height=size_config["height"],
+                font=ctk.CTkFont(size=size_config["font_size"]),
+                **kwargs
+            )
+        elif variant == "danger":
+            super().__init__(
+                master,
+                fg_color=MaterialColors.ERROR,
+                hover_color="#DC2626",
+                text_color=MaterialColors.ON_PRIMARY,
+                corner_radius=size_config["corner"],
+                height=size_config["height"],
+                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
+                **kwargs
+            )
+        elif variant == "success":
+            super().__init__(
+                master,
+                fg_color=MaterialColors.SUCCESS,
+                hover_color="#16A34A",
+                text_color=MaterialColors.ON_PRIMARY,
+                corner_radius=size_config["corner"],
+                height=size_config["height"],
+                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
                 **kwargs
             )
 
@@ -1840,36 +1938,46 @@ class MaterialTextField(ctk.CTkFrame):
 
 
 class Snackbar(ctk.CTkFrame):
-    """Material Design Snackbar for notifications"""
+    """Material Design Snackbar for notifications - Enhanced"""
     def __init__(self, master, **kwargs):
         super().__init__(
             master,
-            fg_color=MaterialColors.SURFACE_VARIANT,
-            corner_radius=8,
-            height=48,
+            fg_color=MaterialColors.SURFACE_DARK,
+            corner_radius=12,
+            height=56,
             **kwargs
         )
 
         self.message_label = ctk.CTkLabel(
             self,
             text="",
-            font=ctk.CTkFont(size=12),
-            text_color=MaterialColors.ON_SURFACE
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=MaterialColors.ON_DARK
         )
-        self.message_label.pack(side="left", padx=16, pady=12)
+        self.message_label.pack(side="left", padx=20, pady=16)
 
         self.place_forget()
 
     def show(self, message: str, duration: int = 3000, type: str = "info"):
         colors = {
-            "info": MaterialColors.SURFACE_VARIANT,
+            "info": MaterialColors.SURFACE_DARK,
             "success": MaterialColors.SUCCESS,
             "error": MaterialColors.ERROR,
             "warning": MaterialColors.WARNING
         }
-        self.configure(fg_color=colors.get(type, MaterialColors.SURFACE_VARIANT))
-        self.message_label.configure(text=message)
-        self.place(relx=0.5, rely=0.95, anchor="center")
+        text_colors = {
+            "info": MaterialColors.ON_DARK,
+            "success": "#FFFFFF",
+            "error": "#FFFFFF",
+            "warning": "#FFFFFF"
+        }
+        self.configure(fg_color=colors.get(type, MaterialColors.SURFACE_DARK))
+        self.message_label.configure(
+            text=message,
+            text_color=text_colors.get(type, MaterialColors.ON_DARK)
+        )
+        self.place(relx=0.5, rely=0.92, anchor="center")
+        self.lift()
         self.after(duration, self.hide)
 
     def hide(self):
@@ -1898,29 +2006,44 @@ class App(ctk.CTk):
         )
         self.main_container.pack(fill="both", expand=True, padx=24, pady=24)
 
-        # Header
+        # Header（アプリ名を目立たせる）
         header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 24))
+        header_frame.pack(fill="x", pady=(0, 20))
+
+        title_row = ctk.CTkFrame(header_frame, fg_color="transparent")
+        title_row.pack(fill="x")
 
         title = ctk.CTkLabel(
-            header_frame,
-            text="脚本生成パイプライン",
-            font=ctk.CTkFont(size=28, weight="bold"),
-            text_color=MaterialColors.ON_BACKGROUND
+            title_row,
+            text="🎬 Daihon Rakku",
+            font=ctk.CTkFont(size=32, weight="bold"),
+            text_color=MaterialColors.ACCENT
         )
-        title.pack(anchor="w")
+        title.pack(side="left")
+
+        version_label = ctk.CTkLabel(
+            title_row,
+            text="v0.5",
+            font=ctk.CTkFont(size=12),
+            text_color=MaterialColors.SECONDARY,
+            fg_color=MaterialColors.SURFACE_VARIANT,
+            corner_radius=8,
+            padx=8,
+            pady=2
+        )
+        version_label.pack(side="left", padx=(12, 0))
 
         subtitle = ctk.CTkLabel(
             header_frame,
-            text="Compactor → Pipeline → Supervisor",
-            font=ctk.CTkFont(size=14),
-            text_color=MaterialColors.PRIMARY
+            text="FANZA同人CG集向け 脚本・SDプロンプト自動生成ツール",
+            font=ctk.CTkFont(size=13),
+            text_color=MaterialColors.SECONDARY
         )
         subtitle.pack(anchor="w", pady=(4, 0))
 
-        # API Card
-        api_card = MaterialCard(self.main_container, title="🔑 API設定")
-        api_card.pack(fill="x", pady=(0, 16))
+        # API Card（折りたたみ可能）
+        api_card = MaterialCard(self.main_container, title="🔑 API設定", collapsible=True)
+        api_card.pack(fill="x", pady=(0, 12))
 
         self.api_field = MaterialTextField(
             api_card.content_frame,
@@ -1930,9 +2053,9 @@ class App(ctk.CTk):
         )
         self.api_field.pack(fill="x")
 
-        # Character Generator Card
-        char_card = MaterialCard(self.main_container, title="🎭 キャラクター自動生成")
-        char_card.pack(fill="x", pady=(0, 16))
+        # Character Generator Card（アクセント付き）
+        char_card = MaterialCard(self.main_container, title="🎭 キャラクター自動生成", accent=True)
+        char_card.pack(fill="x", pady=(0, 12))
 
         char_row = ctk.CTkFrame(char_card.content_frame, fg_color="transparent")
         char_row.pack(fill="x", pady=(0, 8))
@@ -2017,7 +2140,7 @@ class App(ctk.CTk):
 
         # Concept Card
         concept_card = MaterialCard(self.main_container, title="📖 作品設定")
-        concept_card.pack(fill="x", pady=(0, 16))
+        concept_card.pack(fill="x", pady=(0, 12))
 
         self.concept_field = MaterialTextField(
             concept_card.content_frame,
@@ -2037,7 +2160,7 @@ class App(ctk.CTk):
 
         # Settings Card
         settings_card = MaterialCard(self.main_container, title="⚙️ 生成設定")
-        settings_card.pack(fill="x", pady=(0, 16))
+        settings_card.pack(fill="x", pady=(0, 12))
 
         settings_row = ctk.CTkFrame(settings_card.content_frame, fg_color="transparent")
         settings_row.pack(fill="x")
@@ -2109,9 +2232,9 @@ class App(ctk.CTk):
         # シーン数変更時にコスト更新
         self.scenes_entry.bind("<KeyRelease>", self.update_cost_preview)
 
-        # Profile Management Card
-        profile_card = MaterialCard(self.main_container, title="📁 プロファイル管理")
-        profile_card.pack(fill="x", pady=(0, 16))
+        # Profile Management Card（折りたたみ可能）
+        profile_card = MaterialCard(self.main_container, title="📁 プロファイル管理", collapsible=True)
+        profile_card.pack(fill="x", pady=(0, 12))
 
         profile_row = ctk.CTkFrame(profile_card.content_frame, fg_color="transparent")
         profile_row.pack(fill="x")
@@ -2183,84 +2306,97 @@ class App(ctk.CTk):
         )
         self.profile_delete_btn.pack(side="left")
 
-        # Action Buttons
-        button_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        button_frame.pack(fill="x", pady=(8, 16))
+        # ═══════════════════════════════════════════════════════════
+        # 🚀 メイン生成セクション（大きく目立たせる）
+        # ═══════════════════════════════════════════════════════════
+
+        generate_section = ctk.CTkFrame(
+            self.main_container,
+            fg_color=MaterialColors.SURFACE,
+            corner_radius=20,
+            border_width=2,
+            border_color=MaterialColors.ACCENT
+        )
+        generate_section.pack(fill="x", pady=(8, 16))
+
+        # 生成ボタンを大きく
+        self.generate_btn = MaterialButton(
+            generate_section,
+            text="🚀 脚本を生成する",
+            variant="accent",
+            size="xlarge",
+            command=self.start_generation
+        )
+        self.generate_btn.pack(fill="x", padx=16, pady=(16, 8))
+
+        # サブボタン行
+        sub_btn_frame = ctk.CTkFrame(generate_section, fg_color="transparent")
+        sub_btn_frame.pack(fill="x", padx=16, pady=(0, 8))
 
         self.save_btn = MaterialButton(
-            button_frame,
-            text="💾 設定を保存",
+            sub_btn_frame,
+            text="💾 設定保存",
             variant="outlined",
+            size="small",
             command=self.save_settings,
-            width=120
+            width=100
         )
         self.save_btn.pack(side="left", padx=(0, 8))
 
-        self.generate_btn = MaterialButton(
-            button_frame,
-            text="🚀 生成開始",
-            variant="filled",
-            command=self.start_generation
-        )
-        self.generate_btn.pack(side="left", fill="x", expand=True, padx=(0, 8))
-
         self.stop_btn = MaterialButton(
-            button_frame,
+            sub_btn_frame,
             text="⏹ 停止",
-            variant="outlined",
+            variant="danger",
+            size="small",
             command=self.stop_generation,
-            width=100
+            width=80
         )
-        self.stop_btn.pack(side="left")
-        self.stop_btn.configure(
-            state="disabled",
-            fg_color="transparent",
-            border_color=MaterialColors.OUTLINE,
-            text_color=MaterialColors.OUTLINE
-        )
+        self.stop_btn.pack(side="right")
+        self.stop_btn.configure(state="disabled")
 
-        # Progress Card
-        progress_card = MaterialCard(self.main_container, title="📊 進捗")
-        progress_card.pack(fill="x", pady=(0, 16))
+        # プログレスバー（大きく）
+        self.progress = ctk.CTkProgressBar(
+            generate_section,
+            fg_color=MaterialColors.OUTLINE_VARIANT,
+            progress_color=MaterialColors.ACCENT,
+            height=12,
+            corner_radius=6
+        )
+        self.progress.pack(fill="x", padx=16, pady=(0, 8))
+        self.progress.set(0)
+
+        # ステータス表示
+        status_frame = ctk.CTkFrame(generate_section, fg_color="transparent")
+        status_frame.pack(fill="x", padx=16, pady=(0, 12))
+
+        self.status_label = ctk.CTkLabel(
+            status_frame,
+            text="⏳ 待機中...",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=MaterialColors.SECONDARY
+        )
+        self.status_label.pack(side="left")
 
         # Phase indicators
-        phase_frame = ctk.CTkFrame(progress_card.content_frame, fg_color="transparent")
-        phase_frame.pack(fill="x", pady=(0, 8))
+        phase_frame = ctk.CTkFrame(status_frame, fg_color="transparent")
+        phase_frame.pack(side="right")
 
         self.phase_labels = []
-        phases = ["1️⃣ 圧縮", "2️⃣ 生成", "3️⃣ 品質"]
+        phases = ["1️⃣ 圧縮", "2️⃣ 生成", "3️⃣ 完了"]
         for i, phase in enumerate(phases):
             lbl = ctk.CTkLabel(
                 phase_frame,
                 text=phase,
                 font=ctk.CTkFont(size=11),
                 text_color=MaterialColors.OUTLINE,
-                width=80
+                width=60
             )
-            lbl.pack(side="left", expand=True)
+            lbl.pack(side="left", padx=4)
             self.phase_labels.append(lbl)
-
-        self.progress = ctk.CTkProgressBar(
-            progress_card.content_frame,
-            fg_color=MaterialColors.SURFACE_VARIANT,
-            progress_color=MaterialColors.PRIMARY,
-            height=8,
-            corner_radius=4
-        )
-        self.progress.pack(fill="x", pady=(0, 12))
-        self.progress.set(0)
-
-        self.status_label = ctk.CTkLabel(
-            progress_card.content_frame,
-            text="待機中...",
-            font=ctk.CTkFont(size=13),
-            text_color=MaterialColors.ON_SURFACE
-        )
-        self.status_label.pack(anchor="w")
 
         # Cost Card
         cost_card = MaterialCard(self.main_container, title="💰 コスト情報")
-        cost_card.pack(fill="x", pady=(0, 16))
+        cost_card.pack(fill="x", pady=(0, 12))
 
         self.cost_label = ctk.CTkLabel(
             cost_card.content_frame,
@@ -2271,17 +2407,18 @@ class App(ctk.CTk):
         )
         self.cost_label.pack(anchor="w")
 
-        # Log Card
-        log_card = MaterialCard(self.main_container, title="📋 ログ")
+        # Log Card（ダーク背景で見やすく）
+        log_card = MaterialCard(self.main_container, title="📋 実行ログ")
         log_card.pack(fill="both", expand=True)
 
         self.log_text = ctk.CTkTextbox(
             log_card.content_frame,
-            height=150,
-            fg_color=MaterialColors.SURFACE_VARIANT,
-            text_color=MaterialColors.ON_SURFACE,
-            corner_radius=8,
-            font=ctk.CTkFont(family="Consolas", size=11)
+            height=180,
+            fg_color=MaterialColors.SURFACE_DARK,
+            text_color=MaterialColors.ON_DARK,
+            corner_radius=12,
+            font=ctk.CTkFont(family="Consolas", size=12),
+            border_width=0
         )
         self.log_text.pack(fill="both", expand=True)
 
