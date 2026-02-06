@@ -1,0 +1,34 @@
+# Config with API keys
+config.json
+
+# Logs
+log.txt
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# Generated outputs
+context/
+drafts/
+final/
+exports/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tool specific
+.serena/
