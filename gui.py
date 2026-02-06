@@ -121,6 +121,160 @@ THEME_OPTIONS = {
     "メイド・ご主人様": "maid",
 }
 
+# テーマ別ストーリー・演出ガイド
+THEME_GUIDES = {
+    "netorare": {
+        "name": "寝取られ・NTR",
+        "story_arc": "日常→接近→裏切り→堕ち→完堕ち",
+        "key_emotions": ["背徳感", "罪悪感", "快楽への抗えなさ", "比較（彼氏より...）"],
+        "story_elements": [
+            "彼氏/夫がいる設定を明確に",
+            "最初は抵抗・罪悪感",
+            "徐々に快楽に負ける",
+            "「彼氏には言えない」「こんなの初めて」",
+            "最終的に寝取り男を求める"
+        ],
+        "dialogue_tone": "罪悪感と快感の葛藤、比較表現、堕ちていく過程",
+        "use_heart": False,  # ♡は使わない
+        "sd_tags": "netorare, cheating, corruption, guilt, unfaithful, stolen",
+        "sd_expressions": "conflicted, guilty_pleasure, ahegao, mindbreak"
+    },
+    "humiliation": {
+        "name": "凌辱・屈辱",
+        "story_arc": "支配→抵抗→屈服→快楽堕ち",
+        "key_emotions": ["屈辱", "恐怖", "抵抗", "やがて快感に負ける"],
+        "story_elements": [
+            "力関係の差を明確に",
+            "抵抗するが徐々に体が反応",
+            "「やめて」「嫌」から変化",
+            "屈辱的な状況設定"
+        ],
+        "dialogue_tone": "抵抗、懇願、屈辱感、やがて快感を認める",
+        "use_heart": False,
+        "sd_tags": "humiliation, forced, reluctant, crying, tears",
+        "sd_expressions": "crying, fearful, reluctant, trembling, broken"
+    },
+    "forced": {
+        "name": "強制・無理やり",
+        "story_arc": "襲われる→抵抗→屈服→（オプション：快楽堕ち）",
+        "key_emotions": ["恐怖", "抵抗", "絶望", "やがて諦め/快感"],
+        "story_elements": [
+            "逃げられない状況",
+            "必死の抵抗",
+            "力で押さえつけられる",
+            "「やめて」「助けて」"
+        ],
+        "dialogue_tone": "懇願、抵抗、絶望、諦め",
+        "use_heart": False,
+        "sd_tags": "forced, rape, struggling, restrained, pinned_down",
+        "sd_expressions": "crying, screaming, fearful, defeated"
+    },
+    "love": {
+        "name": "純愛・ラブラブ",
+        "story_arc": "告白→初々しさ→情熱→幸福",
+        "key_emotions": ["恥じらい", "愛情", "幸福感", "一体感"],
+        "story_elements": [
+            "両想いの確認",
+            "初々しい恥じらい",
+            "愛情表現",
+            "「好き」「愛してる」"
+        ],
+        "dialogue_tone": "甘い、恥ずかしがり、愛情たっぷり",
+        "use_heart": True,  # ♡OK
+        "sd_tags": "romantic, loving, gentle, passionate, consensual",
+        "sd_expressions": "blushing, happy, loving, content, peaceful"
+    },
+    "vanilla": {
+        "name": "和姦・合意",
+        "story_arc": "ムード→合意→行為→満足",
+        "key_emotions": ["期待", "興奮", "快感", "満足"],
+        "story_elements": [
+            "自然な流れ",
+            "お互いの同意",
+            "楽しむ雰囲気"
+        ],
+        "dialogue_tone": "自然、楽しそう、気持ちいい",
+        "use_heart": True,
+        "sd_tags": "consensual, enjoying, willing, happy_sex",
+        "sd_expressions": "happy, enjoying, moaning, satisfied"
+    },
+    "corruption": {
+        "name": "堕ち・調教",
+        "story_arc": "純粋→揺らぎ→堕落→完堕ち",
+        "key_emotions": ["戸惑い", "背徳感", "快楽への目覚め", "依存"],
+        "story_elements": [
+            "最初は純粋・清楚",
+            "徐々に快楽を覚える",
+            "「こんなの知らなかった」",
+            "最終的に求めるように"
+        ],
+        "dialogue_tone": "戸惑いから快楽への変化、堕ちていく過程",
+        "use_heart": False,
+        "sd_tags": "corruption, training, breaking, mindbreak",
+        "sd_expressions": "confused, awakening, addicted, broken, ahegao"
+    },
+    "chikan": {
+        "name": "痴漢・公共",
+        "story_arc": "被害→抵抗できない→感じてしまう",
+        "key_emotions": ["恐怖", "羞恥", "声が出せない", "感じてしまう罪悪感"],
+        "story_elements": [
+            "公共の場（電車など）",
+            "周りにバレられない",
+            "声を出せない状況",
+            "体が勝手に反応"
+        ],
+        "dialogue_tone": "小声、我慢、羞恥",
+        "use_heart": False,
+        "sd_tags": "chikan, groping, public, train, crowded, molested",
+        "sd_expressions": "embarrassed, trying_not_to_moan, biting_lip, conflicted"
+    },
+    "office": {
+        "name": "上司・OL",
+        "story_arc": "職場→関係発展→密会→背徳",
+        "key_emotions": ["緊張", "背徳感", "禁断の興奮", "秘密"],
+        "story_elements": [
+            "上下関係",
+            "バレてはいけない",
+            "仕事中の緊張感",
+            "オフィスでの密会"
+        ],
+        "dialogue_tone": "敬語混じり、緊張、背徳感",
+        "use_heart": False,
+        "sd_tags": "office, office_lady, suit, desk, workplace, secret",
+        "sd_expressions": "nervous, secretive, professional_facade"
+    },
+    "teacher_student": {
+        "name": "先生・生徒",
+        "story_arc": "禁断→誘惑/誘われ→一線を越える→背徳",
+        "key_emotions": ["禁断", "背徳感", "支配/被支配", "秘密"],
+        "story_elements": [
+            "立場の差",
+            "禁じられた関係",
+            "教室/保健室などの場所",
+            "バレたら終わり"
+        ],
+        "dialogue_tone": "敬語と砕けた表現の混在、禁断感",
+        "use_heart": False,
+        "sd_tags": "teacher, student, classroom, forbidden, taboo",
+        "sd_expressions": "nervous, forbidden_pleasure, secretive"
+    },
+    "maid": {
+        "name": "メイド・ご主人様",
+        "story_arc": "奉仕→親密→特別な奉仕",
+        "key_emotions": ["忠誠", "奉仕", "主従関係", "愛情"],
+        "story_elements": [
+            "主従関係",
+            "「ご主人様」呼び",
+            "奉仕の延長",
+            "命令への従順"
+        ],
+        "dialogue_tone": "丁寧語、奉仕精神、従順",
+        "use_heart": True,
+        "sd_tags": "maid, maid_uniform, master, servant, obedient",
+        "sd_expressions": "devoted, obedient, eager_to_please"
+    }
+}
+
 DEFAULT_NEGATIVE_PROMPT = "worst_quality, low_quality, lowres, bad_anatomy, bad_hands, missing_fingers, extra_fingers, mutated_hands, poorly_drawn_face, ugly, deformed, blurry, text, watermark, signature, censored, mosaic_censoring, loli, shota, child"
 
 
@@ -487,14 +641,45 @@ def generate_outline(
     client: anthropic.Anthropic,
     context: dict,
     num_scenes: int,
+    theme: str,
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None
 ) -> list:
     skill = load_skill("low_cost_pipeline")
     
+    # テーマ別ガイドを取得
+    theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
+    theme_name = theme_guide.get("name", "指定なし")
+    story_arc = theme_guide.get("story_arc", "導入→展開→本番→余韻")
+    key_emotions = theme_guide.get("key_emotions", ["期待", "緊張", "快感", "幸福"])
+    story_elements = theme_guide.get("story_elements", [])
+    dialogue_tone = theme_guide.get("dialogue_tone", "自然で楽しい雰囲気")
+    
+    # テーマ別ストーリー要素をプロンプトに追加
+    theme_instructions = ""
+    if story_elements:
+        theme_instructions = f"""
+## テーマ「{theme_name}」のストーリー要素
+
+【ストーリーアーク】{story_arc}
+
+【重要な感情表現】
+{chr(10).join(f"・{e}" for e in key_emotions)}
+
+【必須要素】
+{chr(10).join(f"・{e}" for e in story_elements)}
+
+【セリフのトーン】
+{dialogue_tone}
+
+このテーマに沿ったストーリー展開を必ず守ってください。
+"""
+    
     prompt = f"""設定: {json.dumps(context, ensure_ascii=False)}
 
 FANZA同人CG集用に{num_scenes}シーンの**ストーリー性のあるアウトライン**を作成してください。
+
+{theme_instructions}
 
 ## ストーリー構成の黄金比率
 
@@ -502,25 +687,25 @@ FANZA同人CG集用に{num_scenes}シーンの**ストーリー性のあるア�
 - intensity: 1-2
 - 二人の関係性、状況設定
 - 視聴者を物語に引き込む
-- 心情: 期待、緊張、ドキドキ
+- 心情: {key_emotions[0] if key_emotions else '期待'}、緊張、ドキドキ
 
 【第2幕：展開・焦らし】約30%のシーン（{max(1, num_scenes * 3 // 10)}シーン）
 - intensity: 2-3
 - 雰囲気の高まり、接近、キス
 - 視聴者の興奮を煽る
-- 心情: 恥じらい、期待、戸惑い
+- 心情: {key_emotions[1] if len(key_emotions) > 1 else '恥じらい'}、期待、戸惑い
 
 【第3幕：本番】約40%のシーン（{max(2, num_scenes * 4 // 10)}シーン）
 - intensity: 4-5
 - 濃厚なエロシーン
 - 視聴者の興奮がピークに
-- 心情: 快感、陶酔、愛情
+- 心情: {key_emotions[2] if len(key_emotions) > 2 else '快感'}、陶酔、愛情
 
 【第4幕：余韻】約10%のシーン（{max(1, num_scenes // 10)}シーン）
 - intensity: 2-3
 - ピロートーク、甘い余韻
 - 満足感を与えて終わる
-- 心情: 幸福、充足、愛おしさ
+- 心情: {key_emotions[3] if len(key_emotions) > 3 else '幸福'}、充足、愛おしさ
 
 ## 出力形式（JSON配列）
 
@@ -547,23 +732,23 @@ FANZA同人CG集用に{num_scenes}シーンの**ストーリー性のあるア�
 ## 必須ルール
 
 1. **ストーリーの流れ**: 各シーンが自然に繋がること
-2. **心情の変化**: 緊張→期待→恥じらい→快感→絶頂→余韻
+2. **心情の変化**: {' → '.join(key_emotions) if key_emotions else '緊張→期待→恥じらい→快感→絶頂→余韻'}
 3. **場所の活用**: 背景を活かしたシチュエーション
 4. **intensity 5**: 必ず1-2個（クライマックス）
 5. **段階的盛り上がり**: 唐突にエロに入らない
-6. **余韻**: 最後は幸せな雰囲気で
+6. **余韻**: 最後は適切な雰囲気で
 
 ## 視聴者を興奮させるポイント
 
 - 「こうなるかも」という期待感
 - 恥じらいながらも受け入れる瞬間
 - 快感に負ける様子
-- 愛情と快感が混ざる表現
+- テーマ「{theme_name}」ならではの興奮ポイント
 
 JSONのみ出力。"""
 
     if callback:
-        callback("📝 ストーリー構成設計中...")
+        callback(f"📝 {theme_name}テーマでストーリー構成設計中...")
 
     response = call_claude(
         client, MODELS["haiku"],
@@ -581,10 +766,24 @@ def generate_scene_draft(
     danbooru: str,
     sd_guide: str,
     cost_tracker: CostTracker,
+    theme: str = "",
     char_profiles: list = None,
     callback: Optional[Callable] = None
 ) -> dict:
     skill = load_skill("low_cost_pipeline")
+    
+    # Danbooruタグ強化スキルを読み込み
+    danbooru_nsfw = load_skill("danbooru_nsfw_tags")
+    
+    # テーマ別ガイドを取得
+    theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
+    theme_name = theme_guide.get("name", "指定なし")
+    dialogue_tone = theme_guide.get("dialogue_tone", "自然で楽しい雰囲気")
+    use_heart = theme_guide.get("use_heart", True)
+    theme_sd_tags = theme_guide.get("sd_tags", "")
+    theme_sd_expressions = theme_guide.get("sd_expressions", "")
+    key_emotions = theme_guide.get("key_emotions", [])
+    story_elements = theme_guide.get("story_elements", [])
     
     # シーンの重要度
     intensity = scene.get("intensity", 3)
@@ -685,24 +884,47 @@ def generate_scene_draft(
 ・体型: {physical.get('body', '')}
 """
 
+    # ♡使用のルール（テーマ別）
+    heart_instruction = ""
+    if use_heart:
+        heart_instruction = "♡は甘いシーンで自然に使用OK。"
+    else:
+        heart_instruction = f"""
+⚠️ ♡マークは使用禁止！
+テーマ「{theme_name}」では♡は不自然。代わりに「...」「っ」「〜」で感情を表現。
+"""
+
+    # テーマ別セリフトーン指示
+    theme_dialogue_instruction = f"""
+## テーマ「{theme_name}」のセリフトーン
+
+{dialogue_tone}
+
+【このテーマで重要な感情】
+{', '.join(key_emotions) if key_emotions else '自然な感情表現'}
+
+【ストーリー要素として入れるべきもの】
+{chr(10).join(f'・{e}' for e in story_elements[:3]) if story_elements else '・特になし'}
+
+{heart_instruction}
+"""
+
     # シーン重要度別のエロ指示（5段階）
     if intensity >= 5:
-        erotic_instruction = """
+        erotic_instruction = f"""
 ## 🔞 クライマックスシーン（intensity 5）
 
 このシーンは**最高潮のエロシーン**です！視聴者の興奮がピークに達する瞬間。
 
 【必須要素】
-1. 喘ぎ声を多めに（「あっ...あっ...♡」「んんっ...！」）
-2. 絶頂表現（「イク...イっちゃう...♡」「もうダメ...♡」）
+1. 喘ぎ声を多めに（「あっ...あっ...」「んんっ...！」）
+2. 絶頂表現（「イク...イっちゃう...」「もうダメ...」）
 3. 快感で理性が飛ぶ様子
-4. 愛情表現と快感の混在
+4. テーマ「{theme_name}」らしい感情表現
 
 【心情の描写】
-・快感に溺れる
-・愛されている実感
-・理性と本能の葛藤
-・幸福感と陶酔
+・{key_emotions[2] if len(key_emotions) > 2 else '快感に溺れる'}
+・{key_emotions[3] if len(key_emotions) > 3 else '理性と本能の葛藤'}
 
 【禁止】
 ❌「気持ちいいです」（敬語NG）
@@ -710,27 +932,26 @@ def generate_scene_draft(
 ❌ 冷静な台詞
 """
     elif intensity == 4:
-        erotic_instruction = """
+        erotic_instruction = f"""
 ## 🔞 本番シーン（intensity 4）
 
 このシーンは**濃厚なエロシーン**です。視聴者の興奮が高まる。
 
 【必須要素】
-1. 喘ぎ声を自然に（「あっ...♡」「んっ...」）
-2. 恥じらいながら求める
+1. 喘ぎ声を自然に（「あっ...」「んっ...」）
+2. テーマ「{theme_name}」らしい心情
 3. 体の反応描写
 
 【心情の描写】
-・恥ずかしさと快感の葛藤
-・もっと欲しいという欲求
-・相手への信頼と愛情
+・{key_emotions[1] if len(key_emotions) > 1 else '恥ずかしさと快感の葛藤'}
+・{key_emotions[2] if len(key_emotions) > 2 else 'もっと欲しいという欲求'}
 
 【禁止】
 ❌ 説明的なセリフ
 ❌ 棒読み感
 """
     elif intensity == 3:
-        erotic_instruction = """
+        erotic_instruction = f"""
 ## 💕 前戯・焦らしシーン（intensity 3）
 
 このシーンは**エロの助走**です。期待感を高める。
@@ -741,12 +962,11 @@ def generate_scene_draft(
 3. 期待と恥じらい
 
 【心情の描写】
-・ドキドキと期待
-・恥ずかしいけど嬉しい
-・もっと先に進みたい気持ち
+・{key_emotions[0] if key_emotions else 'ドキドキと期待'}
+・恥ずかしいけど...という葛藤
 """
     elif intensity == 2:
-        erotic_instruction = """
+        erotic_instruction = f"""
 ## 💗 ムード構築シーン（intensity 2）
 
 このシーンは**雰囲気作り**です。二人の距離が縮まる。
@@ -757,12 +977,11 @@ def generate_scene_draft(
 3. 二人きりの特別感
 
 【心情の描写】
-・緊張とドキドキ
+・{key_emotions[0] if key_emotions else '緊張とドキドキ'}
 ・相手を意識する
-・特別な時間の予感
 """
     else:
-        erotic_instruction = """
+        erotic_instruction = f"""
 ## 📖 導入シーン（intensity 1）
 
 このシーンは**状況設定**です。物語の始まり。
@@ -774,18 +993,24 @@ def generate_scene_draft(
 
 【心情の描写】
 ・日常の中の期待
-・相手への好意
 ・これから起こることへの予感
 """
 
     # キャラ固有SDタグの組み込み
     char_tags_str = ", ".join(char_danbooru_tags[:15]) if char_danbooru_tags else ""
     
+    # テーマ別SDタグを追加
+    theme_tags_combined = f"{theme_sd_tags}, {theme_sd_expressions}".strip(", ")
+    
     system_prompt = f"""{jailbreak}
 
 {skill if skill else "FANZA同人CG集の脚本を生成します。"}
 
+{danbooru_nsfw if danbooru_nsfw else ""}
+
 {erotic_instruction}
+
+{theme_dialogue_instruction}
 
 {char_guide if char_guide else "（キャラ設定なし）"}
 
@@ -793,33 +1018,37 @@ def generate_scene_draft(
 
 1. **一人称・語尾は絶対厳守**: キャラガイド通りに
 2. **短く刻む**: 1セリフ10-15文字が理想
-3. **感情を音にする**: 「...」「♡」「っ」「〜」を活用
+3. **感情を音にする**: 「...」「っ」「〜」を活用
 4. **喘ぎは自然に**: 「あっ」「んっ」を会話の流れで
 5. **説明禁止**: 「私は今〜しています」はNG
 
 ## 良いセリフ vs 悪いセリフ
 
-✅「んっ...そこ、いい...♡」
+✅「んっ...そこ、いい...」
 ❌「そこを触られると気持ちいいです」
 
-✅「好き...もっとして...♡」
+✅「好き...もっとして...」
 ❌「あなたのことが好きなので続けてください」
 
 全キャラ成人(18+)。JSON形式のみ出力。"""
 
-    # シーン別SD推奨タグ（ポーズ・表情）
+    # シーン別SD推奨タグ（ポーズ・表情）+ テーマ別タグ
     intensity_sd_tags = {
-        5: "ahegao, orgasm, cum, trembling, tears, heavy_breathing, drooling, rolling_eyes",
-        4: "sex, penetration, nude, spread_legs, moaning, sweat, blush, panting",
-        3: "kiss, french_kiss, undressing, groping, blush, nervous, anticipation",
-        2: "eye_contact, close-up, romantic, blushing, hand_holding, leaning_close",
-        1: "portrait, smile, casual, standing, looking_at_viewer"
+        5: f"ahegao, orgasm, cum, trembling, tears, heavy_breathing, drooling, rolling_eyes, {theme_sd_expressions}",
+        4: f"sex, penetration, nude, spread_legs, moaning, sweat, blush, panting, {theme_sd_expressions}",
+        3: f"kiss, french_kiss, undressing, groping, blush, nervous, anticipation, {theme_sd_expressions}",
+        2: f"eye_contact, close-up, romantic, blushing, hand_holding, leaning_close, {theme_sd_expressions}",
+        1: f"portrait, smile, casual, standing, looking_at_viewer, {theme_sd_expressions}"
     }
     
     sd_intensity_tags = intensity_sd_tags.get(intensity, "")
     
     # 背景タグを組み合わせ
     background_tags = f"{location_tags}, {time_tags}".strip(", ")
+    
+    # テーマタグを背景に追加
+    if theme_sd_tags:
+        background_tags = f"{background_tags}, {theme_sd_tags}"
     
     prompt = f"""設定: {json.dumps(context, ensure_ascii=False)}
 シーン情報: {json.dumps(scene, ensure_ascii=False)}
@@ -836,7 +1065,7 @@ def generate_scene_draft(
         "{char_names[0] if char_names else 'ヒロイン'}": "このシーンでの心情（期待/緊張/恥じらい/快感/幸福など）20字"
     }},
     "dialogue": [
-        {{"speaker": "キャラ名", "emotion": "感情", "line": "短いセリフ♡", "inner_thought": "心の声（10字）"}}
+        {{"speaker": "キャラ名", "emotion": "感情", "line": "短いセリフ", "inner_thought": "心の声（10字）"}}
     ],
     "direction": "演出・ト書き（30字）",
     "story_flow": "次のシーンへの繋がり（15字）",
@@ -850,6 +1079,7 @@ def generate_scene_draft(
 キャラ固有: {char_tags_str}
 ポーズ・表情: {sd_intensity_tags}
 背景・場所: {background_tags}
+テーマ専用: {theme_tags_combined}
 
 ## ルール
 
@@ -859,6 +1089,7 @@ def generate_scene_draft(
 4. inner_thoughtでキャラの心の声を追加
 5. sd_promptは「キャラ + ポーズ + 背景 + 照明」の順
 6. sd_backgroundは背景のみのタグ（キャラタグ含まない）
+7. テーマ「{theme_name}」のタグを積極的に使用
 
 JSONのみ出力。"""
 
@@ -867,7 +1098,7 @@ JSONのみ出力。"""
     model_name = "Sonnet" if intensity >= 4 else "Haiku"
     
     if callback:
-        callback(f"シーン {scene['scene_id']} 生成中 ({model_name}, 重要度{intensity})...")
+        callback(f"シーン {scene['scene_id']} 生成中 ({model_name}, 重要度{intensity}, {theme_name})...")
     
     response = call_claude(
         client, model,
@@ -1094,6 +1325,16 @@ def generate_pipeline(
         if callback:
             callback("⚠️ キャラ設定なし（汎用設定で生成）")
 
+    # テーマ情報をログ出力
+    theme_guide = THEME_GUIDES.get(theme, {})
+    theme_name = theme_guide.get("name", "指定なし")
+    if theme and theme_guide:
+        log_message(f"テーマ適用: {theme_name} (arc: {theme_guide.get('story_arc', '')})")
+        if callback:
+            callback(f"🎭 テーマ: {theme_name}")
+    else:
+        log_message("テーマ: 指定なし（汎用モード）")
+
     # Phase 1: Prompt Compactor
     log_message("Phase 1 開始: コンテキスト圧縮")
     if callback:
@@ -1119,8 +1360,8 @@ def generate_pipeline(
         callback("🔧 Phase 2: シーン生成開始")
 
     try:
-        outline = generate_outline(client, context, num_scenes, cost_tracker, callback)
-        log_message(f"アウトライン生成完了: {len(outline)}シーン")
+        outline = generate_outline(client, context, num_scenes, theme, cost_tracker, callback)
+        log_message(f"アウトライン生成完了: {len(outline)}シーン（テーマ: {theme or '指定なし'}）")
         
         # intensity分布をログ
         intensity_counts = {}
@@ -1150,7 +1391,7 @@ def generate_pipeline(
 
             draft = generate_scene_draft(
                 client, context, scene, jailbreak, danbooru, sd_guide,
-                cost_tracker, char_profiles, callback
+                cost_tracker, theme, char_profiles, callback
             )
 
             draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{i+1}.json"
