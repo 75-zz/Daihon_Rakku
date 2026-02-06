@@ -3,6 +3,7 @@
 FANZA同人向け 低コスト脚本生成パイプライン - GUI版
 Claude API直接対応
 Skills: prompt_compactor → low_cost_pipeline → script_quality_supervisor
+UI: Material Design 3 inspired
 """
 
 import json
@@ -22,6 +23,24 @@ try:
 except ImportError:
     print("Error: anthropic library is required. Run: pip install anthropic")
     sys.exit(1)
+
+
+# === Material Design 3 カラーパレット ===
+class MaterialColors:
+    # Dark Theme
+    BACKGROUND = "#121212"
+    SURFACE = "#1E1E1E"
+    SURFACE_VARIANT = "#2D2D2D"
+    PRIMARY = "#BB86FC"
+    PRIMARY_VARIANT = "#9A67EA"
+    SECONDARY = "#03DAC6"
+    ERROR = "#CF6679"
+    SUCCESS = "#4CAF50"
+    WARNING = "#FFC107"
+    ON_BACKGROUND = "#E1E1E1"
+    ON_SURFACE = "#FFFFFF"
+    ON_PRIMARY = "#000000"
+    OUTLINE = "#3D3D3D"
 
 
 # === 設定 ===
@@ -116,7 +135,6 @@ def load_file(filepath: Path) -> str:
 
 
 def load_skill(skill_name: str) -> str:
-    """スキルファイルを読み込む"""
     skill_file = SKILLS_DIR / f"{skill_name}.skill.md"
     if skill_file.exists():
         return skill_file.read_text(encoding="utf-8")
@@ -154,7 +172,6 @@ def call_claude(
     max_tokens: int = 4096,
     callback: Optional[Callable] = None
 ) -> str:
-    """Claude APIを呼び出し、コストを追跡"""
     for attempt in range(MAX_RETRIES):
         try:
             if callback:
@@ -168,7 +185,6 @@ def call_claude(
                 messages=[{"role": "user", "content": user}]
             )
 
-            # コスト追跡
             usage = response.usage
             cost_tracker.add(model, usage.input_tokens, usage.output_tokens)
             log_message(f"{model}: {usage.input_tokens} in, {usage.output_tokens} out")
@@ -201,15 +217,12 @@ def call_claude(
 
 
 def parse_json_response(text: str):
-    """レスポンスからJSONを抽出してパース"""
-    # マークダウンコードブロック除去
     if "```json" in text:
         text = text.split("```json")[1].split("```")[0]
     elif "```" in text:
         parts = text.split("```")
         if len(parts) >= 2:
             text = parts[1]
-
     return json.loads(text.strip())
 
 
@@ -222,9 +235,7 @@ def compact_context(
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None
 ) -> dict:
-    """コンテキストを圧縮してトークン削減"""
     skill = load_skill("prompt_compactor")
-
     prompt = f"""以下の作品情報を、トークン効率の良い形式に圧縮してください。
 
 ## 作品コンセプト
@@ -257,7 +268,6 @@ def compact_context(
         skill if skill else "You compress prompts to save tokens. Output only JSON.",
         prompt, cost_tracker, 1024, callback
     )
-
     return parse_json_response(response)
 
 
@@ -269,9 +279,7 @@ def generate_outline(
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None
 ) -> list:
-    """アウトライン生成（Haiku）"""
     skill = load_skill("low_cost_pipeline")
-
     prompt = f"""設定: {json.dumps(context, ensure_ascii=False)}
 
 {num_scenes}シーンのアウトラインを作成。
@@ -293,7 +301,6 @@ def generate_outline(
         skill if skill else "You generate story outlines efficiently.",
         prompt, cost_tracker, 2048, callback
     )
-
     return parse_json_response(response)
 
 
@@ -307,9 +314,7 @@ def generate_scene_draft(
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None
 ) -> dict:
-    """シーン下書き生成（Haiku）"""
     skill = load_skill("low_cost_pipeline")
-
     prompt = f"""{jailbreak}
 
 設定: {json.dumps(context, ensure_ascii=False)}
@@ -337,7 +342,6 @@ SD Guide: {sd_guide[:1500]}
         skill if skill else "You generate scene drafts efficiently.",
         prompt, cost_tracker, 2048, callback
     )
-
     return parse_json_response(response)
 
 
@@ -348,7 +352,6 @@ def polish_scene(
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None
 ) -> dict:
-    """重要シーンの清書（Sonnet）"""
     prompt = f"""設定: {json.dumps(context, ensure_ascii=False)}
 
 下書き: {json.dumps(draft, ensure_ascii=False)}
@@ -366,7 +369,6 @@ def polish_scene(
         "You polish scripts for quality and consistency. Output JSON only.",
         prompt, cost_tracker, 2048, callback
     )
-
     return parse_json_response(response)
 
 
@@ -378,9 +380,7 @@ def check_quality(
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None
 ) -> dict:
-    """品質チェック（Haiku）"""
     skill = load_skill("script_quality_supervisor")
-
     prompt = f"""設定: {json.dumps(context, ensure_ascii=False)}
 
 シーン一覧: {json.dumps(scenes, ensure_ascii=False)}
@@ -413,7 +413,6 @@ def check_quality(
         skill if skill else "You check script quality and suggest minimal fixes.",
         prompt, cost_tracker, 2048, callback
     )
-
     return parse_json_response(response)
 
 
@@ -424,7 +423,6 @@ def apply_fix(
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None
 ) -> dict:
-    """差分修正を適用（Haiku）"""
     prompt = f"""シーン: {json.dumps(scene, ensure_ascii=False)}
 
 修正指示: {instruction}
@@ -439,7 +437,6 @@ def apply_fix(
         "You apply minimal fixes to scripts. Never regenerate entirely.",
         prompt, cost_tracker, 2048, callback
     )
-
     return parse_json_response(response)
 
 
@@ -452,43 +449,32 @@ def generate_pipeline(
     theme: str,
     callback: Optional[Callable] = None
 ) -> tuple[list, CostTracker]:
-    """
-    3段階パイプライン:
-    1. prompt_compactor: コンテキスト圧縮
-    2. low_cost_pipeline: Haiku下書き → Sonnet清書（重要シーンのみ）
-    3. script_quality_supervisor: 品質チェック → 差分修正
-    """
     client = anthropic.Anthropic(api_key=api_key)
     cost_tracker = CostTracker()
 
-    # 補助ファイル読み込み
     jailbreak = load_file(JAILBREAK_FILE)
     danbooru = load_file(DANBOORU_TAGS_FILE)
     sd_guide = load_file(SD_PROMPT_GUIDE_FILE)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # === Phase 1: Prompt Compactor ===
+    # Phase 1: Prompt Compactor
     if callback:
         callback("🔧 Phase 1: コンテキスト圧縮")
 
-    context = compact_context(
-        client, concept, characters, theme, cost_tracker, callback
-    )
+    context = compact_context(client, concept, characters, theme, cost_tracker, callback)
 
-    # コンテキスト保存
     context_file = CONTEXT_DIR / f"context_{timestamp}.json"
     with open(context_file, "w", encoding="utf-8") as f:
         json.dump(context, f, ensure_ascii=False, indent=2)
 
     if callback:
-        callback(f"✅ コンテキスト圧縮完了")
+        callback("✅ コンテキスト圧縮完了")
 
-    # === Phase 2: Low Cost Pipeline ===
+    # Phase 2: Low Cost Pipeline
     if callback:
         callback("🔧 Phase 2: 低コスト生成パイプライン")
 
-    # アウトライン生成
     outline = generate_outline(client, context, num_scenes, cost_tracker, callback)
 
     if callback:
@@ -500,18 +486,15 @@ def generate_pipeline(
         if callback:
             callback(f"🎬 シーン {i+1}/{len(outline)} 生成中...")
 
-        # 下書き生成（Haiku）
         draft = generate_scene_draft(
             client, context, scene, jailbreak, danbooru, sd_guide,
             cost_tracker, callback
         )
 
-        # 下書き保存
         draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{i+1}.json"
         with open(draft_file, "w", encoding="utf-8") as f:
             json.dump(draft, f, ensure_ascii=False, indent=2)
 
-        # 重要シーン（intensity >= 4）のみSonnetで清書
         intensity = scene.get("intensity", 3)
         if intensity >= 4:
             if callback:
@@ -520,7 +503,6 @@ def generate_pipeline(
         else:
             final = draft
 
-        # 最終版保存
         final_file = FINAL_DIR / f"final_{timestamp}_scene{i+1}.json"
         with open(final_file, "w", encoding="utf-8") as f:
             json.dump(final, f, ensure_ascii=False, indent=2)
@@ -530,7 +512,7 @@ def generate_pipeline(
         if callback:
             callback(f"✅ シーン {i+1} 完了")
 
-    # === Phase 3: Quality Supervisor ===
+    # Phase 3: Quality Supervisor
     if callback:
         callback("🔧 Phase 3: 品質チェック")
 
@@ -543,7 +525,6 @@ def generate_pipeline(
         if callback:
             callback(f"⚠️ {len(problems)}件の問題を検出、修正中...")
 
-        # 差分修正を適用
         for fix in fixes:
             scene_id = fix.get("scene_id")
             instruction = fix.get("instruction", "")
@@ -552,13 +533,9 @@ def generate_pipeline(
                 if callback:
                     callback(f"🔧 シーン {scene_id} 修正中...")
 
-                fixed = apply_fix(
-                    client, results[scene_id - 1], instruction,
-                    cost_tracker, callback
-                )
+                fixed = apply_fix(client, results[scene_id - 1], instruction, cost_tracker, callback)
                 results[scene_id - 1] = fixed
 
-                # 修正版保存
                 fix_file = FINAL_DIR / f"fixed_{timestamp}_scene{scene_id}.json"
                 with open(fix_file, "w", encoding="utf-8") as f:
                     json.dump(fixed, f, ensure_ascii=False, indent=2)
@@ -573,7 +550,6 @@ def generate_pipeline(
 
 
 def export_csv(results: list, output_path: Path):
-    """結果をCSV出力"""
     fieldnames = [
         "scene_id", "mood", "speaker", "emotion", "line_index", "line_text",
         "direction", "sd_prompt", "negative_prompt"
@@ -599,21 +575,174 @@ def export_csv(results: list, output_path: Path):
 
 
 def export_json(results: list, output_path: Path):
-    """結果をJSON出力"""
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
 
 
-# === GUI ===
+# === Material Design GUI ===
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
+
+
+class MaterialCard(ctk.CTkFrame):
+    """Material Design Card Component"""
+    def __init__(self, master, title: str = "", **kwargs):
+        super().__init__(
+            master,
+            fg_color=MaterialColors.SURFACE,
+            corner_radius=16,
+            border_width=1,
+            border_color=MaterialColors.OUTLINE,
+            **kwargs
+        )
+
+        if title:
+            self.title_label = ctk.CTkLabel(
+                self,
+                text=title,
+                font=ctk.CTkFont(size=14, weight="bold"),
+                text_color=MaterialColors.ON_SURFACE
+            )
+            self.title_label.pack(anchor="w", padx=16, pady=(16, 8))
+
+        self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.content_frame.pack(fill="both", expand=True, padx=16, pady=(0, 16))
+
+
+class MaterialButton(ctk.CTkButton):
+    """Material Design Button Component"""
+    def __init__(self, master, variant: str = "filled", **kwargs):
+        if variant == "filled":
+            super().__init__(
+                master,
+                fg_color=MaterialColors.PRIMARY,
+                hover_color=MaterialColors.PRIMARY_VARIANT,
+                text_color=MaterialColors.ON_PRIMARY,
+                corner_radius=12,
+                height=40,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                **kwargs
+            )
+        elif variant == "outlined":
+            super().__init__(
+                master,
+                fg_color="transparent",
+                hover_color=MaterialColors.SURFACE_VARIANT,
+                text_color=MaterialColors.PRIMARY,
+                border_width=2,
+                border_color=MaterialColors.PRIMARY,
+                corner_radius=12,
+                height=40,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                **kwargs
+            )
+        elif variant == "text":
+            super().__init__(
+                master,
+                fg_color="transparent",
+                hover_color=MaterialColors.SURFACE_VARIANT,
+                text_color=MaterialColors.PRIMARY,
+                corner_radius=12,
+                height=40,
+                font=ctk.CTkFont(size=13),
+                **kwargs
+            )
+
+
+class MaterialTextField(ctk.CTkFrame):
+    """Material Design Text Field with Label"""
+    def __init__(self, master, label: str, placeholder: str = "", show: str = "", height: int = 40, multiline: bool = False, **kwargs):
+        super().__init__(master, fg_color="transparent", **kwargs)
+
+        self.label = ctk.CTkLabel(
+            self,
+            text=label,
+            font=ctk.CTkFont(size=12),
+            text_color=MaterialColors.PRIMARY
+        )
+        self.label.pack(anchor="w", pady=(0, 4))
+
+        if multiline:
+            self.entry = ctk.CTkTextbox(
+                self,
+                height=height,
+                fg_color=MaterialColors.SURFACE_VARIANT,
+                text_color=MaterialColors.ON_SURFACE,
+                corner_radius=8,
+                border_width=1,
+                border_color=MaterialColors.OUTLINE
+            )
+        else:
+            self.entry = ctk.CTkEntry(
+                self,
+                height=height,
+                placeholder_text=placeholder,
+                show=show,
+                fg_color=MaterialColors.SURFACE_VARIANT,
+                text_color=MaterialColors.ON_SURFACE,
+                corner_radius=8,
+                border_width=1,
+                border_color=MaterialColors.OUTLINE
+            )
+        self.entry.pack(fill="x")
+
+    def get(self):
+        if isinstance(self.entry, ctk.CTkTextbox):
+            return self.entry.get("1.0", "end-1c")
+        return self.entry.get()
+
+    def set(self, value: str):
+        if isinstance(self.entry, ctk.CTkTextbox):
+            self.entry.delete("1.0", "end")
+            self.entry.insert("1.0", value)
+        else:
+            self.entry.delete(0, "end")
+            self.entry.insert(0, value)
+
+
+class Snackbar(ctk.CTkFrame):
+    """Material Design Snackbar for notifications"""
+    def __init__(self, master, **kwargs):
+        super().__init__(
+            master,
+            fg_color=MaterialColors.SURFACE_VARIANT,
+            corner_radius=8,
+            height=48,
+            **kwargs
+        )
+
+        self.message_label = ctk.CTkLabel(
+            self,
+            text="",
+            font=ctk.CTkFont(size=12),
+            text_color=MaterialColors.ON_SURFACE
+        )
+        self.message_label.pack(side="left", padx=16, pady=12)
+
+        self.place_forget()
+
+    def show(self, message: str, duration: int = 3000, type: str = "info"):
+        colors = {
+            "info": MaterialColors.SURFACE_VARIANT,
+            "success": MaterialColors.SUCCESS,
+            "error": MaterialColors.ERROR,
+            "warning": MaterialColors.WARNING
+        }
+        self.configure(fg_color=colors.get(type, MaterialColors.SURFACE_VARIANT))
+        self.message_label.configure(text=message)
+        self.place(relx=0.5, rely=0.95, anchor="center")
+        self.after(duration, self.hide)
+
+    def hide(self):
+        self.place_forget()
 
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("低コスト脚本生成パイプライン")
-        self.geometry("700x850")
+        self.title("脚本生成パイプライン")
+        self.geometry("720x900")
+        self.configure(fg_color=MaterialColors.BACKGROUND)
         self.config_data = load_config()
         self.is_generating = False
 
@@ -621,135 +750,225 @@ class App(ctk.CTk):
         self.load_saved_config()
 
     def create_widgets(self):
-        # スクロール可能フレーム
-        self.scroll_frame = ctk.CTkScrollableFrame(self)
-        self.scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # タイトル
-        title = ctk.CTkLabel(
-            self.scroll_frame,
-            text="🎬 低コスト脚本生成パイプライン",
-            font=ctk.CTkFont(size=20, weight="bold")
+        # Main container
+        self.main_container = ctk.CTkScrollableFrame(
+            self,
+            fg_color=MaterialColors.BACKGROUND,
+            scrollbar_button_color=MaterialColors.SURFACE_VARIANT
         )
-        title.pack(pady=(0, 5))
+        self.main_container.pack(fill="both", expand=True, padx=24, pady=24)
+
+        # Header
+        header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(0, 24))
+
+        title = ctk.CTkLabel(
+            header_frame,
+            text="脚本生成パイプライン",
+            font=ctk.CTkFont(size=28, weight="bold"),
+            text_color=MaterialColors.ON_BACKGROUND
+        )
+        title.pack(anchor="w")
 
         subtitle = ctk.CTkLabel(
-            self.scroll_frame,
-            text="① Compactor → ② Pipeline → ③ Supervisor",
-            font=ctk.CTkFont(size=12),
-            text_color="gray"
+            header_frame,
+            text="Compactor → Pipeline → Supervisor",
+            font=ctk.CTkFont(size=14),
+            text_color=MaterialColors.PRIMARY
         )
-        subtitle.pack(pady=(0, 15))
+        subtitle.pack(anchor="w", pady=(4, 0))
 
-        # === API設定 ===
-        api_frame = ctk.CTkFrame(self.scroll_frame)
-        api_frame.pack(fill="x", pady=5)
+        # API Card
+        api_card = MaterialCard(self.main_container, title="🔑 API設定")
+        api_card.pack(fill="x", pady=(0, 16))
 
-        ctk.CTkLabel(api_frame, text="🔑 Anthropic APIキー", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
-        self.api_entry = ctk.CTkEntry(api_frame, show="*", width=400, placeholder_text="sk-ant-...")
-        self.api_entry.pack(padx=10, pady=(0, 10), fill="x")
+        self.api_field = MaterialTextField(
+            api_card.content_frame,
+            label="Anthropic API Key",
+            placeholder="sk-ant-...",
+            show="*"
+        )
+        self.api_field.pack(fill="x")
 
-        # === 作品設定 ===
-        concept_frame = ctk.CTkFrame(self.scroll_frame)
-        concept_frame.pack(fill="x", pady=5)
+        # Concept Card
+        concept_card = MaterialCard(self.main_container, title="📖 作品設定")
+        concept_card.pack(fill="x", pady=(0, 16))
 
-        ctk.CTkLabel(concept_frame, text="📖 作品コンセプト", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
-        self.concept_text = ctk.CTkTextbox(concept_frame, height=80)
-        self.concept_text.pack(padx=10, pady=(0, 10), fill="x")
+        self.concept_field = MaterialTextField(
+            concept_card.content_frame,
+            label="コンセプト",
+            height=80,
+            multiline=True
+        )
+        self.concept_field.pack(fill="x", pady=(0, 12))
 
-        # === 登場人物 ===
-        char_frame = ctk.CTkFrame(self.scroll_frame)
-        char_frame.pack(fill="x", pady=5)
+        self.characters_field = MaterialTextField(
+            concept_card.content_frame,
+            label="登場人物",
+            height=80,
+            multiline=True
+        )
+        self.characters_field.pack(fill="x")
 
-        ctk.CTkLabel(char_frame, text="👥 登場人物設定", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
-        self.characters_text = ctk.CTkTextbox(char_frame, height=80)
-        self.characters_text.pack(padx=10, pady=(0, 10), fill="x")
+        # Settings Card
+        settings_card = MaterialCard(self.main_container, title="⚙️ 生成設定")
+        settings_card.pack(fill="x", pady=(0, 16))
 
-        # === シーン数・テーマ ===
-        settings_frame = ctk.CTkFrame(self.scroll_frame)
-        settings_frame.pack(fill="x", pady=5)
+        settings_row = ctk.CTkFrame(settings_card.content_frame, fg_color="transparent")
+        settings_row.pack(fill="x")
 
-        row1 = ctk.CTkFrame(settings_frame, fg_color="transparent")
-        row1.pack(fill="x", padx=10, pady=10)
+        # Scenes
+        scenes_frame = ctk.CTkFrame(settings_row, fg_color="transparent")
+        scenes_frame.pack(side="left", fill="x", expand=True, padx=(0, 8))
 
-        ctk.CTkLabel(row1, text="🎬 シーン数:").pack(side="left")
-        self.scenes_entry = ctk.CTkEntry(row1, width=80)
-        self.scenes_entry.pack(side="left", padx=(5, 20))
+        ctk.CTkLabel(
+            scenes_frame,
+            text="シーン数",
+            font=ctk.CTkFont(size=12),
+            text_color=MaterialColors.PRIMARY
+        ).pack(anchor="w", pady=(0, 4))
+
+        self.scenes_entry = ctk.CTkEntry(
+            scenes_frame,
+            height=40,
+            fg_color=MaterialColors.SURFACE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+            corner_radius=8,
+            border_width=1,
+            border_color=MaterialColors.OUTLINE
+        )
+        self.scenes_entry.pack(fill="x")
         self.scenes_entry.insert(0, "10")
 
-        ctk.CTkLabel(row1, text="🏷️ テーマ:").pack(side="left")
-        self.theme_combo = ctk.CTkComboBox(row1, values=list(THEME_OPTIONS.keys()), width=180)
-        self.theme_combo.pack(side="left", padx=5)
+        # Theme
+        theme_frame = ctk.CTkFrame(settings_row, fg_color="transparent")
+        theme_frame.pack(side="left", fill="x", expand=True, padx=(8, 0))
+
+        ctk.CTkLabel(
+            theme_frame,
+            text="テーマ",
+            font=ctk.CTkFont(size=12),
+            text_color=MaterialColors.PRIMARY
+        ).pack(anchor="w", pady=(0, 4))
+
+        self.theme_combo = ctk.CTkComboBox(
+            theme_frame,
+            values=list(THEME_OPTIONS.keys()),
+            height=40,
+            fg_color=MaterialColors.SURFACE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+            button_color=MaterialColors.PRIMARY,
+            button_hover_color=MaterialColors.PRIMARY_VARIANT,
+            dropdown_fg_color=MaterialColors.SURFACE,
+            dropdown_text_color=MaterialColors.ON_SURFACE,
+            dropdown_hover_color=MaterialColors.SURFACE_VARIANT,
+            corner_radius=8,
+            border_width=1,
+            border_color=MaterialColors.OUTLINE
+        )
+        self.theme_combo.pack(fill="x")
         self.theme_combo.set("指定なし")
 
-        # === 生成ボタン ===
-        self.generate_btn = ctk.CTkButton(
-            self.scroll_frame,
-            text="🚀 生成開始",
-            command=self.start_generation,
-            height=40,
-            font=ctk.CTkFont(size=14, weight="bold")
-        )
-        self.generate_btn.pack(pady=15)
+        # Action Buttons
+        button_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        button_frame.pack(fill="x", pady=(8, 16))
 
-        # === プログレス ===
-        self.progress = ctk.CTkProgressBar(self.scroll_frame)
-        self.progress.pack(fill="x", padx=20, pady=5)
+        self.save_btn = MaterialButton(
+            button_frame,
+            text="💾 設定を保存",
+            variant="outlined",
+            command=self.save_settings,
+            width=140
+        )
+        self.save_btn.pack(side="left", padx=(0, 12))
+
+        self.generate_btn = MaterialButton(
+            button_frame,
+            text="🚀 生成開始",
+            variant="filled",
+            command=self.start_generation
+        )
+        self.generate_btn.pack(side="left", fill="x", expand=True)
+
+        # Progress Card
+        progress_card = MaterialCard(self.main_container, title="📊 進捗")
+        progress_card.pack(fill="x", pady=(0, 16))
+
+        self.progress = ctk.CTkProgressBar(
+            progress_card.content_frame,
+            fg_color=MaterialColors.SURFACE_VARIANT,
+            progress_color=MaterialColors.PRIMARY,
+            height=8,
+            corner_radius=4
+        )
+        self.progress.pack(fill="x", pady=(0, 12))
         self.progress.set(0)
 
-        # === ステータス ===
         self.status_label = ctk.CTkLabel(
-            self.scroll_frame,
+            progress_card.content_frame,
             text="待機中...",
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=13),
+            text_color=MaterialColors.ON_SURFACE
         )
-        self.status_label.pack(pady=5)
+        self.status_label.pack(anchor="w")
 
-        # === コスト表示 ===
-        cost_frame = ctk.CTkFrame(self.scroll_frame)
-        cost_frame.pack(fill="x", pady=5)
+        # Cost Card
+        cost_card = MaterialCard(self.main_container, title="💰 コスト情報")
+        cost_card.pack(fill="x", pady=(0, 16))
 
-        ctk.CTkLabel(cost_frame, text="💰 コスト情報", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
         self.cost_label = ctk.CTkLabel(
-            cost_frame,
+            cost_card.content_frame,
             text="生成後に表示されます",
-            justify="left",
+            font=ctk.CTkFont(family="Consolas", size=12),
+            text_color=MaterialColors.ON_SURFACE,
+            justify="left"
+        )
+        self.cost_label.pack(anchor="w")
+
+        # Log Card
+        log_card = MaterialCard(self.main_container, title="📋 ログ")
+        log_card.pack(fill="both", expand=True)
+
+        self.log_text = ctk.CTkTextbox(
+            log_card.content_frame,
+            height=150,
+            fg_color=MaterialColors.SURFACE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+            corner_radius=8,
             font=ctk.CTkFont(family="Consolas", size=11)
         )
-        self.cost_label.pack(anchor="w", padx=10, pady=(0, 10))
+        self.log_text.pack(fill="both", expand=True)
 
-        # === ログ ===
-        log_frame = ctk.CTkFrame(self.scroll_frame)
-        log_frame.pack(fill="both", expand=True, pady=5)
-
-        ctk.CTkLabel(log_frame, text="📋 ログ", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=(10, 5))
-        self.log_text = ctk.CTkTextbox(log_frame, height=180)
-        self.log_text.pack(padx=10, pady=(0, 10), fill="both", expand=True)
+        # Snackbar
+        self.snackbar = Snackbar(self)
 
     def load_saved_config(self):
         if self.config_data.get("api_key"):
-            self.api_entry.insert(0, self.config_data["api_key"])
+            self.api_field.set(self.config_data["api_key"])
         if self.config_data.get("concept"):
-            self.concept_text.insert("1.0", self.config_data["concept"])
+            self.concept_field.set(self.config_data["concept"])
         if self.config_data.get("characters"):
-            self.characters_text.insert("1.0", self.config_data["characters"])
+            self.characters_field.set(self.config_data["characters"])
         if self.config_data.get("num_scenes"):
             self.scenes_entry.delete(0, "end")
             self.scenes_entry.insert(0, str(self.config_data["num_scenes"]))
         if self.config_data.get("theme_jp"):
             self.theme_combo.set(self.config_data["theme_jp"])
 
-    def save_current_config(self):
+    def save_settings(self):
+        """設定を保存"""
         theme_jp = self.theme_combo.get()
         self.config_data = {
-            "api_key": self.api_entry.get(),
-            "concept": self.concept_text.get("1.0", "end-1c"),
-            "characters": self.characters_text.get("1.0", "end-1c"),
+            "api_key": self.api_field.get(),
+            "concept": self.concept_field.get(),
+            "characters": self.characters_field.get(),
             "num_scenes": int(self.scenes_entry.get() or "10"),
             "theme_jp": theme_jp,
             "theme": THEME_OPTIONS.get(theme_jp, ""),
         }
         save_config(self.config_data)
+        self.snackbar.show("✅ 設定を保存しました", type="success")
+        log_message("設定を保存しました")
 
     def log(self, message: str):
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -765,16 +984,15 @@ class App(ctk.CTk):
         if self.is_generating:
             return
 
-        # バリデーション
-        api_key = self.api_entry.get().strip()
-        concept = self.concept_text.get("1.0", "end-1c").strip()
-        characters = self.characters_text.get("1.0", "end-1c").strip()
+        api_key = self.api_field.get().strip()
+        concept = self.concept_field.get().strip()
+        characters = self.characters_field.get().strip()
 
         if not api_key:
-            self.update_status("❌ APIキーを入力してください")
+            self.snackbar.show("❌ APIキーを入力してください", type="error")
             return
         if not concept:
-            self.update_status("❌ 作品コンセプトを入力してください")
+            self.snackbar.show("❌ コンセプトを入力してください", type="error")
             return
 
         try:
@@ -782,13 +1000,12 @@ class App(ctk.CTk):
             if num_scenes < 1 or num_scenes > 50:
                 raise ValueError()
         except:
-            self.update_status("❌ シーン数は1〜50の整数で")
+            self.snackbar.show("❌ シーン数は1〜50の整数で", type="error")
             return
 
-        # 設定保存
-        self.save_current_config()
+        # Auto-save settings
+        self.save_settings()
 
-        # 生成開始
         self.is_generating = True
         self.generate_btn.configure(state="disabled", text="生成中...")
         self.progress.set(0)
@@ -815,7 +1032,6 @@ class App(ctk.CTk):
                 api_key, concept, characters, num_scenes, theme, callback
             )
 
-            # 出力
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             csv_path = EXPORTS_DIR / f"script_{timestamp}.csv"
             json_path = EXPORTS_DIR / f"script_{timestamp}.json"
@@ -823,7 +1039,6 @@ class App(ctk.CTk):
             export_csv(results, csv_path)
             export_json(results, json_path)
 
-            # 完了
             self.after(0, lambda: self.on_complete(results, cost_tracker, csv_path, json_path))
 
         except Exception as e:
@@ -839,12 +1054,14 @@ class App(ctk.CTk):
         self.log(f"📄 CSV: {csv_path}")
         self.log(f"📄 JSON: {json_path}")
         self.log(f"💰 {cost_tracker.summary()}")
+        self.snackbar.show(f"✅ {len(results)}シーン生成完了!", type="success")
 
     def on_error(self, error: str):
         self.is_generating = False
         self.generate_btn.configure(state="normal", text="🚀 生成開始")
         self.progress.set(0)
         self.update_status(f"❌ エラー: {error}")
+        self.snackbar.show(f"❌ エラー: {error[:50]}", type="error")
 
 
 if __name__ == "__main__":
