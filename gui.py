@@ -35,40 +35,77 @@ except ImportError:
 
 # === Material Design 3 カラーパレット ===
 class MaterialColors:
-    # Light Theme (Material Design 3) - Enhanced for FANZA Doujin Tool
-    BACKGROUND = "#FAFAFA"
-    SURFACE = "#FFFFFF"
-    SURFACE_VARIANT = "#F3E8FF"  # 薄紫に変更
-    SURFACE_DARK = "#1E1E2E"     # ダーク背景（ログ用）
+    """
+    Material You / M3 Dynamic Color System
+    Based on Google's Material Design 3 color guidelines
+    """
     
-    # Primary - Purple
-    PRIMARY = "#7C3AED"          # より鮮やかな紫
-    PRIMARY_VARIANT = "#8B5CF6"
-    PRIMARY_LIGHT = "#A78BFA"
+    # === M3 Tonal Palette (Purple seed) ===
+    # Primary
+    PRIMARY = "#6750A4"           # M3 Primary (P-40)
+    PRIMARY_CONTAINER = "#EADDFF" # P-90
+    ON_PRIMARY = "#FFFFFF"        # P-100
+    ON_PRIMARY_CONTAINER = "#21005D"  # P-10
     
-    # Accent - Pink/Magenta（生成ボタン用）
-    ACCENT = "#EC4899"           # ピンク
-    ACCENT_VARIANT = "#F472B6"
-    ACCENT_DARK = "#DB2777"
+    # Secondary  
+    SECONDARY = "#625B71"         # S-40
+    SECONDARY_CONTAINER = "#E8DEF8"   # S-90
+    ON_SECONDARY = "#FFFFFF"
+    ON_SECONDARY_CONTAINER = "#1D192B"
     
-    # Secondary
-    SECONDARY = "#64748B"
+    # Tertiary
+    TERTIARY = "#7D5260"          # T-40
+    TERTIARY_CONTAINER = "#FFD8E4"    # T-90
     
-    # Status Colors
-    ERROR = "#EF4444"
-    SUCCESS = "#22C55E"
-    WARNING = "#F59E0B"
+    # Error
+    ERROR = "#B3261E"             # E-40
+    ERROR_CONTAINER = "#F9DEDC"   # E-90
+    ON_ERROR = "#FFFFFF"
     
-    # Text
-    ON_BACKGROUND = "#1F2937"
-    ON_SURFACE = "#374151"
-    ON_PRIMARY = "#FFFFFF"
-    ON_ACCENT = "#FFFFFF"
-    ON_DARK = "#E5E7EB"
+    # Success (Extended)
+    SUCCESS = "#1B6B32"
+    SUCCESS_CONTAINER = "#A8F5B4"
+    
+    # === Surface Tones (Neutral) ===
+    BACKGROUND = "#FFFBFE"        # N-99
+    SURFACE = "#FFFBFE"           # N-99
+    SURFACE_DIM = "#DED8E1"       # N-87
+    SURFACE_BRIGHT = "#FFFBFE"    # N-99
+    SURFACE_CONTAINER_LOWEST = "#FFFFFF"   # N-100
+    SURFACE_CONTAINER_LOW = "#F7F2FA"      # N-96
+    SURFACE_CONTAINER = "#F3EDF7"          # N-94
+    SURFACE_CONTAINER_HIGH = "#ECE6F0"     # N-92
+    SURFACE_CONTAINER_HIGHEST = "#E6E0E9"  # N-90
+    
+    # On Surface
+    ON_BACKGROUND = "#1C1B1F"     # N-10
+    ON_SURFACE = "#1C1B1F"        # N-10
+    ON_SURFACE_VARIANT = "#49454F"    # NV-30
     
     # Outline
-    OUTLINE = "#D1D5DB"
-    OUTLINE_VARIANT = "#E5E7EB"
+    OUTLINE = "#79747E"           # NV-50
+    OUTLINE_VARIANT = "#CAC4D0"   # NV-80
+    
+    # Inverse
+    INVERSE_SURFACE = "#313033"
+    INVERSE_ON_SURFACE = "#F4EFF4"
+    INVERSE_PRIMARY = "#D0BCFF"
+    
+    # Scrim & Shadow
+    SCRIM = "#000000"
+    SHADOW = "#000000"
+    
+    # === Legacy aliases for compatibility ===
+    SURFACE_VARIANT = SURFACE_CONTAINER
+    PRIMARY_VARIANT = "#7965AF"
+    PRIMARY_LIGHT = INVERSE_PRIMARY
+    ACCENT = TERTIARY
+    ACCENT_VARIANT = "#9A7B8A"
+    ACCENT_DARK = "#633B48"
+    WARNING = "#F59E0B"
+    SURFACE_DARK = INVERSE_SURFACE
+    ON_DARK = INVERSE_ON_SURFACE
+    ON_ACCENT = ON_PRIMARY
 
 
 # === 設定 ===
@@ -1986,183 +2023,278 @@ ctk.set_default_color_theme("blue")
 
 
 class MaterialCard(ctk.CTkFrame):
-    """Material Design Card Component - Enhanced"""
-    def __init__(self, master, title: str = "", collapsible: bool = False, accent: bool = False, **kwargs):
-        bg_color = MaterialColors.SURFACE
-        border_color = MaterialColors.OUTLINE_VARIANT
-        
-        if accent:
-            border_color = MaterialColors.PRIMARY_LIGHT
+    """
+    Material Design 3 Card Component
+    
+    Variants:
+    - elevated: Default, subtle shadow effect via background
+    - filled: Higher surface tone, no border
+    - outlined: Transparent with outline border
+    """
+    def __init__(
+        self, 
+        master, 
+        title: str = "", 
+        collapsible: bool = False, 
+        variant: str = "elevated",  # elevated, filled, outlined
+        **kwargs
+    ):
+        # M3 Card styling based on variant
+        if variant == "filled":
+            bg_color = MaterialColors.SURFACE_CONTAINER_HIGHEST
+            border_width = 0
+            border_color = None
+        elif variant == "outlined":
+            bg_color = MaterialColors.SURFACE
+            border_width = 1
+            border_color = MaterialColors.OUTLINE_VARIANT
+        else:  # elevated (default)
+            bg_color = MaterialColors.SURFACE_CONTAINER_LOW
+            border_width = 0
+            border_color = None
         
         super().__init__(
             master,
             fg_color=bg_color,
-            corner_radius=16,
-            border_width=1,
+            corner_radius=12,  # M3: 12dp for medium
+            border_width=border_width,
             border_color=border_color,
             **kwargs
         )
         
         self.collapsible = collapsible
         self.is_collapsed = False
+        self.variant = variant
         
         if title:
-            title_frame = ctk.CTkFrame(self, fg_color="transparent")
-            title_frame.pack(fill="x", padx=16, pady=(12, 6))
+            # Header with proper M3 typography
+            header_frame = ctk.CTkFrame(self, fg_color="transparent")
+            header_frame.pack(fill="x", padx=16, pady=(16, 8))
             
             self.title_label = ctk.CTkLabel(
-                title_frame,
+                header_frame,
                 text=title,
-                font=ctk.CTkFont(size=15, weight="bold"),
-                text_color=MaterialColors.PRIMARY if accent else MaterialColors.ON_SURFACE
+                font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),  # Title Medium
+                text_color=MaterialColors.ON_SURFACE
             )
             self.title_label.pack(side="left")
             
             if collapsible:
                 self.collapse_btn = ctk.CTkButton(
-                    title_frame,
-                    text="▼",
-                    width=24,
-                    height=24,
+                    header_frame,
+                    text="",
+                    width=40,
+                    height=40,
                     fg_color="transparent",
-                    hover_color=MaterialColors.SURFACE_VARIANT,
-                    text_color=MaterialColors.SECONDARY,
+                    hover_color=MaterialColors.SURFACE_CONTAINER_HIGH,
+                    text_color=MaterialColors.ON_SURFACE_VARIANT,
+                    font=ctk.CTkFont(size=12),
+                    corner_radius=20,  # Fully rounded for icon button
                     command=self.toggle_collapse
                 )
                 self.collapse_btn.pack(side="right")
+                self._update_collapse_icon()
 
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
         self.content_frame.pack(fill="both", expand=True, padx=16, pady=(0, 16))
     
+    def _update_collapse_icon(self):
+        icon = "keyboard_arrow_up" if not self.is_collapsed else "keyboard_arrow_down"
+        # Using Unicode arrows as fallback
+        self.collapse_btn.configure(text="▲" if not self.is_collapsed else "▼")
+    
     def toggle_collapse(self):
         if self.is_collapsed:
             self.content_frame.pack(fill="both", expand=True, padx=16, pady=(0, 16))
-            self.collapse_btn.configure(text="▼")
         else:
             self.content_frame.pack_forget()
-            self.collapse_btn.configure(text="▶")
         self.is_collapsed = not self.is_collapsed
+        self._update_collapse_icon()
 
 
 class MaterialButton(ctk.CTkButton):
-    """Material Design Button Component - Enhanced"""
-    def __init__(self, master, variant: str = "filled", size: str = "medium", **kwargs):
-        # サイズ設定
+    """
+    Material Design 3 Button Component
+    
+    Variants:
+    - filled: Primary container color (default)
+    - filled_tonal: Secondary container color
+    - outlined: Transparent with outline
+    - text: Text only, no background
+    - elevated: Surface with shadow effect
+    
+    Sizes:
+    - small: 32dp height
+    - medium: 40dp height (default)
+    - large: 56dp height
+    """
+    def __init__(
+        self, 
+        master, 
+        variant: str = "filled", 
+        size: str = "medium", 
+        **kwargs
+    ):
+        # M3 Button sizes (height, font_size, corner_radius, horizontal_padding)
         sizes = {
-            "small": {"height": 32, "font_size": 12, "corner": 6},
-            "medium": {"height": 40, "font_size": 13, "corner": 8},
-            "large": {"height": 52, "font_size": 15, "corner": 12},
-            "xlarge": {"height": 64, "font_size": 18, "corner": 16}
+            "small": {"height": 32, "font_size": 12, "corner": 16, "padx": 12},
+            "medium": {"height": 40, "font_size": 14, "corner": 20, "padx": 24},
+            "large": {"height": 56, "font_size": 14, "corner": 28, "padx": 24},
+            "xlarge": {"height": 64, "font_size": 16, "corner": 28, "padx": 32}
         }
-        size_config = sizes.get(size, sizes["medium"])
+        s = sizes.get(size, sizes["medium"])
         
-        if variant == "filled":
-            super().__init__(
-                master,
-                fg_color=MaterialColors.PRIMARY,
-                hover_color=MaterialColors.PRIMARY_VARIANT,
-                text_color=MaterialColors.ON_PRIMARY,
-                corner_radius=size_config["corner"],
-                height=size_config["height"],
-                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
-                **kwargs
-            )
-        elif variant == "accent":
-            # アクセント色（生成ボタン用）
-            super().__init__(
-                master,
-                fg_color=MaterialColors.ACCENT,
-                hover_color=MaterialColors.ACCENT_DARK,
-                text_color=MaterialColors.ON_ACCENT,
-                corner_radius=size_config["corner"],
-                height=size_config["height"],
-                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
-                **kwargs
-            )
-        elif variant == "outlined":
-            super().__init__(
-                master,
-                fg_color="transparent",
-                hover_color=MaterialColors.SURFACE_VARIANT,
-                text_color=MaterialColors.PRIMARY,
-                border_width=2,
-                border_color=MaterialColors.PRIMARY,
-                corner_radius=size_config["corner"],
-                height=size_config["height"],
-                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
-                **kwargs
-            )
-        elif variant == "text":
-            super().__init__(
-                master,
-                fg_color="transparent",
-                hover_color=MaterialColors.SURFACE_VARIANT,
-                text_color=MaterialColors.PRIMARY,
-                corner_radius=size_config["corner"],
-                height=size_config["height"],
-                font=ctk.CTkFont(size=size_config["font_size"]),
-                **kwargs
-            )
-        elif variant == "danger":
-            super().__init__(
-                master,
-                fg_color=MaterialColors.ERROR,
-                hover_color="#DC2626",
-                text_color=MaterialColors.ON_PRIMARY,
-                corner_radius=size_config["corner"],
-                height=size_config["height"],
-                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
-                **kwargs
-            )
-        elif variant == "success":
-            super().__init__(
-                master,
-                fg_color=MaterialColors.SUCCESS,
-                hover_color="#16A34A",
-                text_color=MaterialColors.ON_PRIMARY,
-                corner_radius=size_config["corner"],
-                height=size_config["height"],
-                font=ctk.CTkFont(size=size_config["font_size"], weight="bold"),
-                **kwargs
-            )
+        # M3 Button variants with proper color tokens
+        variants = {
+            "filled": {
+                "fg_color": MaterialColors.PRIMARY,
+                "hover_color": "#7965AF",  # Slightly lighter on hover
+                "text_color": MaterialColors.ON_PRIMARY,
+                "border_width": 0,
+            },
+            "filled_tonal": {
+                "fg_color": MaterialColors.SECONDARY_CONTAINER,
+                "hover_color": MaterialColors.SURFACE_CONTAINER_HIGHEST,
+                "text_color": MaterialColors.ON_SECONDARY_CONTAINER,
+                "border_width": 0,
+            },
+            "outlined": {
+                "fg_color": "transparent",
+                "hover_color": MaterialColors.SURFACE_CONTAINER,
+                "text_color": MaterialColors.PRIMARY,
+                "border_width": 1,
+                "border_color": MaterialColors.OUTLINE,
+            },
+            "text": {
+                "fg_color": "transparent",
+                "hover_color": MaterialColors.SURFACE_CONTAINER,
+                "text_color": MaterialColors.PRIMARY,
+                "border_width": 0,
+            },
+            "elevated": {
+                "fg_color": MaterialColors.SURFACE_CONTAINER_LOW,
+                "hover_color": MaterialColors.SURFACE_CONTAINER,
+                "text_color": MaterialColors.PRIMARY,
+                "border_width": 0,
+            },
+            # Extended variants for app-specific use
+            "accent": {
+                "fg_color": MaterialColors.TERTIARY,
+                "hover_color": MaterialColors.ACCENT_DARK,
+                "text_color": MaterialColors.ON_PRIMARY,
+                "border_width": 0,
+            },
+            "danger": {
+                "fg_color": MaterialColors.ERROR,
+                "hover_color": "#9C1F19",
+                "text_color": MaterialColors.ON_ERROR,
+                "border_width": 0,
+            },
+            "success": {
+                "fg_color": MaterialColors.SUCCESS,
+                "hover_color": "#145426",
+                "text_color": "#FFFFFF",
+                "border_width": 0,
+            },
+        }
+        
+        v = variants.get(variant, variants["filled"])
+        
+        super().__init__(
+            master,
+            fg_color=v["fg_color"],
+            hover_color=v["hover_color"],
+            text_color=v["text_color"],
+            border_width=v.get("border_width", 0),
+            border_color=v.get("border_color"),
+            corner_radius=s["corner"],
+            height=s["height"],
+            font=ctk.CTkFont(family="Segoe UI", size=s["font_size"], weight="bold"),
+            **kwargs
+        )
 
 
 class MaterialTextField(ctk.CTkFrame):
-    """Material Design Text Field with Label"""
-    def __init__(self, master, label: str, placeholder: str = "", show: str = "", height: int = 40, multiline: bool = False, **kwargs):
+    """
+    Material Design 3 Text Field
+    
+    Variants:
+    - filled: Default M3 text field with container
+    - outlined: Border-style text field
+    """
+    def __init__(
+        self, 
+        master, 
+        label: str, 
+        placeholder: str = "", 
+        show: str = "", 
+        height: int = 56,  # M3 default height
+        multiline: bool = False,
+        variant: str = "filled",  # filled, outlined
+        supporting_text: str = "",
+        **kwargs
+    ):
         super().__init__(master, fg_color="transparent", **kwargs)
-
+        
+        self.variant = variant
+        
+        # Label (Body Small)
         self.label = ctk.CTkLabel(
             self,
             text=label,
-            font=ctk.CTkFont(size=12),
-            text_color=MaterialColors.PRIMARY
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
         )
         self.label.pack(anchor="w", pady=(0, 4))
+
+        # Input field styling based on variant
+        if variant == "outlined":
+            fg_color = "transparent"
+            border_width = 1
+            border_color = MaterialColors.OUTLINE
+            corner_radius = 4
+        else:  # filled
+            fg_color = MaterialColors.SURFACE_CONTAINER_HIGHEST
+            border_width = 0
+            border_color = None
+            corner_radius = 4  # M3: 4dp top corners only, but CTk doesn't support asymmetric
 
         if multiline:
             self.entry = ctk.CTkTextbox(
                 self,
                 height=height,
-                fg_color=MaterialColors.SURFACE_VARIANT,
+                fg_color=fg_color,
                 text_color=MaterialColors.ON_SURFACE,
-                corner_radius=8,
-                border_width=1,
-                border_color=MaterialColors.OUTLINE
+                font=ctk.CTkFont(family="Segoe UI", size=14),
+                corner_radius=corner_radius,
+                border_width=border_width,
+                border_color=border_color
             )
         else:
             self.entry = ctk.CTkEntry(
                 self,
                 height=height,
                 placeholder_text=placeholder,
+                placeholder_text_color=MaterialColors.ON_SURFACE_VARIANT,
                 show=show,
-                fg_color=MaterialColors.SURFACE_VARIANT,
+                fg_color=fg_color,
                 text_color=MaterialColors.ON_SURFACE,
-                corner_radius=8,
-                border_width=1,
-                border_color=MaterialColors.OUTLINE
+                font=ctk.CTkFont(family="Segoe UI", size=14),
+                corner_radius=corner_radius,
+                border_width=border_width,
+                border_color=border_color
             )
         self.entry.pack(fill="x")
+        
+        # Supporting text (Body Small)
+        if supporting_text:
+            self.supporting = ctk.CTkLabel(
+                self,
+                text=supporting_text,
+                font=ctk.CTkFont(family="Segoe UI", size=12),
+                text_color=MaterialColors.ON_SURFACE_VARIANT
+            )
+            self.supporting.pack(anchor="w", pady=(4, 0))
 
     def get(self):
         if isinstance(self.entry, ctk.CTkTextbox):
@@ -2176,50 +2308,235 @@ class MaterialTextField(ctk.CTkFrame):
         else:
             self.entry.delete(0, "end")
             self.entry.insert(0, value)
+    
+    def set_error(self, message: str = ""):
+        """Set error state with optional message"""
+        if message:
+            self.entry.configure(border_color=MaterialColors.ERROR)
+            self.label.configure(text_color=MaterialColors.ERROR)
+        else:
+            border = MaterialColors.OUTLINE if self.variant == "outlined" else None
+            self.entry.configure(border_color=border)
+            self.label.configure(text_color=MaterialColors.ON_SURFACE_VARIANT)
 
 
-class Snackbar(ctk.CTkFrame):
-    """Material Design Snackbar for notifications - Enhanced"""
-    def __init__(self, master, **kwargs):
+class MaterialFAB(ctk.CTkButton):
+    """
+    Material Design 3 Floating Action Button
+
+    Sizes:
+    - small: 40dp (for compact layouts)
+    - regular: 56dp (default)
+    - large: 96dp (for prominent actions)
+
+    Variants:
+    - primary: Primary container (default)
+    - secondary: Secondary container
+    - tertiary: Tertiary container
+    - surface: Surface container
+    """
+    def __init__(
+        self,
+        master,
+        icon: str = "+",
+        size: str = "regular",
+        variant: str = "primary",
+        **kwargs
+    ):
+        # M3 FAB sizes
+        sizes = {
+            "small": {"size": 40, "icon_size": 24, "corner": 12},
+            "regular": {"size": 56, "icon_size": 24, "corner": 16},
+            "large": {"size": 96, "icon_size": 36, "corner": 28}
+        }
+        s = sizes.get(size, sizes["regular"])
+
+        # M3 FAB color variants
+        variants = {
+            "primary": {
+                "fg": MaterialColors.PRIMARY_CONTAINER,
+                "text": MaterialColors.ON_PRIMARY_CONTAINER,
+                "hover": MaterialColors.SURFACE_CONTAINER_HIGHEST
+            },
+            "secondary": {
+                "fg": MaterialColors.SECONDARY_CONTAINER,
+                "text": MaterialColors.ON_SECONDARY_CONTAINER,
+                "hover": MaterialColors.SURFACE_CONTAINER_HIGHEST
+            },
+            "tertiary": {
+                "fg": MaterialColors.TERTIARY_CONTAINER,
+                "text": MaterialColors.ON_SURFACE,
+                "hover": MaterialColors.SURFACE_CONTAINER_HIGHEST
+            },
+            "surface": {
+                "fg": MaterialColors.SURFACE_CONTAINER_HIGH,
+                "text": MaterialColors.PRIMARY,
+                "hover": MaterialColors.SURFACE_CONTAINER_HIGHEST
+            }
+        }
+        v = variants.get(variant, variants["primary"])
+
         super().__init__(
             master,
-            fg_color=MaterialColors.SURFACE_DARK,
-            corner_radius=12,
-            height=56,
+            text=icon,
+            width=s["size"],
+            height=s["size"],
+            corner_radius=s["corner"],
+            fg_color=v["fg"],
+            hover_color=v["hover"],
+            text_color=v["text"],
+            font=ctk.CTkFont(size=s["icon_size"], weight="bold"),
             **kwargs
         )
 
+
+class MaterialChip(ctk.CTkButton):
+    """
+    Material Design 3 Chip
+
+    Types:
+    - assist: For smart suggestions
+    - filter: For filtering content (toggleable)
+    - input: For user input (with close button)
+    - suggestion: For dynamic suggestions
+    """
+    def __init__(
+        self,
+        master,
+        text: str,
+        selected: bool = False,
+        chip_type: str = "filter",
+        **kwargs
+    ):
+        self.selected = selected
+        self.chip_type = chip_type
+
+        if selected:
+            fg_color = MaterialColors.SECONDARY_CONTAINER
+            text_color = MaterialColors.ON_SECONDARY_CONTAINER
+            border_width = 0
+        else:
+            fg_color = "transparent"
+            text_color = MaterialColors.ON_SURFACE_VARIANT
+            border_width = 1
+
+        super().__init__(
+            master,
+            text=text,
+            height=32,  # M3: 32dp height
+            corner_radius=8,  # M3: 8dp corners
+            fg_color=fg_color,
+            hover_color=MaterialColors.SURFACE_CONTAINER,
+            text_color=text_color,
+            border_width=border_width,
+            border_color=MaterialColors.OUTLINE,
+            font=ctk.CTkFont(family="Segoe UI", size=13),
+            **kwargs
+        )
+
+    def toggle(self):
+        self.selected = not self.selected
+        if self.selected:
+            self.configure(
+                fg_color=MaterialColors.SECONDARY_CONTAINER,
+                text_color=MaterialColors.ON_SECONDARY_CONTAINER,
+                border_width=0
+            )
+        else:
+            self.configure(
+                fg_color="transparent",
+                text_color=MaterialColors.ON_SURFACE_VARIANT,
+                border_width=1
+            )
+
+
+class Snackbar(ctk.CTkFrame):
+    """
+    Material Design 3 Snackbar
+    
+    Single-line notifications with optional action button.
+    Appears at bottom of screen with proper M3 styling.
+    """
+    def __init__(self, master, **kwargs):
+        super().__init__(
+            master,
+            fg_color=MaterialColors.INVERSE_SURFACE,
+            corner_radius=4,  # M3: 4dp corners
+            height=48,        # M3: 48dp single-line
+            **kwargs
+        )
+
+        # Message label (Body Medium)
         self.message_label = ctk.CTkLabel(
             self,
             text="",
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color=MaterialColors.ON_DARK
+            font=ctk.CTkFont(family="Segoe UI", size=14),
+            text_color=MaterialColors.INVERSE_ON_SURFACE
         )
-        self.message_label.pack(side="left", padx=20, pady=16)
+        self.message_label.pack(side="left", padx=16, pady=14)
+        
+        # Optional action button
+        self.action_btn = ctk.CTkButton(
+            self,
+            text="",
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+            fg_color="transparent",
+            hover_color=MaterialColors.INVERSE_SURFACE,
+            text_color=MaterialColors.INVERSE_PRIMARY,
+            corner_radius=4,
+            height=36,
+            width=0  # Auto-width
+        )
+        self.action_btn.pack(side="right", padx=(0, 8))
+        self.action_btn.pack_forget()  # Hidden by default
 
         self.place_forget()
 
-    def show(self, message: str, duration: int = 3000, type: str = "info"):
+    def show(
+        self, 
+        message: str, 
+        duration: int = 4000,  # M3 recommends 4-10 seconds
+        type: str = "info",
+        action: str = "",
+        action_command = None
+    ):
+        """
+        Show snackbar with message.
+        
+        Args:
+            message: Text to display
+            duration: Auto-hide time in ms (0 = no auto-hide)
+            type: info, success, error, warning
+            action: Optional action button text
+            action_command: Optional callback for action button
+        """
+        # M3 uses inverse surface for snackbar, but we can tint for status
         colors = {
-            "info": MaterialColors.SURFACE_DARK,
-            "success": MaterialColors.SUCCESS,
-            "error": MaterialColors.ERROR,
-            "warning": MaterialColors.WARNING
+            "info": MaterialColors.INVERSE_SURFACE,
+            "success": "#2E7D32",    # Green-800
+            "error": "#C62828",       # Red-800
+            "warning": "#F57C00"      # Orange-800
         }
-        text_colors = {
-            "info": MaterialColors.ON_DARK,
-            "success": "#FFFFFF",
-            "error": "#FFFFFF",
-            "warning": "#FFFFFF"
-        }
-        self.configure(fg_color=colors.get(type, MaterialColors.SURFACE_DARK))
+        
+        self.configure(fg_color=colors.get(type, MaterialColors.INVERSE_SURFACE))
         self.message_label.configure(
             text=message,
-            text_color=text_colors.get(type, MaterialColors.ON_DARK)
+            text_color=MaterialColors.INVERSE_ON_SURFACE
         )
-        self.place(relx=0.5, rely=0.92, anchor="center")
+        
+        # Action button
+        if action and action_command:
+            self.action_btn.configure(text=action, command=action_command)
+            self.action_btn.pack(side="right", padx=(0, 8))
+        else:
+            self.action_btn.pack_forget()
+        
+        # Position at bottom with proper margin
+        self.place(relx=0.5, rely=0.95, anchor="center")
         self.lift()
-        self.after(duration, self.hide)
+        
+        if duration > 0:
+            self.after(duration, self.hide)
 
     def hide(self):
         self.place_forget()

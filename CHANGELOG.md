@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.8.0] - 2026-02-06
+
+### Added
+- **Material You / M3 UI リファクタリング**
+  - M3 Dynamic Color System（Tonal Palette）
+  - `MaterialFAB` コンポーネント（small/regular/large）
+  - `MaterialChip` コンポーネント（filter/input/suggestion）
+  - Supporting text機能追加（TextField）
+  - Error state機能追加（TextField）
+
+### Changed
+- `MaterialColors`: M3準拠のTonal Palette実装
+  - Primary/Secondary/Tertiary Container
+  - Surface Container階層（5段階）
+  - Inverse colors追加
+- `MaterialButton`: M3ボタンバリアント追加
+  - filled_tonal, elevated追加
+  - corner_radius: 20dp（M3標準）
+- `MaterialCard`: 3バリアント対応
+  - elevated, filled, outlined
+  - 12dp corner radius
+- `MaterialTextField`: M3 filled/outlined対応
+- `Snackbar`: M3準拠（4dp corners, action button）
+
+### UI Guidelines Applied
+- Google fonts（Segoe UI fallback）
+- Touch targets ≥48dp
+- Proper M3 color tokens
+
+---
+
 ## [0.7.0] - 2026-02-06
 
 ### Added
