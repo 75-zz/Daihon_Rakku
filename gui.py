@@ -1181,8 +1181,7 @@ def generate_scene_draft(
     ],
     "direction": "演出・ト書き（30字）",
     "story_flow": "次のシーンへの繋がり（15字）",
-    "sd_prompt": "{QUALITY_POSITIVE_TAGS}, キャラ外見タグ, ポーズ・行為タグ, 表情タグ, 場所・背景タグ, 照明タグ, テーマタグ",
-    "negative_prompt": "{DEFAULT_NEGATIVE_PROMPT}"
+    "sd_prompt": "{QUALITY_POSITIVE_TAGS}, キャラ外見タグ, ポーズ・行為タグ, 表情タグ, 場所・背景タグ, 照明タグ, テーマタグ"
 }}
 
 ## タグ参考（sd_promptに統合して使用）
@@ -1309,7 +1308,7 @@ Output JSON only."""
 - mood, character_feelings
 - dialogue (speaker, emotion, line, inner_thought)
 - direction, story_flow
-- sd_prompt, negative_prompt
+- sd_prompt
 
 同じJSON形式で出力。JSONのみ。"""
 
@@ -1547,8 +1546,7 @@ def generate_pipeline(
                 "mood": "エラー",
                 "dialogue": [],
                 "direction": f"生成エラー: {str(e)[:100]}",
-                "sd_prompt": "",
-                "negative_prompt": ""
+                "sd_prompt": ""
             })
 
     # 完了サマリー
@@ -1566,7 +1564,7 @@ def export_csv(results: list, output_path: Path):
         "scene_id", "title", "description", "location_detail", "mood",
         "character_feelings", "speaker", "emotion", "line_index", "line_text",
         "inner_thought", "direction", "story_flow",
-        "sd_prompt", "negative_prompt"
+        "sd_prompt"
     ]
 
     # utf-8-sig でBOM付きUTF-8（Excel対応）
@@ -1599,8 +1597,7 @@ def export_csv(results: list, output_path: Path):
                     "inner_thought": "",
                     "direction": scene.get("direction", ""),
                     "story_flow": scene.get("story_flow", ""),
-                    "sd_prompt": scene.get("sd_prompt", ""),
-                    "negative_prompt": scene.get("negative_prompt", DEFAULT_NEGATIVE_PROMPT)
+                    "sd_prompt": scene.get("sd_prompt", "")
                 })
             else:
                 for idx, dialogue in enumerate(dialogues):
@@ -1618,8 +1615,7 @@ def export_csv(results: list, output_path: Path):
                         "inner_thought": dialogue.get("inner_thought", ""),
                         "direction": scene.get("direction", "") if idx == 0 else "",
                         "story_flow": scene.get("story_flow", "") if idx == 0 else "",
-                        "sd_prompt": scene.get("sd_prompt", "") if idx == 0 else "",
-                        "negative_prompt": scene.get("negative_prompt", DEFAULT_NEGATIVE_PROMPT) if idx == 0 else ""
+                        "sd_prompt": scene.get("sd_prompt", "") if idx == 0 else ""
                     })
 
 
@@ -1638,7 +1634,7 @@ def export_excel(results: list, output_path: Path):
         "シーンID", "タイトル", "シーン説明", "場所詳細", "雰囲気",
         "キャラ心情", "話者", "感情", "セリフ番号", "セリフ",
         "心の声", "演出", "次への繋がり",
-        "SDプロンプト", "ネガティブ"
+        "SDプロンプト"
     ]
     
     # ヘッダースタイル
@@ -1679,8 +1675,7 @@ def export_excel(results: list, output_path: Path):
                 dialogue.get("inner_thought", ""),
                 scene.get("direction", "") if idx == 0 else "",
                 scene.get("story_flow", "") if idx == 0 else "",
-                scene.get("sd_prompt", "") if idx == 0 else "",
-                scene.get("negative_prompt", "") if idx == 0 else ""
+                scene.get("sd_prompt", "") if idx == 0 else ""
             ]
             
             for col, value in enumerate(data, 1):
@@ -1705,8 +1700,7 @@ def export_excel(results: list, output_path: Path):
         11: 15,  # 心の声
         12: 20,  # 演出
         13: 15,  # 次への繋がり
-        14: 55,  # SDプロンプト（統合後のため幅拡大）
-        15: 30   # ネガティブ
+        14: 60   # SDプロンプト（統合後）
     }
     
     for col, width in column_widths.items():

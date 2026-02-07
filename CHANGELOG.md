@@ -10,18 +10,18 @@
   - 背景タグをポジティブプロンプトに統合
   - 品質タグ`(masterpiece, best_quality:1.2)`を自動付与
   - `deduplicate_sd_tags()`で重複タグ自動排除
-- **danbooru_tags.json 新規作成（タグDB外部化）**
-  - LOCATION_TAGS: 9種→36種（学校/住居/商業/公共/特殊）
-  - EXPRESSION_TAGS: 17感情マッピング（基本6+エロ系11）
-  - POSE_TAGS_BY_INTENSITY: 5段階×3カテゴリ
-  - COMPOSITION_TAGS: 5段階（構図・カメラアングル連動）
-  - CLOTHING_TAGS: 22種 + UNDRESS_STATE_TAGS: 8段階
+- **negative_prompt出力廃止** - 固定値のため生成不要
+- **danbooru_tags.json v2.0（全258エントリー）**
+  - 場所: 51種 / 表情: 26種 / ポーズ: 5段階×4カテゴリ
+  - 衣装: 34種 / 脱衣: 10段階 / エフェクト: 16種
+  - 髪型: 13種 / 髪色: 11色 / 目色: 8色 / 体型: 7種
+  - アクセサリー: 14種 / 照明: 11種 / 天候: 8種
+  - NSFW行為: 20種 / 射精: 6種 / 構図: 5段階
 - **max_tokens最適化**: 3000→2500（出力効率向上）
 
 ### Changed
-- `export_csv`: sd_backgroundカラム削除（15列→14列ではなく統合）
-- `export_excel`: 背景プロンプト列削除、SDプロンプト列幅拡大
-- `polish_scene`: 保持フィールドからsd_background削除
+- `export_csv/excel`: sd_background+negative_prompt削除（SDプロンプト1列のみ）
+- `polish_scene`: 保持フィールド簡素化
 
 ---
 
