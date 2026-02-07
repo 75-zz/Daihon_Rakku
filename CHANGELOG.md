@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0] - 2026-02-07
+
+### Added (タグDB v5.0 + API大幅節約)
+- **タグDB v5.0（765→1093エントリー、+43%）**
+  - 18新カテゴリ追加: character_archetypes, age_appearance, relationship_types, scenario_tags, theme_specific_tags, variation_tags, special_views, camera_angles, visual_effects, text_effects, skin_details, background_details, era_setting, panty_types, foot_wear, makeup_details, scene_transitions, theme_tag_sets
+  - 既存カテゴリ拡張: locations(+15), body_types(+9), hair_styles(+9), accessories(+7), nsfw_body_details(+8), quality_positive(+4)
+  - 合計47カテゴリ
+
+### Changed (API節約)
+- **generate_outline**: API呼び出し廃止→ローカルテンプレート生成（THEME_GUIDES + 黄金比率シーン配分で代替）
+- **polish_scene**: パイプラインから除去（intensity 4-5はSonnet生成済みで十分高品質）
+- **char_guide**: intensity別圧縮（1-2: 基本のみ, 3: +感情, 4-5: フル）
+- 推定削減: API呼び出し2-3回/生成 + トークン20-25%削減
+
+---
+
 ## [1.0.0] - 2026-02-07
 
 ### Added (API節約・タグ充実・プロンプト統合)
