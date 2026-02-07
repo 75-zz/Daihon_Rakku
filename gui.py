@@ -115,6 +115,7 @@ OUTPUT_DIR = Path(__file__).parent
 SKILLS_DIR = OUTPUT_DIR / "skills"
 JAILBREAK_FILE = OUTPUT_DIR / "jailbreak.md"
 DANBOORU_TAGS_FILE = OUTPUT_DIR / "danbooru_tags.md"
+DANBOORU_TAGS_JSON = OUTPUT_DIR / "danbooru_tags.json"
 SD_PROMPT_GUIDE_FILE = OUTPUT_DIR / "sd_prompt_guide.md"
 CONFIG_FILE = OUTPUT_DIR / "config.json"
 LOG_FILE = OUTPUT_DIR / "log.txt"
@@ -314,6 +315,68 @@ THEME_GUIDES = {
 
 DEFAULT_NEGATIVE_PROMPT = "worst_quality, low_quality, lowres, bad_anatomy, bad_hands, missing_fingers, extra_fingers, mutated_hands, poorly_drawn_face, ugly, deformed, blurry, text, watermark, signature, censored, mosaic_censoring, loli, shota, child"
 
+QUALITY_POSITIVE_TAGS = "(masterpiece, best_quality:1.2)"
+
+def deduplicate_sd_tags(prompt: str) -> str:
+    """SDプロンプトのタグを重複排除（順序保持）"""
+    import re as _re
+    tags = [t.strip() for t in prompt.split(",") if t.strip()]
+    seen = set()
+    result = []
+    for tag in tags:
+        normalized = _re.sub(r'\([^)]*:[\d.]+\)', '', tag).strip().lower().replace(" ", "_")
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            result.append(tag)
+    return ", ".join(result)
+
+# タグDB（キャッシュ）
+_tag_db_cache = None
+
+def _load_tag_db() -> dict:
+    """danbooru_tags.jsonからタグDBを読み込み（キャッシュ付き）"""
+    global _tag_db_cache
+    if _tag_db_cache is not None:
+        return _tag_db_cache
+    
+    if DANBOORU_TAGS_JSON.exists():
+        try:
+            with open(DANBOORU_TAGS_JSON, "r", encoding="utf-8") as f:
+                _tag_db_cache = json.load(f)
+                log_message(f"タグDB読み込み完了: {DANBOORU_TAGS_JSON.name}")
+                return _tag_db_cache
+        except Exception as e:
+            log_message(f"タグDB読み込みエラー: {e}")
+    
+    # フォールバック: 最小限のタグ
+    _tag_db_cache = {
+        "locations": {
+            "教室": "classroom, school_desk, chair, chalkboard, window, school_interior",
+            "寝室": "bedroom, bed, pillow, blanket, curtains, indoor, dim_lighting",
+            "浴室": "bathroom, shower, bathtub, steam, wet, tiles, water",
+            "リビング": "living_room, sofa, couch, cushion, tv, indoor",
+            "屋上": "rooftop, fence, sky, school_rooftop, outdoor",
+            "公園": "park, bench, trees, grass, outdoor, sunlight",
+            "電車": "train_interior, seat, window, handrail",
+            "ホテル": "hotel_room, bed, luxurious, curtains, dim_lighting",
+            "オフィス": "office, desk, computer, chair, window, indoor"
+        },
+        "time_of_day": {
+            "朝": "morning, sunrise, soft_lighting, warm_colors",
+            "昼": "daytime, bright, sunlight, clear_sky",
+            "放課後": "afternoon, golden_hour, warm_lighting, sunset_colors",
+            "夕方": "evening, sunset, orange_sky, golden_light, dusk",
+            "夜": "night, dark, moonlight, dim_lighting, starry_sky",
+            "深夜": "late_night, darkness, lamp_light, intimate_lighting"
+        },
+        "compositions": {},
+        "expressions": {},
+        "poses_by_intensity": {},
+        "clothing": {},
+        "undress_states": {}
+    }
+    return _tag_db_cache
+
 
 # === データクラス ===
 @dataclass
@@ -482,7 +545,7 @@ def log_message(message: str):
 def call_claude(
     client: anthropic.Anthropic,
     model: str,
-    system: str,
+    system,
     user: str,
     cost_tracker: CostTracker,
     max_tokens: int = 4096,
@@ -496,17 +559,30 @@ def call_claude(
             if callback:
                 callback(f"API呼び出し中 ({model_name})...")
 
+            # Prompt Caching対応: systemがlistならそのまま、strならブロック化
+            if isinstance(system, list):
+                system_param = system
+            else:
+                system_param = system
+
             response = client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
-                system=system,
+                system=system_param,
                 messages=[{"role": "user", "content": user}],
                 timeout=120.0  # 2分タイムアウト
             )
 
             usage = response.usage
             cost_tracker.add(model, usage.input_tokens, usage.output_tokens)
-            log_message(f"{model}: {usage.input_tokens} in, {usage.output_tokens} out")
+            
+            # キャッシュ統計ログ
+            cache_creation = getattr(usage, 'cache_creation_input_tokens', 0) or 0
+            cache_read = getattr(usage, 'cache_read_input_tokens', 0) or 0
+            if cache_creation or cache_read:
+                log_message(f"{model_name}: {usage.input_tokens} in, {usage.output_tokens} out (cache: +{cache_creation} create, {cache_read} read)")
+            else:
+                log_message(f"{model_name}: {usage.input_tokens} in, {usage.output_tokens} out")
 
             return response.content[0].text
 
@@ -827,31 +903,16 @@ def generate_scene_draft(
     location = scene.get("location", "室内")
     time_of_day = scene.get("time", "")
     
-    # 背景タグテンプレート
-    LOCATION_TAGS = {
-        "教室": "classroom, school_desk, chair, chalkboard, window, school_interior",
-        "寝室": "bedroom, bed, pillow, blanket, curtains, indoor, dim_lighting",
-        "浴室": "bathroom, shower, bathtub, steam, wet, tiles, water",
-        "リビング": "living_room, sofa, couch, cushion, tv, indoor",
-        "屋上": "rooftop, fence, sky, school_rooftop, outdoor",
-        "公園": "park, bench, trees, grass, outdoor, sunlight",
-        "電車": "train_interior, seat, window, handrail",
-        "ホテル": "hotel_room, bed, luxurious, curtains, dim_lighting",
-        "オフィス": "office, desk, computer, chair, window, indoor",
-    }
+    # タグDB読み込み（外部JSON対応）
+    tag_db = _load_tag_db()
     
-    TIME_TAGS = {
-        "朝": "morning, sunrise, soft_lighting, warm_colors",
-        "昼": "daytime, bright, sunlight, clear_sky",
-        "放課後": "afternoon, golden_hour, warm_lighting, sunset_colors",
-        "夕方": "evening, sunset, orange_sky, golden_light, dusk",
-        "夜": "night, dark, moonlight, dim_lighting, starry_sky",
-        "深夜": "late_night, darkness, lamp_light, intimate_lighting",
-    }
+    # 背景タグテンプレート
+    loc_tags_db = tag_db.get("locations", {})
+    time_tags_db = tag_db.get("time_of_day", {})
     
     # 場所と時間帯のタグを取得
     location_tags = ""
-    for key, tags in LOCATION_TAGS.items():
+    for key, tags in loc_tags_db.items():
         if key in location:
             location_tags = tags
             break
@@ -859,7 +920,7 @@ def generate_scene_draft(
         location_tags = "indoor, room"
     
     time_tags = ""
-    for key, tags in TIME_TAGS.items():
+    for key, tags in time_tags_db.items():
         if key in time_of_day:
             time_tags = tags
             break
@@ -949,7 +1010,7 @@ def generate_scene_draft(
     # シーン重要度別のエロ指示（5段階）
     if intensity >= 5:
         erotic_instruction = f"""
-## 🔞 クライマックスシーン（intensity 5）
+## クライマックスシーン（intensity 5）
 
 このシーンは**最高潮のエロシーン**です！視聴者の興奮がピークに達する瞬間。
 
@@ -970,7 +1031,7 @@ def generate_scene_draft(
 """
     elif intensity == 4:
         erotic_instruction = f"""
-## 🔞 本番シーン（intensity 4）
+## 本番シーン（intensity 4）
 
 このシーンは**濃厚なエロシーン**です。視聴者の興奮が高まる。
 
@@ -989,7 +1050,7 @@ def generate_scene_draft(
 """
     elif intensity == 3:
         erotic_instruction = f"""
-## 💕 前戯・焦らしシーン（intensity 3）
+## 前戯・焦らしシーン（intensity 3）
 
 このシーンは**エロの助走**です。期待感を高める。
 
@@ -1004,7 +1065,7 @@ def generate_scene_draft(
 """
     elif intensity == 2:
         erotic_instruction = f"""
-## 💗 ムード構築シーン（intensity 2）
+## ムード構築シーン（intensity 2）
 
 このシーンは**雰囲気作り**です。二人の距離が縮まる。
 
@@ -1019,7 +1080,7 @@ def generate_scene_draft(
 """
     else:
         erotic_instruction = f"""
-## 📖 導入シーン（intensity 1）
+## 導入シーン（intensity 1）
 
 このシーンは**状況設定**です。物語の始まり。
 
@@ -1039,15 +1100,14 @@ def generate_scene_draft(
     # テーマ別SDタグを追加
     theme_tags_combined = f"{theme_sd_tags}, {theme_sd_expressions}".strip(", ")
     
-    system_prompt = f"""{jailbreak}
+    # === Prompt Caching: 共通部分（全シーンで同一）とシーン固有部分を分離 ===
+    
+    # 共通部分（キャッシュ対象）
+    common_system = f"""{jailbreak}
 
 {skill if skill else "FANZA同人CG集の脚本を生成します。"}
 
 {danbooru_nsfw if danbooru_nsfw else ""}
-
-{erotic_instruction}
-
-{theme_dialogue_instruction}
 
 {char_guide if char_guide else "（キャラ設定なし）"}
 
@@ -1068,6 +1128,17 @@ def generate_scene_draft(
 ❌「あなたのことが好きなので続けてください」
 
 全キャラ成人(18+)。JSON形式のみ出力。"""
+    
+    # シーン固有部分（毎回変わる）
+    scene_system = f"""{erotic_instruction}
+
+{theme_dialogue_instruction}"""
+
+    # Prompt Caching: systemをリスト形式でcache_control付与
+    system_with_cache = [
+        {"type": "text", "text": common_system, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": scene_system}
+    ]
 
     # シーン別SD推奨タグ（ポーズ・表情）+ テーマ別タグ
     intensity_sd_tags = {
@@ -1086,6 +1157,10 @@ def generate_scene_draft(
     # テーマタグを背景に追加
     if theme_sd_tags:
         background_tags = f"{background_tags}, {theme_sd_tags}"
+
+    # 構図タグ（intensity連動）
+    composition_db = tag_db.get("compositions", {})
+    composition_tags = composition_db.get(str(intensity), {}).get("tags", "")
     
     prompt = f"""設定: {json.dumps(context, ensure_ascii=False)}
 シーン情報: {json.dumps(scene, ensure_ascii=False)}
@@ -1106,16 +1181,16 @@ def generate_scene_draft(
     ],
     "direction": "演出・ト書き（30字）",
     "story_flow": "次のシーンへの繋がり（15字）",
-    "sd_prompt": "キャラタグ, ポーズタグ, 表情タグ, 背景タグ, 照明タグ",
-    "sd_background": "背景専用タグ（人物なし背景生成用）",
+    "sd_prompt": "{QUALITY_POSITIVE_TAGS}, キャラ外見タグ, ポーズ・行為タグ, 表情タグ, 場所・背景タグ, 照明タグ, テーマタグ",
     "negative_prompt": "{DEFAULT_NEGATIVE_PROMPT}"
 }}
 
-## タグ参考
+## タグ参考（sd_promptに統合して使用）
 
 キャラ固有: {char_tags_str}
 ポーズ・表情: {sd_intensity_tags}
 背景・場所: {background_tags}
+構図: {composition_tags}
 テーマ専用: {theme_tags_combined}
 
 ## ルール
@@ -1124,8 +1199,8 @@ def generate_scene_draft(
 2. character_feelingsで心情を明確に
 3. dialogueは4-6個、各セリフ15文字以内
 4. inner_thoughtでキャラの心の声を追加
-5. sd_promptは「キャラ + ポーズ + 背景 + 照明」の順
-6. sd_backgroundは背景のみのタグ（キャラタグ含まない）
+5. sd_promptは「{QUALITY_POSITIVE_TAGS} + キャラ外見 + ポーズ + 表情 + 場所・背景 + 照明 + テーマ」の順で統合
+6. タグは重複なくカンマ区切りで出力
 7. テーマ「{theme_name}」のタグを積極的に使用
 
 JSONのみ出力。"""
@@ -1139,10 +1214,15 @@ JSONのみ出力。"""
     
     response = call_claude(
         client, model,
-        system_prompt,
-        prompt, cost_tracker, 3000, callback
+        system_with_cache,
+        prompt, cost_tracker, 2500, callback
     )
-    return parse_json_response(response)
+    
+    # 重複排除の後処理
+    result = parse_json_response(response)
+    if isinstance(result, dict) and result.get("sd_prompt"):
+        result["sd_prompt"] = deduplicate_sd_tags(result["sd_prompt"])
+    return result
 
 
 def polish_scene(
@@ -1229,14 +1309,14 @@ Output JSON only."""
 - mood, character_feelings
 - dialogue (speaker, emotion, line, inner_thought)
 - direction, story_flow
-- sd_prompt, sd_background, negative_prompt
+- sd_prompt, negative_prompt
 
 同じJSON形式で出力。JSONのみ。"""
 
     response = call_claude(
         client, MODELS["sonnet"],
         system_prompt,
-        prompt, cost_tracker, 3000, callback
+        prompt, cost_tracker, 2500, callback
     )
     return parse_json_response(response)
 
@@ -1486,7 +1566,7 @@ def export_csv(results: list, output_path: Path):
         "scene_id", "title", "description", "location_detail", "mood",
         "character_feelings", "speaker", "emotion", "line_index", "line_text",
         "inner_thought", "direction", "story_flow",
-        "sd_prompt", "sd_background", "negative_prompt"
+        "sd_prompt", "negative_prompt"
     ]
 
     # utf-8-sig でBOM付きUTF-8（Excel対応）
@@ -1520,7 +1600,6 @@ def export_csv(results: list, output_path: Path):
                     "direction": scene.get("direction", ""),
                     "story_flow": scene.get("story_flow", ""),
                     "sd_prompt": scene.get("sd_prompt", ""),
-                    "sd_background": scene.get("sd_background", ""),
                     "negative_prompt": scene.get("negative_prompt", DEFAULT_NEGATIVE_PROMPT)
                 })
             else:
@@ -1540,7 +1619,6 @@ def export_csv(results: list, output_path: Path):
                         "direction": scene.get("direction", "") if idx == 0 else "",
                         "story_flow": scene.get("story_flow", "") if idx == 0 else "",
                         "sd_prompt": scene.get("sd_prompt", "") if idx == 0 else "",
-                        "sd_background": scene.get("sd_background", "") if idx == 0 else "",
                         "negative_prompt": scene.get("negative_prompt", DEFAULT_NEGATIVE_PROMPT) if idx == 0 else ""
                     })
 
@@ -1560,7 +1638,7 @@ def export_excel(results: list, output_path: Path):
         "シーンID", "タイトル", "シーン説明", "場所詳細", "雰囲気",
         "キャラ心情", "話者", "感情", "セリフ番号", "セリフ",
         "心の声", "演出", "次への繋がり",
-        "SDプロンプト", "背景プロンプト", "ネガティブ"
+        "SDプロンプト", "ネガティブ"
     ]
     
     # ヘッダースタイル
@@ -1602,7 +1680,6 @@ def export_excel(results: list, output_path: Path):
                 scene.get("direction", "") if idx == 0 else "",
                 scene.get("story_flow", "") if idx == 0 else "",
                 scene.get("sd_prompt", "") if idx == 0 else "",
-                scene.get("sd_background", "") if idx == 0 else "",
                 scene.get("negative_prompt", "") if idx == 0 else ""
             ]
             
@@ -1628,9 +1705,8 @@ def export_excel(results: list, output_path: Path):
         11: 15,  # 心の声
         12: 20,  # 演出
         13: 15,  # 次への繋がり
-        14: 50,  # SDプロンプト
-        15: 40,  # 背景プロンプト
-        16: 30   # ネガティブ
+        14: 55,  # SDプロンプト（統合後のため幅拡大）
+        15: 30   # ネガティブ
     }
     
     for col, width in column_widths.items():

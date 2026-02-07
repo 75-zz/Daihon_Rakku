@@ -1,0 +1,162 @@
+{
+  "version": "1.0",
+  "quality_positive": {
+    "standard": "masterpiece, best_quality, highres, absurdres, ultra_detailed",
+    "anime": "anime_style, illustration, detailed_face, detailed_eyes, beautiful_detailed_eyes",
+    "nsfw": "explicit, nsfw, uncensored, anatomically_correct",
+    "cinematic": "cinematic_lighting, dramatic, depth_of_field, bokeh"
+  },
+  "locations": {
+    "教室": "classroom, school_desk, chair, chalkboard, window, school_interior, fluorescent_light",
+    "保健室": "infirmary, nurse_office, bed, curtain, medical_chart, school_interior",
+    "体育倉庫": "storage_room, gym_equipment, mat, dim_lighting, dusty, confined_space",
+    "図書室": "library, bookshelf, desk, quiet, dim_lighting, reading_lamp",
+    "屋上": "rooftop, fence, sky, school_rooftop, outdoor, wind, blue_sky",
+    "プール": "pool, poolside, water, wet, swimsuit, outdoor, sunlight, tiles",
+    "部室": "club_room, small_room, desk, locker, window, afternoon_light",
+    "トイレ": "bathroom_stall, toilet, tile_floor, mirror, confined_space",
+    "寝室": "bedroom, bed, pillow, blanket, curtains, indoor, dim_lighting, nightstand",
+    "リビング": "living_room, sofa, couch, cushion, tv, indoor, carpet, warm_lighting",
+    "キッチン": "kitchen, counter, stove, refrigerator, indoor, bright_lighting",
+    "浴室": "bathroom, shower, bathtub, steam, wet, tiles, water, mirror",
+    "玄関": "entrance, genkan, door, shoes, narrow_space",
+    "和室": "tatami, japanese_room, fusuma, sliding_door, zabuton, warm_lighting",
+    "ベランダ": "balcony, railing, outdoor, night_sky, city_lights, wind",
+    "オフィス": "office, desk, computer, chair, window, indoor, fluorescent_light, office_plant",
+    "会議室": "meeting_room, conference_table, whiteboard, glass_wall, office_interior",
+    "エレベーター": "elevator, confined_space, mirror, metal_wall, dim_lighting",
+    "カラオケ": "karaoke_room, microphone, sofa, dim_lighting, neon_light, screen",
+    "ホテル": "hotel_room, bed, luxurious, curtains, dim_lighting, chandelier",
+    "ラブホテル": "love_hotel, heart_shaped_bed, mirror, neon_lighting, dim_room, luxurious",
+    "居酒屋": "izakaya, japanese_bar, counter, dim_lighting, lantern, sake",
+    "電車": "train_interior, seat, window, handrail, crowded, standing",
+    "公園": "park, bench, trees, grass, outdoor, sunlight, playground",
+    "神社": "shrine, torii, stone_lantern, trees, outdoor, sacred, peaceful",
+    "海辺": "beach, sand, ocean, waves, outdoor, sunlight, blue_sky, horizon",
+    "温泉": "hot_spring, onsen, steam, rock, water, outdoor_bath, towel, relaxing",
+    "プリクラ": "photo_booth, small_space, curtain, flash, confined, standing",
+    "映画館": "movie_theater, dark, seat, screen_glow, armrest, quiet",
+    "路地裏": "alley, narrow_street, brick_wall, dim_lighting, night, urban, dirty",
+    "車内": "car_interior, backseat, window, night, confined_space, leather_seat",
+    "テント": "tent, camping, sleeping_bag, lantern, outdoor, night, cozy",
+    "倉庫": "warehouse, storage, boxes, dim_lighting, concrete, dusty",
+    "地下室": "basement, underground, dim_lighting, concrete_wall, pipe, dark",
+    "更衣室": "locker_room, locker, bench, mirror, changing_room, tile_floor",
+    "スタジオ": "studio, camera, lighting_equipment, backdrop, professional"
+  },
+  "time_of_day": {
+    "朝": "morning, sunrise, soft_lighting, warm_colors",
+    "昼": "daytime, bright, sunlight, clear_sky",
+    "放課後": "afternoon, golden_hour, warm_lighting, sunset_colors",
+    "夕方": "evening, sunset, orange_sky, golden_light, dusk",
+    "夜": "night, dark, moonlight, dim_lighting, starry_sky",
+    "深夜": "late_night, darkness, lamp_light, intimate_lighting"
+  },
+  "expressions": {
+    "嬉しい": "smile, happy, cheerful, bright_eyes, open_mouth",
+    "照れ": "blush, embarrassed, looking_away, shy, fidgeting, averting_eyes",
+    "怒り": "angry, glaring, furrowed_brow, clenched_teeth, scowl",
+    "悲しみ": "crying, tears, sad, downcast_eyes, trembling_lip",
+    "驚き": "surprised, wide-eyed, open_mouth, shocked, gasping",
+    "不安": "nervous, worried, biting_lip, fidgeting, sweat_drop",
+    "恥じらい": "blush, embarrassed, covering_face, looking_away, teary_eyes, nervous",
+    "期待": "anticipation, blushing, parted_lips, eager, sparkling_eyes",
+    "快感_弱": "light_blush, half-closed_eyes, parted_lips, panting, slight_moan",
+    "快感_中": "blush, open_mouth, moaning, sweaty, heavy_breathing, drooling",
+    "快感_強": "ahegao, rolling_eyes, tongue_out, drooling, tears, fucked_silly, trembling",
+    "絶頂": "orgasm, ahegao, rolling_eyes, squirting, convulsing, screaming, trembling, tears",
+    "余韻": "afterglow, exhausted, satisfied, half-closed_eyes, messy_hair, sweaty, peaceful",
+    "恐怖": "scared, fearful, trembling, wide_eyes, crying, pale_face",
+    "屈辱": "humiliated, crying, looking_down, defeated, broken, empty_eyes",
+    "堕ち": "heart-shaped_pupils, mindbreak, drooling, vacant_eyes, corrupted, addicted",
+    "背徳": "guilty, conflicted, biting_lip, looking_away, blush, aroused"
+  },
+  "poses_by_intensity": {
+    "1": {
+      "basic": "standing, sitting, leaning, looking_at_viewer, portrait",
+      "hands": "hands_on_lap, hand_on_hip, arms_at_sides, holding_bag",
+      "position": "casual_pose, relaxed, straight_posture"
+    },
+    "2": {
+      "basic": "close_together, leaning_close, touching, hand_holding, hugging",
+      "hands": "hand_on_cheek, hand_on_shoulder, interlocked_fingers, caressing",
+      "position": "sitting_together, facing_each_other, lap_sitting"
+    },
+    "3": {
+      "basic": "kissing, french_kiss, embrace, groping, undressing",
+      "hands": "breast_grab, ass_grab, hair_pull, chin_grab, wrist_grab",
+      "position": "straddling, pinned_against_wall, lying_together, on_lap"
+    },
+    "4": {
+      "basic": "missionary, cowgirl_position, doggy_style, from_behind, standing_sex",
+      "hands": "grabbing_sheets, clawing_back, hand_on_head, gripping_hips",
+      "position": "spread_legs, on_back, on_all_fours, bent_over, mating_press"
+    },
+    "5": {
+      "basic": "piledriver, suspended_congress, prone_bone, standing_split",
+      "hands": "bound_wrists, arms_pinned, gripping_desperately, hands_on_stomach",
+      "position": "legs_over_head, full_nelson, suspended, contorted, arched_back"
+    }
+  },
+  "compositions": {
+    "1": {
+      "recommended": ["portrait", "upper_body", "cowboy_shot", "full_body"],
+      "angles": ["from_front", "eye_level", "slightly_above"],
+      "tags": "portrait, upper_body, from_front, looking_at_viewer, depth_of_field"
+    },
+    "2": {
+      "recommended": ["upper_body", "close-up", "two_shot"],
+      "angles": ["from_front", "from_side", "dutch_angle"],
+      "tags": "close-up, upper_body, from_side, eye_contact, soft_focus"
+    },
+    "3": {
+      "recommended": ["close-up", "medium_shot", "pov"],
+      "angles": ["from_above", "pov", "dutch_angle"],
+      "tags": "close-up, pov, from_above, dynamic_angle"
+    },
+    "4": {
+      "recommended": ["wide_shot", "medium_shot", "pov", "from_behind"],
+      "angles": ["from_above", "from_behind", "from_side", "pov"],
+      "tags": "wide_shot, from_behind, pov, dynamic_angle, motion_blur"
+    },
+    "5": {
+      "recommended": ["extreme_close-up", "full_body", "pov", "cross-section"],
+      "angles": ["from_below", "from_above", "pov", "dutch_angle"],
+      "tags": "extreme_close-up, pov, from_below, dynamic_angle, x-ray, cross-section, motion_lines"
+    }
+  },
+  "clothing": {
+    "制服": "school_uniform, sailor_collar, pleated_skirt, knee_highs, necktie, blazer",
+    "制服(夏)": "school_uniform, short_sleeves, pleated_skirt, ankle_socks, summer_uniform",
+    "体操服": "gym_uniform, bloomers, buruma, t-shirt, white_shirt, sneakers",
+    "スクール水着": "school_swimsuit, one-piece_swimsuit, name_tag, wet, bare_legs",
+    "OL": "office_lady, business_suit, pencil_skirt, pantyhose, high_heels, blouse",
+    "OL(カジュアル)": "office_lady, blouse, skirt, cardigan, low_heels",
+    "ナース": "nurse, nurse_cap, white_dress, thighhighs, stethoscope",
+    "先生": "teacher, glasses, pencil_skirt, blouse, clipboard, formal",
+    "メイド": "maid, maid_headdress, apron, frills, thighhighs, ribbon, black_dress",
+    "バニーガール": "bunny_girl, bunny_ears, leotard, pantyhose, wrist_cuffs, bowtie",
+    "チアガール": "cheerleader, pompom, midriff, pleated_skirt, crop_top, sneakers",
+    "巫女": "miko, japanese_clothes, hakama, ribbon, white_top, red_bottom",
+    "チャイナドレス": "china_dress, side_slit, mandarin_collar, thighhighs, ornate",
+    "下着": "underwear, bra, panties, matching_set, lace, ribbon",
+    "ランジェリー": "lingerie, garter_belt, stockings, see-through, lace, negligee",
+    "パジャマ": "pajamas, oversized_shirt, bare_legs, bed_hair, sleepy",
+    "エプロン(裸)": "naked_apron, apron, nude, bare_back, side_boob",
+    "タオル": "towel, bath_towel, wet_hair, steam, after_bath, bare_shoulders",
+    "ビキニ": "bikini, string_bikini, side-tie_bikini, navel, bare_legs, wet",
+    "ワンピース水着": "one-piece_swimsuit, wet, bare_legs, swimsuit_pull",
+    "浴衣": "yukata, japanese_clothes, obi, bare_feet, festival, hair_ornament",
+    "着物": "kimono, japanese_clothes, obi, ornate, elegant, zori"
+  },
+  "undress_states": {
+    "着衣": "clothed, fully_dressed",
+    "乱れ": "disheveled_clothes, clothes_in_disarray, loose_tie, unbuttoned",
+    "半脱ぎ": "partially_undressed, clothes_pull, skirt_lift, shirt_lift, bra_visible",
+    "下着": "underwear_only, bra, panties, lingerie, exposed_midriff",
+    "上裸": "topless, no_bra, breasts_out, bare_shoulders, covering_breasts",
+    "下裸": "bottomless, no_panties, bare_legs, skirt_only",
+    "全裸": "completely_nude, naked, nude, bare_skin, exposed",
+    "事後": "nude, cum_on_body, messy, disheveled, after_sex, clothes_scattered"
+  }
+}

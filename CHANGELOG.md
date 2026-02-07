@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.0.0] - 2026-02-07
+
+### Added (API節約・タグ充実・プロンプト統合)
+- **Anthropic Prompt Caching対応** - systemプロンプトの共通部分をキャッシュ化（コスト最大60%削減）
+  - `call_claude`がキャッシュ統計ログを出力
+  - `generate_scene_draft`でjailbreak+skill+char_guideをキャッシュ対象に分離
+- **sd_background廃止 → sd_promptに統合**
+  - 背景タグをポジティブプロンプトに統合
+  - 品質タグ`(masterpiece, best_quality:1.2)`を自動付与
+  - `deduplicate_sd_tags()`で重複タグ自動排除
+- **danbooru_tags.json 新規作成（タグDB外部化）**
+  - LOCATION_TAGS: 9種→36種（学校/住居/商業/公共/特殊）
+  - EXPRESSION_TAGS: 17感情マッピング（基本6+エロ系11）
+  - POSE_TAGS_BY_INTENSITY: 5段階×3カテゴリ
+  - COMPOSITION_TAGS: 5段階（構図・カメラアングル連動）
+  - CLOTHING_TAGS: 22種 + UNDRESS_STATE_TAGS: 8段階
+- **max_tokens最適化**: 3000→2500（出力効率向上）
+
+### Changed
+- `export_csv`: sd_backgroundカラム削除（15列→14列ではなく統合）
+- `export_excel`: 背景プロンプト列削除、SDプロンプト列幅拡大
+- `polish_scene`: 保持フィールドからsd_background削除
+
+---
+
 ## [0.9.2] - 2026-02-06
 
 ### Changed (UX改善)
