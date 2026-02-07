@@ -758,117 +758,168 @@ def generate_outline(
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None
 ) -> list:
-    skill = load_skill("low_cost_pipeline")
-    
-    # テーマ別ガイドを取得
+    """ローカルテンプレートでアウトライン生成（API呼び出し不要）"""
     theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
     theme_name = theme_guide.get("name", "指定なし")
     story_arc = theme_guide.get("story_arc", "導入→展開→本番→余韻")
     key_emotions = theme_guide.get("key_emotions", ["期待", "緊張", "快感", "幸福"])
     story_elements = theme_guide.get("story_elements", [])
-    dialogue_tone = theme_guide.get("dialogue_tone", "自然で楽しい雰囲気")
-    
-    # テーマ別ストーリー要素をプロンプトに追加
-    theme_instructions = ""
-    if story_elements:
-        theme_instructions = f"""
-## テーマ「{theme_name}」のストーリー要素
-
-【ストーリーアーク】{story_arc}
-
-【重要な感情表現】
-{chr(10).join(f"・{e}" for e in key_emotions)}
-
-【必須要素】
-{chr(10).join(f"・{e}" for e in story_elements)}
-
-【セリフのトーン】
-{dialogue_tone}
-
-このテーマに沿ったストーリー展開を必ず守ってください。
-"""
-    
-    prompt = f"""設定: {json.dumps(context, ensure_ascii=False)}
-
-FANZA同人CG集用に{num_scenes}シーンの**ストーリー性のあるアウトライン**を作成してください。
-
-{theme_instructions}
-
-## ストーリー構成の黄金比率
-
-【第1幕：導入】約20%のシーン（{max(1, num_scenes // 5)}シーン）
-- intensity: 1-2
-- 二人の関係性、状況設定
-- 視聴者を物語に引き込む
-- 心情: {key_emotions[0] if key_emotions else '期待'}、緊張、ドキドキ
-
-【第2幕：展開・焦らし】約30%のシーン（{max(1, num_scenes * 3 // 10)}シーン）
-- intensity: 2-3
-- 雰囲気の高まり、接近、キス
-- 視聴者の興奮を煽る
-- 心情: {key_emotions[1] if len(key_emotions) > 1 else '恥じらい'}、期待、戸惑い
-
-【第3幕：本番】約40%のシーン（{max(2, num_scenes * 4 // 10)}シーン）
-- intensity: 4-5
-- 濃厚なエロシーン
-- 視聴者の興奮がピークに
-- 心情: {key_emotions[2] if len(key_emotions) > 2 else '快感'}、陶酔、愛情
-
-【第4幕：余韻】約10%のシーン（{max(1, num_scenes // 10)}シーン）
-- intensity: 2-3
-- ピロートーク、甘い余韻
-- 満足感を与えて終わる
-- 心情: {key_emotions[3] if len(key_emotions) > 3 else '幸福'}、充足、愛おしさ
-
-## 出力形式（JSON配列）
-
-[
-    {{
-        "scene_id": 1,
-        "title": "シーンタイトル（8字以内）",
-        "goal": "このシーンの目的（15字）",
-        "location": "場所（教室/寝室/浴室など）",
-        "time": "時間帯（放課後/夜/朝など）",
-        "situation": "具体的な状況説明（30字）",
-        "story_flow": "前シーンからどう繋がるか（20字）",
-        "emotional_arc": {{
-            "start": "シーン開始時の心情",
-            "end": "シーン終了時の心情"
-        }},
-        "beats": ["展開1", "展開2", "展開3"],
-        "intensity": 1,
-        "erotic_level": "none/light/medium/heavy/climax",
-        "viewer_hook": "視聴者がこのシーンで興奮するポイント（15字）"
-    }}
-]
-
-## 必須ルール
-
-1. **ストーリーの流れ**: 各シーンが自然に繋がること
-2. **心情の変化**: {' → '.join(key_emotions) if key_emotions else '緊張→期待→恥じらい→快感→絶頂→余韻'}
-3. **場所の活用**: 背景を活かしたシチュエーション
-4. **intensity 5**: 必ず1-2個（クライマックス）
-5. **段階的盛り上がり**: 唐突にエロに入らない
-6. **余韻**: 最後は適切な雰囲気で
-
-## 視聴者を興奮させるポイント
-
-- 「こうなるかも」という期待感
-- 恥じらいながらも受け入れる瞬間
-- 快感に負ける様子
-- テーマ「{theme_name}」ならではの興奮ポイント
-
-JSONのみ出力。"""
 
     if callback:
-        callback(f"📝 {theme_name}テーマでストーリー構成設計中...")
+        callback(f"📝 {theme_name}テーマでストーリー構成設計中（ローカル生成）...")
 
-    response = call_claude(
-        client, MODELS["haiku"],
-        skill if skill else "FANZA同人CG集のストーリー構成を設計します。視聴者の興奮を最大化。",
-        prompt, cost_tracker, 3000, callback
-    )
-    return parse_json_response(response)
+    # 黄金比率に基づくシーン配分
+    # 第1幕: 導入 20% / 第2幕: 展開 30% / 第3幕: 本番 40% / 第4幕: 余韻 10%
+    act1 = max(1, round(num_scenes * 0.20))
+    act4 = max(1, round(num_scenes * 0.10))
+    act3 = max(2, round(num_scenes * 0.40))
+    act2 = num_scenes - act1 - act3 - act4
+    if act2 < 1:
+        act2 = 1
+        act3 = num_scenes - act1 - act2 - act4
+
+    # ストーリーアークを分割
+    arc_parts = [p.strip() for p in story_arc.replace("→", "/").split("/")]
+
+    # 場所候補
+    setting = context.get("setting", "学校")
+    chars = context.get("chars", [])
+    char_name = chars[0]["name"] if chars else "ヒロイン"
+
+    # 場所をテーマに合わせて設定
+    location_pool = {
+        "netorare": ["寝室", "ラブホテル", "リビング", "車内", "ホテル"],
+        "humiliation": ["体育倉庫", "教室", "トイレ", "倉庫", "地下室"],
+        "forced": ["路地裏", "倉庫", "教室", "寝室", "体育倉庫"],
+        "love": ["寝室", "リビング", "公園", "海辺", "カフェ"],
+        "vanilla": ["寝室", "リビング", "浴室", "ホテル", "リビング"],
+        "corruption": ["寝室", "保健室", "部室", "地下室", "ラブホテル"],
+        "chikan": ["電車", "バス", "エレベーター", "映画館", "電車"],
+        "office": ["オフィス", "会議室", "ホテル", "エレベーター", "車内"],
+        "teacher_student": ["教室", "保健室", "図書室", "屋上", "寝室"],
+        "maid": ["リビング", "寝室", "浴室", "キッチン", "和室"],
+    }
+    locations = location_pool.get(theme, ["寝室", "リビング", "教室", "浴室", "ホテル"])
+
+    # 時間帯設定
+    times = ["放課後", "夕方", "夜", "夜", "深夜"]
+
+    outline = []
+    scene_id = 0
+
+    # === 第1幕: 導入 ===
+    for i in range(act1):
+        scene_id += 1
+        arc_label = arc_parts[0] if arc_parts else "導入"
+        outline.append({
+            "scene_id": scene_id,
+            "title": f"{arc_label}",
+            "goal": f"状況設定と{char_name}紹介",
+            "location": locations[0] if locations else "教室",
+            "time": times[0],
+            "situation": f"{char_name}との出会い・日常の場面",
+            "story_flow": "物語の始まり",
+            "emotional_arc": {
+                "start": key_emotions[0] if key_emotions else "期待",
+                "end": "ドキドキ"
+            },
+            "beats": [
+                f"{char_name}が登場する場面",
+                "二人の関係性が分かる会話",
+                "これから何かが起きそうな予感"
+            ],
+            "intensity": 1 if i == 0 else 2,
+            "erotic_level": "none" if i == 0 else "light",
+            "viewer_hook": f"{char_name}の魅力が伝わる"
+        })
+
+    # === 第2幕: 展開・焦らし ===
+    for i in range(act2):
+        scene_id += 1
+        arc_label = arc_parts[1] if len(arc_parts) > 1 else "展開"
+        loc_idx = min(i + 1, len(locations) - 1)
+        outline.append({
+            "scene_id": scene_id,
+            "title": f"{arc_label}{'・焦らし' if i > 0 else ''}",
+            "goal": "距離が縮まる・ムード構築",
+            "location": locations[loc_idx],
+            "time": times[min(i + 1, len(times) - 1)],
+            "situation": f"{char_name}との距離が縮まっていく",
+            "story_flow": "前シーンから雰囲気が高まる",
+            "emotional_arc": {
+                "start": key_emotions[1] if len(key_emotions) > 1 else "恥じらい",
+                "end": "期待と緊張"
+            },
+            "beats": [
+                "二人きりの状況になる",
+                "スキンシップの始まり",
+                "期待感が高まる"
+            ],
+            "intensity": 2 + (1 if i >= act2 // 2 else 0),
+            "erotic_level": "light" if i < act2 // 2 else "medium",
+            "viewer_hook": "焦らしの興奮"
+        })
+
+    # === 第3幕: 本番 ===
+    for i in range(act3):
+        scene_id += 1
+        arc_label = arc_parts[2] if len(arc_parts) > 2 else "本番"
+        is_climax = (i >= act3 - 1)
+        intensity = 5 if is_climax else 4
+        loc_idx = min(i + 2, len(locations) - 1)
+        outline.append({
+            "scene_id": scene_id,
+            "title": f"{arc_label}{'・クライマックス' if is_climax else ''}",
+            "goal": "クライマックス" if is_climax else "濃厚なエロシーン",
+            "location": locations[loc_idx],
+            "time": times[min(i + 2, len(times) - 1)],
+            "situation": f"{char_name}との{'最高の瞬間' if is_climax else '情熱的な場面'}",
+            "story_flow": "さらにエスカレート" if not is_climax else "最高潮へ",
+            "emotional_arc": {
+                "start": key_emotions[2] if len(key_emotions) > 2 else "快感",
+                "end": "絶頂" if is_climax else "没頭"
+            },
+            "beats": [
+                story_elements[min(i, len(story_elements) - 1)] if story_elements else "激しい行為",
+                "快感が高まっていく",
+                "理性が飛ぶ" if is_climax else "夢中になる"
+            ],
+            "intensity": intensity,
+            "erotic_level": "climax" if is_climax else "heavy",
+            "viewer_hook": "絶頂の瞬間" if is_climax else "興奮がピークに向かう"
+        })
+
+    # === 第4幕: 余韻 ===
+    for i in range(act4):
+        scene_id += 1
+        arc_label = arc_parts[-1] if arc_parts else "余韻"
+        outline.append({
+            "scene_id": scene_id,
+            "title": f"{arc_label}・余韻",
+            "goal": "満足感と余韻",
+            "location": locations[-1] if locations else "寝室",
+            "time": "深夜",
+            "situation": f"{char_name}との甘い余韻",
+            "story_flow": "穏やかなエンディング",
+            "emotional_arc": {
+                "start": "余韻",
+                "end": key_emotions[-1] if key_emotions else "幸福"
+            },
+            "beats": [
+                "行為後の二人",
+                "甘い会話・ピロートーク",
+                "物語の締めくくり"
+            ],
+            "intensity": 2,
+            "erotic_level": "light",
+            "viewer_hook": "満足感のある締めくくり"
+        })
+
+    log_message(f"アウトライン生成完了（ローカル）: {len(outline)}シーン, テーマ: {theme_name}")
+    if callback:
+        callback(f"✅ アウトライン完成（ローカル生成・API節約）: {len(outline)}シーン")
+
+    return outline
 
 
 def generate_scene_draft(
@@ -925,11 +976,12 @@ def generate_scene_draft(
             time_tags = tags
             break
     
-    # キャラプロファイルをフル活用した詳細ガイド構築
+    # キャラプロファイルをintensity別に圧縮（API節約）
+    # intensity 1-2: 基本設定のみ / 3: +感情表現 / 4-5: フル情報
     char_guide = ""
     char_danbooru_tags = []
     char_names = []
-    
+
     if char_profiles:
         for cp in char_profiles:
             name = cp.get("character_name", "")
@@ -941,12 +993,31 @@ def generate_scene_draft(
             avoid = cp.get("avoid_patterns", [])
             physical = cp.get("physical_description", {})
             tags = cp.get("danbooru_tags", [])
-            
+
             # キャラ固有タグを収集
             char_danbooru_tags.extend(tags)
-            
-            # 詳細なキャラガイド構築
-            char_guide += f"""
+
+            if intensity <= 2:
+                # 基本設定のみ（トークン節約）
+                char_guide += f"""
+【{name}】口調: 一人称={speech.get('first_person', '私')}, 語尾={', '.join(speech.get('sentence_endings', [])[:3])}, 間投詞={', '.join(speech.get('fillers', ['あっ'])[:2])}
+外見: 髪={physical.get('hair', '')}, 目={physical.get('eyes', '')}, 体型={physical.get('body', '')}
+NG: {', '.join(avoid[:3]) if avoid else 'なし'}
+"""
+            elif intensity == 3:
+                # 基本+感情表現
+                char_guide += f"""
+【{name}】口調ガイド
+・一人称: {speech.get('first_person', '私')} / 語尾: {', '.join(speech.get('sentence_endings', ['〜よ', '〜ね']))}
+・間投詞: {', '.join(speech.get('fillers', ['あっ', 'んっ']))}
+・照れた時: {emotional.get('when_embarrassed', '言葉に詰まる')}
+・甘える時: {emotional.get('when_flirty', '甘い声で')}
+・外見: 髪={physical.get('hair', '')}, 目={physical.get('eyes', '')}
+・NG: {', '.join(avoid) if avoid else 'なし'}
+"""
+            else:
+                # intensity 4-5: フル情報
+                char_guide += f"""
 ═══════════════════════════════════════
 【{name}】完全口調ガイド
 ═══════════════════════════════════════
@@ -956,30 +1027,23 @@ def generate_scene_draft(
 ・語尾: {', '.join(speech.get('sentence_endings', ['〜よ', '〜ね']))}
 ・よく使う表現: {', '.join(speech.get('favorite_expressions', [])[:5])}
 ・間投詞（息遣い）: {', '.join(speech.get('fillers', ['あっ', 'んっ']))}
-・話すテンポ: {speech.get('speech_speed', '普通')}
 
-■ 感情別の話し方（重要！）
-・嬉しい時: {emotional.get('when_happy', '明るい声で')}
+■ 感情別の話し方
 ・照れた時: {emotional.get('when_embarrassed', '言葉に詰まる')}
-・怒った時: {emotional.get('when_angry', '低い声で')}
-・感じてる時/甘える時: {emotional.get('when_flirty', '甘い声で')}
+・感じてる時: {emotional.get('when_flirty', '甘い声で')}
+・感じてる時(エロ): {emotional.get('when_aroused', '声が震える')}
+・絶頂時: {emotional.get('when_climax', '理性が飛ぶ')}
 
-■ セリフのお手本（この雰囲気で！）
-・挨拶: 「{examples.get('greeting', 'おはよう')}」
-・同意: 「{examples.get('agreement', 'そうだね')}」
-・驚き: 「{examples.get('surprise', 'えっ？')}」
+■ セリフのお手本
 ・好意: 「{examples.get('affection', '好きだよ')}」
+・喘ぎ（軽）: {examples.get('moaning_light', 'あっ...んっ...')}
+・喘ぎ（激）: {examples.get('moaning_intense', 'あっあっ...♡')}
 
 ■ 恋人への話し方
 {relationship.get('to_lover', '甘えた調子で話す')}
 
-■ 絶対にやってはいけない表現
-{', '.join(avoid) if avoid else '特になし'}
-
-■ 外見（SD参照用）
-・髪: {physical.get('hair', '')}
-・目: {physical.get('eyes', '')}
-・体型: {physical.get('body', '')}
+■ NG表現: {', '.join(avoid) if avoid else 'なし'}
+■ 外見: 髪={physical.get('hair', '')}, 目={physical.get('eyes', '')}, 体型={physical.get('body', '')}
 """
 
     # ♡使用のルール（テーマ別）
@@ -1514,15 +1578,9 @@ def generate_pipeline(
             with open(draft_file, "w", encoding="utf-8") as f:
                 json.dump(draft, f, ensure_ascii=False, indent=2)
 
-            # intensity 5 のクライマックスシーンのみ追加清書
-            # （intensity 4以上は既にSonnetで生成済み）
-            if intensity >= 5:
-                log_message(f"シーン {i+1} 追加清書（クライマックス）")
-                if callback:
-                    callback(f"✨ シーン {i+1} 清書中（クライマックス）...")
-                final = polish_scene(client, context, draft, char_profiles, cost_tracker, callback)
-            else:
-                final = draft
+            # polish_scene廃止: intensity 4-5はSonnet生成済みで十分高品質
+            # scene_draftの品質指示強化で清書不要に（API 1-2回削減）
+            final = draft
 
             final_file = FINAL_DIR / f"final_{timestamp}_scene{i+1}.json"
             with open(final_file, "w", encoding="utf-8") as f:
