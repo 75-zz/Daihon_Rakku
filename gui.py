@@ -32,6 +32,14 @@ except ImportError:
     print("Error: anthropic library is required. Run: pip install anthropic")
     sys.exit(1)
 
+from char_builder import (
+    AGE_OPTIONS, RELATIONSHIP_OPTIONS, ARCHETYPE_OPTIONS,
+    FIRST_PERSON_OPTIONS, SPEECH_STYLE_OPTIONS,
+    HAIR_COLOR_OPTIONS, HAIR_STYLE_OPTIONS,
+    BODY_TYPE_OPTIONS, CHEST_OPTIONS, CLOTHING_OPTIONS,
+    SHYNESS_OPTIONS, build_custom_character_data
+)
+
 
 # === Material Design 3 カラーパレット ===
 class MaterialColors:
@@ -2844,91 +2852,191 @@ class App(ctk.CTk):
             ).pack(side="left", padx=(0, 3))
 
         # ══════════════════════════════════════════════════════════════
-        # 3. キャラクター自動生成
+        # 3. キャラクター設定
         # ══════════════════════════════════════════════════════════════
         char_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=10)
         char_card.pack(fill="x", pady=(0, 10))
 
         ctk.CTkLabel(
-            char_card, text="🎭 キャラクター自動生成",
+            char_card, text="🎭 キャラクター設定",
             font=ctk.CTkFont(size=12, weight="bold"), text_color=MaterialColors.ON_SURFACE
         ).pack(anchor="w", padx=14, pady=(10, 6))
 
-        # === プリセットキャラ選択 ===
+        # --- タブビュー ---
+        self.char_tabview = ctk.CTkTabview(
+            char_card, fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
+            segmented_button_fg_color=MaterialColors.SURFACE_CONTAINER,
+            segmented_button_selected_color=MaterialColors.PRIMARY,
+            segmented_button_unselected_color=MaterialColors.SURFACE_CONTAINER,
+            height=420, corner_radius=8
+        )
+        self.char_tabview.pack(fill="x", padx=14, pady=(0, 10))
+
+        # タブ作成
+        tab_preset = self.char_tabview.add("プリセット")
+        tab_custom = self.char_tabview.add("オリジナル作成")
+        tab_api = self.char_tabview.add("API生成")
+
+        # --- Tab: プリセット ---
         ctk.CTkLabel(
-            char_card, text="プリセットキャラ（API不要）",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            tab_preset, text="プリセットキャラ（API不要・33体収録）",
+            font=ctk.CTkFont(size=13, weight="bold"),
             text_color=MaterialColors.ON_SURFACE
-        ).pack(anchor="w", padx=16, pady=(12, 4))
+        ).pack(anchor="w", pady=(8, 4))
 
         self._preset_map = {}
         self.preset_dropdown = ctk.CTkOptionMenu(
-            char_card,
-            values=["（プリセット選択）"],
+            tab_preset, values=["（プリセット選択）"],
             command=self.on_preset_selected,
-            font=ctk.CTkFont(size=13),
-            width=350,
+            font=ctk.CTkFont(size=13), width=380,
             fg_color=MaterialColors.SURFACE_CONTAINER,
             button_color=MaterialColors.PRIMARY,
             text_color=MaterialColors.ON_SURFACE
         )
-        self.preset_dropdown.pack(anchor="w", padx=16, pady=(0, 4))
+        self.preset_dropdown.pack(anchor="w", pady=(0, 6))
 
         self.preset_load_btn = MaterialButton(
-            char_card,
-            text="プリセット読み込み（API不要）",
-            variant="filled_tonal",
-            command=self.load_preset_action
+            tab_preset, text="プリセット読み込み（API不要）",
+            variant="filled_tonal", command=self.load_preset_action
         )
-        self.preset_load_btn.pack(anchor="w", padx=16, pady=(0, 12))
+        self.preset_load_btn.pack(anchor="w", pady=(0, 8))
 
-        # 区切り線
-        ctk.CTkFrame(
-            char_card, height=1,
-            fg_color=MaterialColors.OUTLINE_VARIANT
-        ).pack(fill="x", padx=16, pady=(0, 8))
+        # --- Tab: オリジナル作成 ---
+        custom_scroll = ctk.CTkScrollableFrame(
+            tab_custom, fg_color="transparent", height=360
+        )
+        custom_scroll.pack(fill="both", expand=True)
 
-        char_row = ctk.CTkFrame(char_card, fg_color="transparent")
-        char_row.pack(fill="x", padx=14, pady=(0, 6))
+        # ヘルパー関数
+        def add_dropdown(parent, label, options, default=None):
+            ctk.CTkLabel(parent, text=label, font=ctk.CTkFont(size=11, weight="bold"),
+                        text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(6,0))
+            dd = ctk.CTkOptionMenu(parent, values=options, font=ctk.CTkFont(size=12),
+                                   width=350, fg_color=MaterialColors.SURFACE_CONTAINER,
+                                   button_color=MaterialColors.PRIMARY,
+                                   text_color=MaterialColors.ON_SURFACE)
+            dd.pack(anchor="w", pady=(2, 0))
+            if default:
+                dd.set(default)
+            return dd
 
-        # 作品名
-        work_frame = ctk.CTkFrame(char_row, fg_color="transparent")
+        # 基本情報
+        ctk.CTkLabel(custom_scroll, text="── 基本情報 ──",
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(4,2))
+
+        ctk.CTkLabel(custom_scroll, text="キャラ名", font=ctk.CTkFont(size=11, weight="bold"),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(6,0))
+        self.custom_name_entry = ctk.CTkEntry(
+            custom_scroll, height=36, placeholder_text="例: 佐藤花子",
+            font=ctk.CTkFont(size=13), width=350,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6
+        )
+        self.custom_name_entry.pack(anchor="w", pady=(2, 0))
+
+        self.custom_age_dd = add_dropdown(custom_scroll, "年齢・外見", AGE_OPTIONS, "JK（女子高生）")
+        self.custom_rel_dd = add_dropdown(custom_scroll, "主人公との関係", RELATIONSHIP_OPTIONS, "クラスメイト")
+
+        # 性格・口調
+        ctk.CTkLabel(custom_scroll, text="── 性格・口調 ──",
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(12,2))
+
+        self.custom_archetype_dd = add_dropdown(custom_scroll, "性格タイプ", ARCHETYPE_OPTIONS, "ツンデレ")
+        self.custom_first_person_dd = add_dropdown(custom_scroll, "一人称", FIRST_PERSON_OPTIONS, "あたし")
+        self.custom_speech_dd = add_dropdown(custom_scroll, "口調", SPEECH_STYLE_OPTIONS, "タメ口")
+
+        # 外見
+        ctk.CTkLabel(custom_scroll, text="── 外見 ──",
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(12,2))
+
+        self.custom_hair_color_dd = add_dropdown(custom_scroll, "髪色", HAIR_COLOR_OPTIONS, "黒髪")
+        self.custom_hair_style_dd = add_dropdown(custom_scroll, "髪型", HAIR_STYLE_OPTIONS, "ロングストレート")
+        self.custom_body_dd = add_dropdown(custom_scroll, "体型", BODY_TYPE_OPTIONS, "普通")
+        self.custom_chest_dd = add_dropdown(custom_scroll, "胸", CHEST_OPTIONS, "普通（C）")
+        self.custom_clothing_dd = add_dropdown(custom_scroll, "服装", CLOTHING_OPTIONS, "制服（ブレザー）")
+
+        # エロシーン設定
+        ctk.CTkLabel(custom_scroll, text="── エロシーン設定 ──",
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(12,2))
+
+        shyness_labels = [s[0] for s in SHYNESS_OPTIONS]
+        self.custom_shyness_dd = add_dropdown(custom_scroll, "恥ずかしがり度", shyness_labels, "3 - 普通")
+
+        # カスタム特性（自由入力）
+        ctk.CTkLabel(custom_scroll, text="── 追加設定（任意） ──",
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(12,2))
+
+        ctk.CTkLabel(custom_scroll, text="追加の性格特性（「、」区切り）",
+                    font=ctk.CTkFont(size=11), text_color=MaterialColors.ON_SURFACE_VARIANT
+                    ).pack(anchor="w", pady=(6,0))
+        self.custom_traits_entry = ctk.CTkEntry(
+            custom_scroll, height=36, placeholder_text="例: 読書好き、猫が好き",
+            font=ctk.CTkFont(size=12), width=350,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6
+        )
+        self.custom_traits_entry.pack(anchor="w", pady=(2, 0))
+
+        # 保存ボタン
+        self.custom_save_btn = MaterialButton(
+            custom_scroll, text="キャラクターを保存（API不要）",
+            variant="filled", command=self.save_custom_character
+        )
+        self.custom_save_btn.pack(anchor="w", pady=(16, 8))
+
+        # --- Tab: API生成 ---
+        ctk.CTkLabel(
+            tab_api, text="Claude APIでキャラクター分析（Sonnet使用）",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        ).pack(anchor="w", pady=(8, 4))
+
+        api_char_row = ctk.CTkFrame(tab_api, fg_color="transparent")
+        api_char_row.pack(fill="x", pady=(0, 6))
+
+        work_frame = ctk.CTkFrame(api_char_row, fg_color="transparent")
         work_frame.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        ctk.CTkLabel(work_frame, text="作品名", font=ctk.CTkFont(size=11), text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
+        ctk.CTkLabel(work_frame, text="作品名", font=ctk.CTkFont(size=11),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
         self.work_title_entry = ctk.CTkEntry(
             work_frame, height=38, placeholder_text="例: 五等分の花嫁",
-            font=ctk.CTkFont(size=13),
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
-            border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
+            font=ctk.CTkFont(size=13), fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
         )
         self.work_title_entry.pack(fill="x", pady=(3, 0))
 
-        # キャラ名
-        char_name_frame = ctk.CTkFrame(char_row, fg_color="transparent")
+        char_name_frame = ctk.CTkFrame(api_char_row, fg_color="transparent")
         char_name_frame.pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(char_name_frame, text="キャラ名", font=ctk.CTkFont(size=11), text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
+        ctk.CTkLabel(char_name_frame, text="キャラ名", font=ctk.CTkFont(size=11),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
         self.char_name_entry = ctk.CTkEntry(
             char_name_frame, height=38, placeholder_text="例: 中野一花",
-            font=ctk.CTkFont(size=13),
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
-            border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
+            font=ctk.CTkFont(size=13), fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
         )
         self.char_name_entry.pack(fill="x", pady=(3, 0))
 
-        # ボタン行
-        char_btn_row = ctk.CTkFrame(char_card, fg_color="transparent")
-        char_btn_row.pack(fill="x", padx=14, pady=(0, 10))
-
         self.char_generate_btn = ctk.CTkButton(
-            char_btn_row, text="✨ キャラ生成", height=36, width=100,
+            tab_api, text="✨ キャラ生成（API使用）", height=36,
             font=ctk.CTkFont(size=12, weight="bold"), corner_radius=6,
             fg_color=MaterialColors.PRIMARY, hover_color=MaterialColors.PRIMARY_VARIANT,
             command=self.start_char_generation
         )
-        self.char_generate_btn.pack(side="left", padx=(0, 8))
+        self.char_generate_btn.pack(anchor="w", pady=(0, 8))
+
+        # --- 共通: 使用キャラ選択 ---
+        char_select_row = ctk.CTkFrame(char_card, fg_color="transparent")
+        char_select_row.pack(fill="x", padx=14, pady=(0, 10))
+
+        ctk.CTkLabel(char_select_row, text="使用キャラ:",
+                    font=ctk.CTkFont(size=11, weight="bold"),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(side="left", padx=(0, 6))
 
         self.char_select_combo = ctk.CTkComboBox(
-            char_btn_row, values=["（キャラ選択）"], height=36,
+            char_select_row, values=["（キャラ選択）"], height=36,
             font=ctk.CTkFont(size=12),
             fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
             button_color=MaterialColors.PRIMARY, dropdown_fg_color=MaterialColors.SURFACE,
@@ -2991,7 +3099,29 @@ class App(ctk.CTk):
             corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
             wrap="word"
         )
-        self.characters_text.pack(fill="x", padx=14, pady=(6, 14))
+        self.characters_text.pack(fill="x", padx=14, pady=(6, 12))
+
+        # その他の登場人物入力
+        other_label_frame = ctk.CTkFrame(concept_card, fg_color="transparent")
+        other_label_frame.pack(fill="x", padx=14)
+        ctk.CTkLabel(
+            other_label_frame, text="その他の登場人物",
+            font=ctk.CTkFont(size=12, weight="bold"), text_color=MaterialColors.PRIMARY
+        ).pack(side="left")
+        ctk.CTkLabel(
+            other_label_frame, text="（男主人公・サブキャラ等の設定）",
+            font=ctk.CTkFont(size=10), text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(side="left", padx=(4, 0))
+
+        self.other_chars_text = ctk.CTkTextbox(
+            concept_card, height=70,
+            font=ctk.CTkFont(size=14),
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
+            text_color=MaterialColors.ON_SURFACE,
+            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            wrap="word"
+        )
+        self.other_chars_text.pack(fill="x", padx=14, pady=(6, 14))
 
         # ══════════════════════════════════════════════════════════════
         # 5. 生成設定
@@ -3227,6 +3357,7 @@ class App(ctk.CTk):
             "api_key": self.api_field.get(),
             "concept": self.concept_text.get("1.0", "end-1c"),
             "characters": self.characters_text.get("1.0", "end-1c"),
+            "other_characters": self.other_chars_text.get("1.0", "end-1c") if hasattr(self, "other_chars_text") else "",
             "num_scenes": int(self.scenes_entry.get() or "10"),
             "theme_jp": theme_jp,
             "theme": THEME_OPTIONS.get(theme_jp, ""),
@@ -3242,6 +3373,9 @@ class App(ctk.CTk):
             self._set_concept_text(config["concept"])
         if config.get("characters"):
             self._set_characters_text(config["characters"])
+        if hasattr(self, "other_chars_text") and "other_characters" in config:
+            self.other_chars_text.delete("1.0", "end")
+            self.other_chars_text.insert("1.0", config.get("other_characters", ""))
         if config.get("num_scenes"):
             self.scenes_entry.delete(0, "end")
             self.scenes_entry.insert(0, str(config["num_scenes"]))
@@ -3628,6 +3762,62 @@ class App(ctk.CTk):
             self.snackbar.show(f"✅ {name}をプリセットから読み込みました（API未使用）", type="success")
         except Exception as e:
             self.snackbar.show(f"❌ 読み込みエラー: {e}", type="error")
+
+    def save_custom_character(self):
+        """オリジナルキャラクターを保存"""
+        name = self.custom_name_entry.get().strip()
+        if not name:
+            self.snackbar.show("キャラ名を入力してください", type="warning")
+            return
+
+        # shyness_levelの取得
+        shyness_text = self.custom_shyness_dd.get()
+        shyness_level = 3
+        for label, val in SHYNESS_OPTIONS:
+            if label == shyness_text:
+                shyness_level = val
+                break
+
+        # その他の登場人物テキスト取得
+        other_chars = ""
+        if hasattr(self, "other_chars_text"):
+            other_chars = self.other_chars_text.get("1.0", "end-1c").strip()
+
+        bible = build_custom_character_data(
+            char_name=name,
+            age=self.custom_age_dd.get(),
+            relationship=self.custom_rel_dd.get(),
+            archetype=self.custom_archetype_dd.get(),
+            first_person=self.custom_first_person_dd.get(),
+            speech_style=self.custom_speech_dd.get(),
+            hair_color=self.custom_hair_color_dd.get(),
+            hair_style=self.custom_hair_style_dd.get(),
+            body_type=self.custom_body_dd.get(),
+            chest=self.custom_chest_dd.get(),
+            clothing=self.custom_clothing_dd.get(),
+            shyness_level=shyness_level,
+            custom_traits=self.custom_traits_entry.get().strip(),
+            other_characters=other_chars,
+        )
+
+        # char_id生成＆保存
+        char_id = generate_char_id("オリジナル", name)
+        bible_path = CHARACTERS_DIR / f"{char_id}.json"
+        skill_path = CHAR_SKILLS_DIR / f"{char_id}.skill.md"
+
+        with open(bible_path, "w", encoding="utf-8") as f:
+            json.dump(bible, f, ensure_ascii=False, indent=2)
+
+        skill_content = generate_character_skill(char_id, bible)
+        with open(skill_path, "w", encoding="utf-8") as f:
+            f.write(skill_content)
+
+        self.refresh_char_list()
+        self.log(f"✅ オリジナルキャラ保存: {name} ({self.custom_archetype_dd.get()})")
+        self.log(f"   性格: {bible['personality_core']['brief_description']}")
+        self.log(f"   一人称: {bible['speech_pattern']['first_person']} / 口調: {self.custom_speech_dd.get()}")
+        self.log(f"   外見: {bible['physical_description']['hair']}")
+        self.snackbar.show(f"✅ {name}を保存しました（API未使用）", type="success")
 
     def start_char_generation(self):
         """キャラクター生成開始"""
