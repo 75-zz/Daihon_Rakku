@@ -170,6 +170,12 @@ THEME_OPTIONS = {
     "上司・OL": "office",
     "先生・生徒": "teacher_student",
     "メイド・ご主人様": "maid",
+    "催眠・洗脳": "hypnosis",
+    "異種姦・モンスター": "monster",
+    "時間停止": "time_stop",
+    "ハーレム": "harem",
+    "女性優位・痴女": "femdom",
+    "近親相姦": "incest",
 }
 
 # テーマ別ストーリー・演出ガイド
@@ -323,6 +329,102 @@ THEME_GUIDES = {
         "use_heart": True,
         "sd_tags": "maid, maid_uniform, master, servant, obedient",
         "sd_expressions": "devoted, obedient, eager_to_please"
+    },
+    "hypnosis": {
+        "name": "催眠・洗脳",
+        "story_arc": "暗示→無意識→操作→覚醒しても体が覚えている",
+        "key_emotions": ["ぼんやり", "抵抗できない", "無意識の快感", "自分じゃない感覚"],
+        "story_elements": [
+            "催眠術や暗示のきっかけ",
+            "意識がぼやける描写",
+            "命令に逆らえない体",
+            "「なぜ体が勝手に...」という混乱",
+            "覚醒後も体が反応してしまう"
+        ],
+        "dialogue_tone": "ぼんやりした口調、命令への無抵抗、覚醒時の混乱と羞恥",
+        "use_heart": False,
+        "sd_tags": "hypnosis, mind_control, blank_eyes, spiral_eyes, trance",
+        "sd_expressions": "empty_eyes, dazed, vacant, drooling, mindless, confused"
+    },
+    "monster": {
+        "name": "異種姦・モンスター",
+        "story_arc": "遭遇→捕獲→異種交配→快楽堕ち",
+        "key_emotions": ["恐怖", "嫌悪", "異物感", "未知の快感に溺れる"],
+        "story_elements": [
+            "人外の存在との遭遇",
+            "逃げられない状況",
+            "人間にはない刺激",
+            "「人間じゃないのに...」という背徳感",
+            "触手や異形の描写"
+        ],
+        "dialogue_tone": "恐怖と驚き、徐々に快感に変わる声、人間離れした行為への反応",
+        "use_heart": False,
+        "sd_tags": "monster, tentacles, interspecies, creature, non-human",
+        "sd_expressions": "scared, disgusted, surprised, overwhelmed, ahegao"
+    },
+    "time_stop": {
+        "name": "時間停止",
+        "story_arc": "停止→観察→いたずら→解除の瞬間",
+        "key_emotions": ["無防備", "知らないうちに", "解除後の混乱", "証拠に気づく恥辱"],
+        "story_elements": [
+            "時間が止まるきっかけ",
+            "止まった世界での自由行動",
+            "好きなポーズに変えられる",
+            "解除後の「何かされた？」感覚",
+            "体に残る痕跡"
+        ],
+        "dialogue_tone": "停止中は無言（ナレーション中心）、解除後は混乱と気づきの描写",
+        "use_heart": False,
+        "sd_tags": "time_stop, frozen, mannequin_pose, unconscious, sleeping",
+        "sd_expressions": "frozen, blank_expression, sleeping, confused, shocked"
+    },
+    "harem": {
+        "name": "ハーレム",
+        "story_arc": "出会い→好意集中→争奪→全員で奉仕",
+        "key_emotions": ["独占欲", "嫉妬", "競争心", "共有の快楽"],
+        "story_elements": [
+            "複数ヒロインが主人公を取り合う",
+            "嫉妬や競争の描写",
+            "「私の方が上手」的な比較",
+            "最終的に全員でのシーン",
+            "各キャラの個性が際立つ"
+        ],
+        "dialogue_tone": "各キャラが個性的に競い合う、嫉妬と甘え、協力と競争",
+        "use_heart": True,
+        "sd_tags": "harem, multiple_girls, group, jealous, competitive",
+        "sd_expressions": "jealous, competitive, eager, cooperative, blush"
+    },
+    "femdom": {
+        "name": "女性優位・痴女",
+        "story_arc": "主導権掌握→翻弄→支配→ご褒美",
+        "key_emotions": ["支配欲", "優越感", "相手をからかう楽しさ", "征服感"],
+        "story_elements": [
+            "女性がリードする関係",
+            "男性を翻弄する",
+            "「こんなに感じてるの？」的なからかい",
+            "騎乗位や言葉責め",
+            "主導権は常に女性側"
+        ],
+        "dialogue_tone": "上から目線、からかい、余裕のある態度、小悪魔的",
+        "use_heart": True,
+        "sd_tags": "femdom, dominatrix, female_domination, sitting_on_face, riding",
+        "sd_expressions": "smirk, confident, teasing, dominant, looking_down"
+    },
+    "incest": {
+        "name": "近親相姦",
+        "story_arc": "家族の日常→意識→禁断→堕ちる",
+        "key_emotions": ["背徳感", "罪悪感", "家族への愛と欲望の混同", "秘密"],
+        "story_elements": [
+            "家族設定を明確に（兄妹/姉弟/母子など）",
+            "普段の家族関係からの逸脱",
+            "「家族なのに...」という葛藤",
+            "二人だけの秘密",
+            "他の家族にバレない緊張感"
+        ],
+        "dialogue_tone": "普段の呼び方（お兄ちゃん、お姉ちゃん等）と背徳感、家族の呼称が興奮を増す",
+        "use_heart": False,
+        "sd_tags": "incest, siblings, family, forbidden_love, taboo, secret",
+        "sd_expressions": "guilty, conflicted, forbidden_pleasure, secretive"
     }
 }
 
@@ -762,7 +864,284 @@ def compact_context(
     return parse_json_response(response)
 
 
+def compact_context_local(
+    concept: str,
+    characters: str,
+    theme: str,
+    char_profiles: list,
+    callback: Optional[Callable] = None
+) -> dict:
+    """キャラプロファイルからローカルでcontext JSONを構築（API不要）"""
+    if callback:
+        callback("📦 コンテキスト圧縮中（ローカル・API節約）...")
+
+    theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
+
+    # 舞台を概念テキストから抽出（最初の1文 or 50文字）
+    setting = concept.strip().split("\n")[0][:80] if concept.strip() else "日常"
+
+    # キャラ情報をプロファイルから構築
+    chars = []
+    ng_all = []
+    for cp in char_profiles:
+        name = cp.get("character_name", "")
+        physical = cp.get("physical_description", {})
+        speech = cp.get("speech_pattern", {})
+        avoid = cp.get("avoid_patterns", [])
+
+        look_parts = []
+        if physical.get("hair"):
+            look_parts.append(f"髪:{physical['hair']}")
+        if physical.get("eyes"):
+            look_parts.append(f"目:{physical['eyes']}")
+        if physical.get("body"):
+            look_parts.append(f"体型:{physical['body']}")
+        if physical.get("chest"):
+            look_parts.append(f"胸:{physical['chest']}")
+
+        voice_parts = []
+        if speech.get("first_person"):
+            voice_parts.append(f"一人称:{speech['first_person']}")
+        endings = speech.get("sentence_endings", [])
+        if endings:
+            voice_parts.append(f"語尾:{','.join(endings[:3])}")
+
+        chars.append({
+            "name": name,
+            "look": ", ".join(look_parts),
+            "voice": ", ".join(voice_parts)
+        })
+        ng_all.extend(avoid[:3])
+
+    # テーマに基づくトーン
+    tone = theme_guide.get("name", "一般")
+    theme_label = theme_guide.get("name", "指定なし")
+
+    context = {
+        "setting": setting,
+        "chars": chars,
+        "tone": tone,
+        "theme": theme_label,
+        "ng": list(set(ng_all))[:5]
+    }
+
+    log_message(f"コンテキスト圧縮完了（ローカル）: chars={len(chars)}, setting={setting[:30]}")
+    if callback:
+        callback("✅ コンテキスト圧縮完了（ローカル・API節約）")
+
+    return context
+
+
 # === Skill 2: Low Cost Pipeline ===
+
+def generate_scene_batch(
+    client: anthropic.Anthropic,
+    context: dict,
+    scenes: list,
+    jailbreak: str,
+    danbooru: str,
+    sd_guide: str,
+    cost_tracker: CostTracker,
+    theme: str = "",
+    char_profiles: list = None,
+    callback: Optional[Callable] = None
+) -> list:
+    """複数のLow-Intensityシーンをまとめて1回のAPI呼び出しで生成（API節約）"""
+    skill = load_skill("low_cost_pipeline")
+    danbooru_nsfw = load_skill("danbooru_nsfw_tags")
+    
+    theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
+    theme_name = theme_guide.get("name", "指定なし")
+    dialogue_tone = theme_guide.get("dialogue_tone", "自然で楽しい雰囲気")
+    use_heart = theme_guide.get("use_heart", True)
+    theme_sd_tags = theme_guide.get("sd_tags", "")
+    theme_sd_expressions = theme_guide.get("sd_expressions", "")
+    key_emotions = theme_guide.get("key_emotions", [])
+    
+    tag_db = _load_tag_db()
+    loc_tags_db = tag_db.get("locations", {})
+    time_tags_db = tag_db.get("time_of_day", {})
+
+    # キャラガイド（低intensity用＝簡潔版）
+    char_guide = ""
+    char_danbooru_tags = []
+    char_names = []
+
+    if char_profiles:
+        for cp in char_profiles:
+            name = cp.get("character_name", "")
+            char_names.append(name)
+            speech = cp.get("speech_pattern", {})
+            avoid = cp.get("avoid_patterns", [])
+            physical = cp.get("physical_description", {})
+            tags = cp.get("danbooru_tags", [])
+            char_danbooru_tags.extend(tags)
+
+            # intensity 1-3用: 基本+感情表現
+            emotional = cp.get("emotional_speech", {})
+            char_guide += f"""
+【{name}】口調ガイド
+・一人称: {speech.get('first_person', '私')} / 語尾: {', '.join(speech.get('sentence_endings', ['〜よ', '〜ね']))}
+・間投詞: {', '.join(speech.get('fillers', ['あっ', 'んっ']))}
+・照れた時: {emotional.get('when_embarrassed', '言葉に詰まる')}
+・甘える時: {emotional.get('when_flirty', '甘い声で')}
+・外見: 髪={physical.get('hair', '')}, 目={physical.get('eyes', '')}
+・NG: {', '.join(avoid) if avoid else 'なし'}
+"""
+
+    heart_instruction = "♡は甘いシーンで自然に使用OK。" if use_heart else f"⚠️ ♡マークは使用禁止！テーマ「{theme_name}」では♡は不自然。代わりに「...」「っ」「〜」で感情を表現。"
+
+    # 共通システムプロンプト
+    common_system = f"""{jailbreak}
+
+{skill if skill else "FANZA同人CG集の脚本を生成します。"}
+
+{danbooru_nsfw if danbooru_nsfw else ""}
+
+{char_guide if char_guide else "（キャラ設定なし）"}
+
+## セリフ執筆の鉄則
+
+1. **一人称・語尾は絶対厳守**: キャラガイド通りに
+2. **短く刻む**: 1セリフ10-15文字が理想
+3. **感情を音にする**: 「...」「っ」「〜」を活用
+4. **喘ぎは自然に**: 「あっ」「んっ」を会話の流れで
+5. **説明禁止**: 「私は今〜しています」はNG
+
+全キャラ成人(18+)。JSON配列形式のみ出力。"""
+
+    # 各シーンの情報を組み立て
+    scenes_info = []
+    for scene in scenes:
+        intensity = scene.get("intensity", 2)
+        location = scene.get("location", "室内")
+        time_of_day = scene.get("time", "")
+
+        location_tags = ""
+        for key, tags in loc_tags_db.items():
+            if key in location:
+                location_tags = tags
+                break
+        if not location_tags:
+            location_tags = "indoor, room"
+
+        time_tags = ""
+        for key, tags in time_tags_db.items():
+            if key in time_of_day:
+                time_tags = tags
+                break
+
+        char_tags_str = ", ".join(char_danbooru_tags[:15]) if char_danbooru_tags else ""
+        
+        intensity_sd_tags = {
+            3: f"kiss, french_kiss, undressing, groping, blush, nervous, anticipation, {theme_sd_expressions}",
+            2: f"eye_contact, close-up, romantic, blushing, hand_holding, leaning_close, {theme_sd_expressions}",
+            1: f"portrait, smile, casual, standing, looking_at_viewer, {theme_sd_expressions}"
+        }
+        sd_intensity_tags = intensity_sd_tags.get(intensity, "")
+        background_tags = f"{location_tags}, {time_tags}".strip(", ")
+        if theme_sd_tags:
+            background_tags = f"{background_tags}, {theme_sd_tags}"
+        
+        composition_db = tag_db.get("compositions", {})
+        composition_tags = composition_db.get(str(intensity), {}).get("tags", "")
+
+        scenes_info.append({
+            "scene": scene,
+            "char_tags_str": char_tags_str,
+            "sd_intensity_tags": sd_intensity_tags,
+            "background_tags": background_tags,
+            "composition_tags": composition_tags
+        })
+
+    # バッチプロンプト構築
+    prompt_parts = [f"設定: {json.dumps(context, ensure_ascii=False)}\n"]
+    prompt_parts.append(f"テーマ「{theme_name}」のトーン: {dialogue_tone}\n{heart_instruction}\n")
+    
+    for idx, info in enumerate(scenes_info):
+        scene = info["scene"]
+        prompt_parts.append(f"""
+--- シーン{idx+1} ---
+シーン情報: {json.dumps(scene, ensure_ascii=False)}
+キャラ固有タグ: {info['char_tags_str']}
+ポーズ・表情: {info['sd_intensity_tags']}
+背景・場所: {info['background_tags']}
+構図: {info['composition_tags']}
+""")
+
+    prompt_parts.append(f"""
+## 出力形式（JSON配列で{len(scenes)}シーン分を出力）
+
+[
+  {{
+    "scene_id": シーンID,
+    "title": "シーンタイトル（8字以内）",
+    "description": "このシーンの詳細説明（100字程度）",
+    "location_detail": "場所の具体的な描写（30字）",
+    "mood": "雰囲気（5字以内）",
+    "character_feelings": {{
+        "{char_names[0] if char_names else 'ヒロイン'}": "心情（20字）"
+    }},
+    "dialogue": [
+        {{"speaker": "キャラ名", "emotion": "感情", "line": "短いセリフ", "inner_thought": "心の声（10字）"}}
+    ],
+    "direction": "演出・ト書き（30字）",
+    "story_flow": "次のシーンへの繋がり（15字）",
+    "sd_prompt": "{QUALITY_POSITIVE_TAGS}, キャラ外見タグ, ポーズ・行為タグ, 表情タグ, 場所・背景タグ"
+  }}
+]
+
+## ルール
+1. 必ず{len(scenes)}シーン分のJSON配列を出力
+2. 各シーンのscene_idは指定通りに
+3. dialogueは各シーン4-6個、各セリフ15文字以内
+4. sd_promptは「{QUALITY_POSITIVE_TAGS} + キャラ外見 + ポーズ + 表情 + 場所・背景」の順
+5. タグは重複なくカンマ区切り
+
+JSON配列のみ出力。""")
+
+    prompt = "\n".join(prompt_parts)
+
+    system_with_cache = [
+        {"type": "text", "text": common_system, "cache_control": {"type": "ephemeral"}},
+    ]
+
+    if callback:
+        scene_ids = [s.get("scene_id") for s in scenes]
+        callback(f"バッチ生成中: シーン {scene_ids} (Haiku, {len(scenes)}シーン一括)...")
+
+    response = call_claude(
+        client, MODELS["haiku"],
+        system_with_cache,
+        prompt, cost_tracker, 2500 * len(scenes), callback
+    )
+
+    # JSON配列をパース
+    result_list = parse_json_response(response)
+    
+    # 配列でなければリストに変換
+    if isinstance(result_list, dict):
+        result_list = [result_list]
+    
+    # SD タグ重複排除
+    for result in result_list:
+        if isinstance(result, dict) and result.get("sd_prompt"):
+            result["sd_prompt"] = deduplicate_sd_tags(result["sd_prompt"])
+
+    # シーン数が足りない場合、空シーンで補完
+    while len(result_list) < len(scenes):
+        missing_scene = scenes[len(result_list)]
+        result_list.append({
+            "scene_id": missing_scene.get("scene_id", len(result_list) + 1),
+            "title": "生成不足",
+            "mood": "一般",
+            "dialogue": [],
+            "direction": "バッチ生成で不足",
+            "sd_prompt": ""
+        })
+
+    return result_list[:len(scenes)]
+
 def generate_outline(
     client: anthropic.Anthropic,
     context: dict,
@@ -811,6 +1190,12 @@ def generate_outline(
         "office": ["オフィス", "会議室", "ホテル", "エレベーター", "車内"],
         "teacher_student": ["教室", "保健室", "図書室", "屋上", "寝室"],
         "maid": ["リビング", "寝室", "浴室", "キッチン", "和室"],
+        "hypnosis": ["診察室", "部屋", "ベッド", "ソファ", "寝室"],
+        "monster": ["森", "洞窟", "ダンジョン", "廃墟", "地下"],
+        "time_stop": ["教室", "電車", "オフィス", "更衣室", "寝室"],
+        "harem": ["リビング", "寝室", "温泉", "プール", "ホテル"],
+        "femdom": ["寝室", "リビング", "ホテル", "オフィス", "浴室"],
+        "incest": ["リビング", "寝室", "浴室", "子供部屋", "キッチン"],
     }
     locations = location_pool.get(theme, ["寝室", "リビング", "教室", "浴室", "ホテル"])
 
@@ -1484,7 +1869,7 @@ def generate_pipeline(
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # キャラプロファイルを読み込み（部分一致対応）
+    # キャラプロファイルを読み込み（部分一致対応）※compact_contextより前に実行
     char_profiles = []
     characters_lower = characters.lower()
     log_message(f"キャラプロファイル検索開始: {characters}")
@@ -1506,6 +1891,27 @@ def generate_pipeline(
                         callback(f"📂 キャラ設定適用: {char_name}（{work_title}）")
         except Exception as e:
             log_message(f"キャラプロファイル読込エラー: {e}")
+
+    # プリセットチェック（presets/characters/ も検索）
+    for json_file in PRESET_CHARS_DIR.glob("*.json"):
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                profile = json.load(f)
+                char_name = profile.get("character_name", "")
+                work_title = profile.get("work_title", "")
+                # 既に追加済みでないかチェック
+                existing_names = [cp.get("character_name", "") for cp in char_profiles]
+                if char_name and char_name not in existing_names and (
+                    char_name in characters or
+                    char_name.lower() in characters_lower or
+                    any(part in characters for part in char_name.split())
+                ):
+                    char_profiles.append(profile)
+                    log_message(f"プリセットキャラ読込: {char_name} ({work_title})")
+                    if callback:
+                        callback(f"📦 プリセットキャラ適用: {char_name}（{work_title}）")
+        except Exception as e:
+            log_message(f"プリセット読込エラー: {e}")
     
     # キャラ設定の使用状況を報告
     if char_profiles:
@@ -1528,14 +1934,20 @@ def generate_pipeline(
     else:
         log_message("テーマ: 指定なし（汎用モード）")
 
-    # Phase 1: Prompt Compactor
+    # Phase 1: Prompt Compactor（キャラプロファイルがあればローカル実行）
     log_message("Phase 1 開始: コンテキスト圧縮")
     if callback:
         callback("🔧 Phase 1: コンテキスト圧縮")
 
     try:
-        context = compact_context(client, concept, characters, theme, cost_tracker, callback)
-        log_message("コンテキスト圧縮完了")
+        if char_profiles:
+            # ローカル圧縮（API不要 = コスト0）
+            context = compact_context_local(concept, characters, theme, char_profiles, callback)
+            log_message("コンテキスト圧縮完了（ローカル・API節約）")
+        else:
+            # API圧縮（キャラ情報なしの場合）
+            context = compact_context(client, concept, characters, theme, cost_tracker, callback)
+            log_message("コンテキスト圧縮完了（API）")
     except Exception as e:
         log_message(f"コンテキスト圧縮エラー: {e}")
         raise
@@ -1571,54 +1983,128 @@ def generate_pipeline(
         high_intensity = sum(1 for s in outline if s.get("intensity", 0) >= 4)
         callback(f"✅ アウトライン完成: {len(outline)}シーン（エロシーン{high_intensity}個）")
 
+    # コスト見積もりを表示
+    low_count = sum(1 for s in outline if s.get("intensity", 3) <= 3)
+    high_count = sum(1 for s in outline if s.get("intensity", 3) >= 4)
+    # バッチ生成を考慮した見積もり
+    batch_calls = (low_count + 1) // 2  # 2シーンずつバッチ
+    total_calls = batch_calls + high_count
+    est_haiku = batch_calls
+    est_sonnet = high_count
+    est_cost = (est_haiku * 3000 / 1_000_000 * 0.25 + est_haiku * 2500 / 1_000_000 * 1.25 +
+                est_sonnet * 3000 / 1_000_000 * 3.00 + est_sonnet * 2500 / 1_000_000 * 15.00)
+    if callback:
+        callback(f"💰 推定コスト: ${est_cost:.4f}（API {total_calls}回: Haiku×{est_haiku} + Sonnet×{est_sonnet}）")
+
     results = []
 
-    for i, scene in enumerate(outline):
+    # Low-Intensity バッチ生成（intensity 1-3を2シーンずつまとめる）
+    low_scenes = [(i, s) for i, s in enumerate(outline) if s.get("intensity", 3) <= 3]
+    high_scenes = [(i, s) for i, s in enumerate(outline) if s.get("intensity", 3) >= 4]
+
+    # Low-intensityシーンをバッチ処理
+    batch_results = {}
+    for batch_start in range(0, len(low_scenes), 2):
+        batch = low_scenes[batch_start:batch_start + 2]
         try:
-            intensity = scene.get("intensity", 3)
-            model_type = "Sonnet" if intensity >= 4 else "Haiku"
+            batch_scenes = [s for _, s in batch]
+            batch_indices = [i for i, _ in batch]
             
-            log_message(f"シーン {i+1}/{len(outline)} 生成開始 (intensity={intensity}, {model_type})")
+            log_message(f"バッチ生成: シーン {[s.get('scene_id') for s in batch_scenes]} (Low-Intensity)")
             if callback:
-                callback(f"🎬 シーン {i+1}/{len(outline)} [{model_type}] 重要度{intensity}")
+                scene_ids = [s.get("scene_id") for s in batch_scenes]
+                callback(f"🎬 バッチ生成: シーン {scene_ids} [Haiku]")
+
+            batch_result = generate_scene_batch(
+                client, context, batch_scenes, jailbreak, danbooru, sd_guide,
+                cost_tracker, theme, char_profiles, callback
+            )
+
+            for idx, result in zip(batch_indices, batch_result):
+                batch_results[idx] = result
+                
+                draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{idx+1}.json"
+                with open(draft_file, "w", encoding="utf-8") as f:
+                    json.dump(result, f, ensure_ascii=False, indent=2)
+                final_file = FINAL_DIR / f"final_{timestamp}_scene{idx+1}.json"
+                with open(final_file, "w", encoding="utf-8") as f:
+                    json.dump(result, f, ensure_ascii=False, indent=2)
+
+            if callback:
+                callback(f"✅ バッチ完了: シーン {[s.get('scene_id') for s in batch_scenes]}")
+
+        except Exception as e:
+            log_message(f"バッチ生成エラー: {e}")
+            import traceback
+            log_message(traceback.format_exc())
+            # フォールバック: 個別生成
+            for idx, scene in batch:
+                try:
+                    draft = generate_scene_draft(
+                        client, context, scene, jailbreak, danbooru, sd_guide,
+                        cost_tracker, theme, char_profiles, callback
+                    )
+                    batch_results[idx] = draft
+                except Exception as e2:
+                    log_message(f"フォールバック個別生成もエラー: {e2}")
+                    batch_results[idx] = {
+                        "scene_id": scene.get("scene_id", idx + 1),
+                        "mood": "エラー",
+                        "dialogue": [],
+                        "direction": f"生成エラー: {str(e2)[:100]}",
+                        "sd_prompt": ""
+                    }
+
+    # High-Intensityシーンは個別Sonnet生成（品質重視）
+    for idx, scene in high_scenes:
+        try:
+            intensity = scene.get("intensity", 4)
+            log_message(f"シーン {idx+1}/{len(outline)} 生成開始 (intensity={intensity}, Sonnet)")
+            if callback:
+                callback(f"🎬 シーン {scene.get('scene_id')} [Sonnet] 重要度{intensity}")
 
             draft = generate_scene_draft(
                 client, context, scene, jailbreak, danbooru, sd_guide,
                 cost_tracker, theme, char_profiles, callback
             )
 
-            draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{i+1}.json"
+            draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{idx+1}.json"
             with open(draft_file, "w", encoding="utf-8") as f:
                 json.dump(draft, f, ensure_ascii=False, indent=2)
 
-            # polish_scene廃止: intensity 4-5はSonnet生成済みで十分高品質
-            # scene_draftの品質指示強化で清書不要に（API 1-2回削減）
-            final = draft
-
-            final_file = FINAL_DIR / f"final_{timestamp}_scene{i+1}.json"
+            final_file = FINAL_DIR / f"final_{timestamp}_scene{idx+1}.json"
             with open(final_file, "w", encoding="utf-8") as f:
-                json.dump(final, f, ensure_ascii=False, indent=2)
+                json.dump(draft, f, ensure_ascii=False, indent=2)
 
-            results.append(final)
-            log_message(f"シーン {i+1}/{len(outline)} 完了")
+            batch_results[idx] = draft
+            log_message(f"シーン {idx+1}/{len(outline)} 完了")
 
             if callback:
-                callback(f"✅ シーン {i+1}/{len(outline)} 完了")
+                callback(f"✅ シーン {scene.get('scene_id')} 完了")
 
         except Exception as e:
-            log_message(f"シーン {i+1} 生成エラー: {e}")
+            log_message(f"シーン {idx+1} 生成エラー: {e}")
             import traceback
             log_message(traceback.format_exc())
             if callback:
-                callback(f"❌ シーン {i+1} エラー: {str(e)[:50]}")
-            # エラーでも続行、空のシーンを追加
-            results.append({
-                "scene_id": i + 1,
+                callback(f"❌ シーン {idx+1} エラー: {str(e)[:50]}")
+            batch_results[idx] = {
+                "scene_id": scene.get("scene_id", idx + 1),
                 "mood": "エラー",
                 "dialogue": [],
                 "direction": f"生成エラー: {str(e)[:100]}",
                 "sd_prompt": ""
-            })
+            }
+
+    # 元の順番で結果を組み立て
+    for i in range(len(outline)):
+        results.append(batch_results.get(i, {
+            "scene_id": i + 1,
+            "mood": "エラー",
+            "dialogue": [],
+            "direction": "生成結果なし",
+            "sd_prompt": ""
+        }))
 
     # 完了サマリー
     success_count = sum(1 for r in results if r.get("mood") != "エラー")
@@ -3559,6 +4045,42 @@ class App(ctk.CTk):
         # Auto-save settings
         self.save_settings()
 
+        # アウトラインプレビュー生成（ローカル・API不要）
+        theme_jp = self.theme_combo.get()
+        theme = THEME_OPTIONS.get(theme_jp, "")
+        theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
+        theme_name = theme_guide.get("name", "指定なし")
+
+        # 簡易コスト見積もり
+        act3_count = max(2, round(num_scenes * 0.40))
+        low_count = num_scenes - act3_count
+        high_count = act3_count
+        batch_calls = (low_count + 1) // 2
+        total_api = batch_calls + high_count
+        est_cost_haiku = batch_calls * (3000 * 0.25 + 2500 * 1.25) / 1_000_000
+        est_cost_sonnet = high_count * (3000 * 3.00 + 2500 * 15.00) / 1_000_000
+        est_total = est_cost_haiku + est_cost_sonnet
+
+        # プレビュー表示
+        self.log_text.delete("1.0", "end")
+        self.log(f"{'='*50}")
+        self.log(f"📋 アウトラインプレビュー")
+        self.log(f"{'='*50}")
+        self.log(f"テーマ: {theme_name}")
+        self.log(f"シーン数: {num_scenes}")
+        self.log(f"ストーリー構成: {theme_guide.get('story_arc', '導入→展開→本番→余韻')}")
+        self.log(f"")
+        self.log(f"📊 intensity分布:")
+        self.log(f"  Low (1-3): {low_count}シーン → Haiku × {batch_calls}回（バッチ生成）")
+        self.log(f"  High (4-5): {high_count}シーン → Sonnet × {high_count}回（個別生成）")
+        self.log(f"")
+        self.log(f"💰 推定コスト: ${est_total:.4f}")
+        self.log(f"  Haiku: ${est_cost_haiku:.4f} ({batch_calls}回)")
+        self.log(f"  Sonnet: ${est_cost_sonnet:.4f} ({high_count}回)")
+        self.log(f"  合計API呼び出し: {total_api}回")
+        self.log(f"{'='*50}")
+        self.log(f"")
+
         self.is_generating = True
         self.stop_requested = False
         self.generate_btn.configure(state="disabled", text="生成中...")
@@ -3568,7 +4090,6 @@ class App(ctk.CTk):
             text_color=MaterialColors.ERROR
         )
         self.progress.set(0)
-        self.log_text.delete("1.0", "end")
 
         thread = threading.Thread(
             target=self.run_generation,
