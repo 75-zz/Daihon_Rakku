@@ -1934,7 +1934,7 @@ def generate_pipeline(
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # キャラプロファイルを読み込み（部分一致対応）※compact_contextより前に実行
+    # キャラプロファイルを読み込み（部分一致対応）
     char_profiles = []
     characters_lower = characters.lower()
     log_message(f"キャラプロファイル検索開始: {characters}")
@@ -1957,7 +1957,7 @@ def generate_pipeline(
         except Exception as e:
             log_message(f"キャラプロファイル読込エラー: {e}")
 
-    # プリセットチェック（presets/characters/ も検索）
+    # プリセットも検索
     for json_file in PRESET_CHARS_DIR.glob("*.json"):
         try:
             with open(json_file, "r", encoding="utf-8") as f:
@@ -1977,7 +1977,6 @@ def generate_pipeline(
         except Exception as e:
             log_message(f"プリセット読込エラー: {e}")
     
-    # キャラ設定の使用状況を報告
     if char_profiles:
         char_names = [cp.get("character_name", "") for cp in char_profiles]
         log_message(f"使用キャラ設定: {', '.join(char_names)}")
@@ -1988,17 +1987,15 @@ def generate_pipeline(
         if callback:
             callback("⚠️ キャラ設定なし（汎用設定で生成）")
 
-    # テーマ情報をログ出力
+    # テーマ情報
     theme_guide = THEME_GUIDES.get(theme, {})
     theme_name = theme_guide.get("name", "指定なし")
     if theme and theme_guide:
         log_message(f"テーマ適用: {theme_name} (arc: {theme_guide.get('story_arc', '')})")
         if callback:
             callback(f"🎭 テーマ: {theme_name}")
-    else:
-        log_message("テーマ: 指定なし（汎用モード）")
 
-    # Phase 1: Prompt Compactor（キャラプロファイルがあればローカル実行）
+    # Phase 1: コンテキスト圧縮
     log_message("Phase 1 開始: コンテキスト圧縮")
     if callback:
         callback("🔧 Phase 1: コンテキスト圧縮")
@@ -2006,7 +2003,7 @@ def generate_pipeline(
     try:
         if char_profiles:
             context = compact_context_local(concept, characters, theme, char_profiles, callback)
-            log_message("コンテキスト圧縮完了（ローカル・API節約）")
+            log_message("コンテキスト圧縮完了（ローカル）")
         else:
             context = compact_context(client, concept, characters, theme, cost_tracker, callback)
             log_message("コンテキスト圧縮完了（API）")
@@ -2022,122 +2019,78 @@ def generate_pipeline(
         callback("✅ コンテキスト圧縮完了")
 
     # Phase 2: アウトライン生成（ローカル）
-    log_message("Phase 2 開始: シーン生成パイプライン")
+    log_message("Phase 2 開始: アウトライン生成")
     if callback:
-        callback("🔧 Phase 2: シーン生成開始")
+        callback("🔧 Phase 2: アウトライン生成")
 
     try:
         outline = generate_outline(client, context, num_scenes, theme, cost_tracker, callback)
-        log_message(f"アウトライン生成完了: {len(outline)}シーン（テーマ: {theme or '指定なし'}）")
+        log_message(f"アウトライン生成完了: {len(outline)}シーン")
         
         intensity_counts = {}
         for scene in outline:
             i = scene.get("intensity", 3)
             intensity_counts[i] = intensity_counts.get(i, 0) + 1
         log_message(f"intensity分布: {intensity_counts}")
-        
     except Exception as e:
         log_message(f"アウトライン生成エラー: {e}")
         raise
 
     if callback:
         high_intensity = sum(1 for s in outline if s.get("intensity", 0) >= 4)
-        callback(f"✅ アウトライン完成: {len(outline)}シーン（エロシーン{high_intensity}個）")
+        low_intensity = len(outline) - high_intensity
+        callback(f"✅ アウトライン完成: {len(outline)}シーン（Haiku×{low_intensity} + Sonnet×{high_intensity}）")
 
-    # コスト見積もり表示
+    # コスト見積もり
     low_count = sum(1 for s in outline if s.get("intensity", 3) <= 3)
     high_count = sum(1 for s in outline if s.get("intensity", 3) >= 4)
-    batch_calls = (low_count + 1) // 2
-    total_calls = batch_calls + high_count
-    est_haiku = batch_calls
-    est_sonnet = high_count
-    est_cost = (est_haiku * 3000 / 1_000_000 * 0.25 + est_haiku * 2500 / 1_000_000 * 1.25 +
-                est_sonnet * 3000 / 1_000_000 * 3.00 + est_sonnet * 2500 / 1_000_000 * 15.00)
+    est_cost = (low_count * 3000 / 1_000_000 * 0.25 + low_count * 2500 / 1_000_000 * 1.25 +
+                high_count * 3000 / 1_000_000 * 3.00 + high_count * 2500 / 1_000_000 * 15.00)
     if callback:
-        callback(f"💰 推定コスト: ${est_cost:.4f}（API {total_calls}回: Haiku×{est_haiku} + Sonnet×{est_sonnet}）")
+        callback(f"💰 推定コスト: ${est_cost:.4f}（API {len(outline)}回: Haiku×{low_count} + Sonnet×{high_count}）")
 
-    # Phase 3: シーン生成（シーケンシャル + ストーリー蓄積）
-    # 各シーン生成後に要約を蓄積し、次のシーンに渡すことでストーリーの連続性を確保
+    # Phase 3: シーン生成（完全シーケンシャル + ストーリー蓄積）
     results = []
-    story_summaries = []  # 蓄積するストーリー要約
+    story_summaries = []
 
-    i = 0
-    while i < len(outline):
-        scene = outline[i]
+    for i, scene in enumerate(outline):
         intensity = scene.get("intensity", 3)
+        model_type = "Sonnet" if intensity >= 4 else "Haiku"
 
-        # story_so_far を構築（直近5シーンまで。古いシーンは要約を短縮）
+        # story_so_far を構築（直近5シーンの要約）
         story_so_far = ""
         if story_summaries:
-            recent = story_summaries[-5:]  # 直近5シーン
+            recent = story_summaries[-5:]
             story_so_far = "\n".join(recent)
 
         try:
-            # Low-intensity（1-3）で次のシーンもLow-intensityならバッチ
-            if intensity <= 3 and i + 1 < len(outline) and outline[i + 1].get("intensity", 3) <= 3:
-                batch_scenes = [outline[i], outline[i + 1]]
-                
-                log_message(f"バッチ生成: シーン {i+1}-{i+2}/{len(outline)} (Low-Intensity)")
-                if callback:
-                    callback(f"🎬 バッチ生成: シーン {i+1}-{i+2} [Haiku]")
+            log_message(f"シーン {i+1}/{len(outline)} 生成開始 (intensity={intensity}, {model_type})")
+            if callback:
+                callback(f"🎬 シーン {i+1}/{len(outline)} [{model_type}] 重要度{intensity}")
 
-                batch_result = generate_scene_batch(
-                    client, context, batch_scenes, jailbreak, danbooru, sd_guide,
-                    cost_tracker, theme, char_profiles, callback,
-                    story_so_far=story_so_far
-                )
+            draft = generate_scene_draft(
+                client, context, scene, jailbreak, danbooru, sd_guide,
+                cost_tracker, theme, char_profiles, callback,
+                story_so_far=story_so_far
+            )
 
-                for j, result in enumerate(batch_result):
-                    idx = i + j
-                    results.append(result)
-                    
-                    # 要約を蓄積
-                    summary = extract_scene_summary(result)
-                    story_summaries.append(summary)
-                    log_message(f"シーン {idx+1} 要約蓄積: {summary[:60]}...")
+            results.append(draft)
+            
+            # 要約を蓄積して次シーンに渡す
+            summary = extract_scene_summary(draft)
+            story_summaries.append(summary)
+            log_message(f"シーン {i+1} 要約蓄積: {summary[:80]}...")
 
-                    draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{idx+1}.json"
-                    with open(draft_file, "w", encoding="utf-8") as f:
-                        json.dump(result, f, ensure_ascii=False, indent=2)
-                    final_file = FINAL_DIR / f"final_{timestamp}_scene{idx+1}.json"
-                    with open(final_file, "w", encoding="utf-8") as f:
-                        json.dump(result, f, ensure_ascii=False, indent=2)
+            draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{i+1}.json"
+            with open(draft_file, "w", encoding="utf-8") as f:
+                json.dump(draft, f, ensure_ascii=False, indent=2)
+            final_file = FINAL_DIR / f"final_{timestamp}_scene{i+1}.json"
+            with open(final_file, "w", encoding="utf-8") as f:
+                json.dump(draft, f, ensure_ascii=False, indent=2)
 
-                if callback:
-                    callback(f"✅ シーン {i+1}-{i+2} 完了")
-                i += 2
-
-            else:
-                # 個別生成（High-intensity or 単独Low-intensity）
-                model_type = "Sonnet" if intensity >= 4 else "Haiku"
-                log_message(f"シーン {i+1}/{len(outline)} 生成開始 (intensity={intensity}, {model_type})")
-                if callback:
-                    callback(f"🎬 シーン {i+1}/{len(outline)} [{model_type}] 重要度{intensity}")
-
-                draft = generate_scene_draft(
-                    client, context, scene, jailbreak, danbooru, sd_guide,
-                    cost_tracker, theme, char_profiles, callback,
-                    story_so_far=story_so_far
-                )
-
-                results.append(draft)
-                
-                # 要約を蓄積
-                summary = extract_scene_summary(draft)
-                story_summaries.append(summary)
-                log_message(f"シーン {i+1} 要約蓄積: {summary[:60]}...")
-
-                draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{i+1}.json"
-                with open(draft_file, "w", encoding="utf-8") as f:
-                    json.dump(draft, f, ensure_ascii=False, indent=2)
-                final_file = FINAL_DIR / f"final_{timestamp}_scene{i+1}.json"
-                with open(final_file, "w", encoding="utf-8") as f:
-                    json.dump(draft, f, ensure_ascii=False, indent=2)
-
-                log_message(f"シーン {i+1}/{len(outline)} 完了")
-                if callback:
-                    callback(f"✅ シーン {i+1}/{len(outline)} 完了")
-                i += 1
+            log_message(f"シーン {i+1}/{len(outline)} 完了")
+            if callback:
+                callback(f"✅ シーン {i+1}/{len(outline)} 完了")
 
         except Exception as e:
             log_message(f"シーン {i+1} 生成エラー: {e}")
@@ -2148,6 +2101,7 @@ def generate_pipeline(
             
             error_result = {
                 "scene_id": scene.get("scene_id", i + 1),
+                "title": f"シーン{i+1}",
                 "mood": "エラー",
                 "dialogue": [],
                 "direction": f"生成エラー: {str(e)[:100]}",
@@ -2155,7 +2109,6 @@ def generate_pipeline(
             }
             results.append(error_result)
             story_summaries.append(f"[シーン{i+1}: エラーにより欠落]")
-            i += 1
 
     # 完了サマリー
     success_count = sum(1 for r in results if r.get("mood") != "エラー")
