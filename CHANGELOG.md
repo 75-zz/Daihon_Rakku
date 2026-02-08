@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.6.0] - 2026-02-08
+
+### Changed (CG集フォーマット対応 - 根本改修)
+- **dialogue → bubbles フォーマット変更**: 小説/脚本式セリフからFANZA CG集の吹き出し形式に全面移行
+  - 旧: `dialogue: [{speaker, emotion, line, inner_thought}]` 4-6個 / 各15文字
+  - 新: `bubbles: [{speaker, type, text}]` 1-4個 / 各1-10文字
+  - type: `speech`（会話）/ `moan`（喘ぎ）/ `thought`（心の声）
+- **onomatopoeia フィールド追加**: 画像上の効果音テキスト（0-4個）
+  - intensity別目安: 1-2: なし〜1個, 3: 1-2個, 4-5: 2-4個
+  - 例: ズブッ, ヌチュ, パンパン, ビクビクッ, ドクドクッ
+- **システムプロンプト全面書き換え**
+  - 「FANZA同人CG集とは」セクション追加（画像メイン・テキストサブの理解を促す）
+  - 「吹き出しの書き方」鉄則（1-10文字、句読点不要、状況説明禁止）
+  - 「良い例 vs 悪い例」を具体的に提示
+  - intensity別の吹き出し・オノマトペ指針を刷新
+- **エクスポート対応**
+  - CSV: カラム名変更（bubble_no, speaker, type, text, onomatopoeia）
+  - Excel: ヘッダー変更（吹き出しNo, 話者, 種類, テキスト, オノマトペ）
+  - 旧dialogue形式のJSONも自動互換読み込み対応
+- **関連関数の更新**
+  - `generate_scene_draft`: プロンプト・出力形式を完全刷新
+  - `generate_scene_batch`: 同上（バッチ版）
+  - `polish_scene`: 清書ルールをCG集吹き出し形式に
+  - `extract_scene_summary`: bubbles対応（旧dialogue互換あり）
+
+---
+
+## [1.5.0] - 2026-02-08
+
+### Added (ストーリーファースト・パイプライン)
+- **generate_synopsis**: コンセプトから400-600字の完全なストーリーあらすじを生成（Haiku 1回）
+  - あらすじはファイル保存（context/synopsis_*.txt）
+- **generate_outline API化**: あらすじを忠実にシーン分割（Haiku 1回、旧テンプレート→API化）
+  - シーン配分: 導入20% / 展開 / 本番40% / 余韻10%
+  - 各シーンにsituation, emotional_arc, beats, viewer_hookを追加
+  - ルール7-8: 同パターン繰り返し禁止、連続同locationの禁止
+- **generate_scene_draft**: synopsisパラメータ追加、あらすじ全文をプロンプトに注入
+- **compact_context_local**: コンセプト80文字切り捨て制限を撤廃
+- **コンテンツリフューズ対策**: Haiku拒否時にリトライ機構追加
+- **あらすじ制約**: 「コンセプトにない極端な展開は絶対に追加しない」ルール追加
+
+### Changed
+- パイプライン: 2フェーズ→4フェーズ（圧縮→あらすじ→分割→シーン生成）
+- コスト見積もりUI更新（prep_calls=2: あらすじ+分割）
+
+---
+
 ## [1.4.2] - 2026-02-08
 
 ### Fixed (ストーリー連続性 - 根本修正)
