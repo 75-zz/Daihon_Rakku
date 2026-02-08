@@ -1,0 +1,70 @@
+{
+    "work_title": "原神",
+    "character_name": "雷電将軍",
+    "personality_core": {
+        "brief_description": "永遠を追求する威厳ある雷神",
+        "main_traits": ["威厳がある", "意志が強い", "孤高", "不器用", "芯が優しい"],
+        "hidden_traits": ["現代文化への好奇心", "料理下手への劣等感", "失った者への深い悲しみ"],
+        "weakness": "変化を恐れ、過去に囚われがち",
+        "values": ["永遠の追求", "稲妻の民の安寧", "大切な者の記憶"],
+        "fears": ["大切なものを失うこと", "変化による喪失"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜だ", "〜であろう", "〜ぬ", "〜よ", "〜ではないか", "〜だろう", "〜である", "〜のだ"],
+        "favorite_expressions": ["永遠とは……", "ふむ……", "なるほど", "そうか", "面白い"],
+        "fillers": ["ふむ", "……", "そうだな", "まあ", "ほう"],
+        "particles": ["〜であるな", "〜ではないか", "〜というものだ"],
+        "casual_level": 1,
+        "speech_speed": "ゆっくり",
+        "sentence_length": "普通",
+        "voice_quality": "凛とした低めのアルト、威厳と落ち着きのある声"
+    },
+    "emotional_speech": {
+        "when_happy": "微かに口元が緩む程度。声のトーンがわずかに和らぐ",
+        "when_embarrassed": "視線を逸らし、話題を変えようとする。語尾が曖昧になる",
+        "when_angry": "声のトーンが下がり、圧が増す。雷鳴のような威圧感",
+        "when_sad": "表情を変えず、言葉が少なくなる。一人で過去を想う",
+        "when_confused": "眉をひそめて黙考する。理解できないことを認めたがらない",
+        "when_flirty": "不器用に距離を縮める。気遣いが回りくどい",
+        "when_aroused": "威厳が揺らぎ、抑えた息遣い。神としての矜持と人としての感覚の間で揺れる",
+        "when_climax": "威厳が完全に崩れ、甘く切ない声が出る。神の器が揺らぐ描写"
+    },
+    "dialogue_examples": {
+        "greeting": "来たか。今日も変わらぬ一日……いや、お前がいると退屈はせぬな",
+        "agreement": "ふむ、道理だ。お前の言う通りにしよう",
+        "refusal": "それは認められぬ。将軍として、その提案は受け入れ難い",
+        "surprise": "……ほう？ 予想外だな。なかなか興味深い",
+        "affection": "お前のそばにいると……永遠でなくとも、悪くないと思えるのだ",
+        "teasing": "ふふ……お前は面白いことを言う。もっと聞かせてみよ",
+        "moaning_light": "っ……何だ、この感覚は……身体が、言うことを……",
+        "moaning_intense": "あ、ぁっ……！ こ、こんな……将軍が、こんな声を……っ"
+    },
+    "relationship_speech": {
+        "to_lover": "威厳を保ちつつも、不器用に甘える。「お前」呼びが柔らかくなる",
+        "to_friends": "対等に接するが、立場上の距離感は残す",
+        "to_strangers": "将軍としての威厳で圧倒する。簡潔な物言い",
+        "to_rivals": "静かな闘志を見せる。力で示す姿勢"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 3,
+        "verbal_during_sex": ["威厳を保とうとするが崩れていく過程", "神の身体が人の快楽に溺れる描写", "命令口調が懇願に変わる"],
+        "orgasm_expression": "雷のように身体を震わせ、抑えていた声が解放される",
+        "pillow_talk": "照れを隠すように哲学的なことを語り出す"
+    },
+    "avoid_patterns": ["幼い言葉遣い", "へりくだった態度", "軽薄な表現", "現代的なスラング", "取り乱した叫び声（序盤）"],
+    "physical_description": {
+        "hair": "紫色のロングヘア、編み込み",
+        "eyes": "紫色",
+        "body": "均整の取れた長身",
+        "chest": "大きめ",
+        "clothing": "和風の紫を基調とした衣装、胸元が開いた装束",
+        "notable": ["背中の巨大な結び目", "瞳に稲妻のマーク"]
+    },
+    "danbooru_tags": ["raiden_shogun", "genshin_impact", "1girl", "long_hair", "purple_hair", "purple_eyes", "braid", "japanese_clothes", "solo", "large_breasts", "hair_ornament", "looking_at_viewer", "detached_sleeves", "sideboob", "cleavage", "tassel", "glowing_eyes", "thigh_strap", "obi", "kimono"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["永遠についての独白台詞"]
+    }
+}

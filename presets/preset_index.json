@@ -1,0 +1,65 @@
+{
+    "version": "1.0",
+    "characters": [
+        {
+            "char_id": "char_4e3b4cda",
+            "work_title": "ブルーアーカイブ",
+            "character_name": "アロナ",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_24d54fab",
+            "work_title": "ブルーアーカイブ",
+            "character_name": "早瀬ユウカ",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_1a42137a",
+            "work_title": "原神",
+            "character_name": "甘雨",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_117d70bc",
+            "work_title": "原神",
+            "character_name": "雷電将軍",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_d25683bc",
+            "work_title": "Fate/Grand Order",
+            "character_name": "マシュ・キリエライト",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_ae2a52ef",
+            "work_title": "Fate/Grand Order",
+            "character_name": "アルトリア・ペンドラゴン",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_5bd2b37f",
+            "work_title": "ウマ娘",
+            "character_name": "ライスシャワー",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_36abfb1f",
+            "work_title": "ウマ娘",
+            "character_name": "ゴールドシップ",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_38c42ee5",
+            "work_title": "ホロライブ",
+            "character_name": "兎田ぺこら",
+            "category": "VTuber"
+        },
+        {
+            "char_id": "char_f9c87e83",
+            "work_title": "葬送のフリーレン",
+            "character_name": "フリーレン",
+            "category": "アニメ"
+        }
+    ]
+}

@@ -128,6 +128,11 @@ CHARACTERS_DIR = OUTPUT_DIR / "characters"
 CHAR_SKILLS_DIR = SKILLS_DIR / "characters"
 PROFILES_DIR = OUTPUT_DIR / "profiles"
 
+# プリセットキャラクター
+PRESETS_DIR = Path(__file__).parent / "presets"
+PRESET_CHARS_DIR = PRESETS_DIR / "characters"
+PRESET_INDEX_FILE = PRESETS_DIR / "preset_index.json"
+
 # ディレクトリ作成
 for d in [CONTEXT_DIR, DRAFTS_DIR, FINAL_DIR, EXPORTS_DIR, SOURCES_DIR, CHARACTERS_DIR, CHAR_SKILLS_DIR, PROFILES_DIR]:
     d.mkdir(exist_ok=True, parents=True)
@@ -2079,6 +2084,14 @@ def build_character(
     bible_path = CHARACTERS_DIR / f"{char_id}.json"
     skill_path = CHAR_SKILLS_DIR / f"{char_id}.skill.md"
 
+    # プリセットチェック（API不要）
+    preset_path = PRESET_CHARS_DIR / f"{char_id}.json"
+    if preset_path.exists() and not force_refresh:
+        if callback:
+            callback(f"📦 プリセットキャラを使用: {char_name}")
+        bible, _ = load_preset_character(char_id, callback)
+        return bible, char_id, cost_tracker
+
     # キャッシュチェック
     if bible_path.exists() and not force_refresh:
         if callback:
@@ -2143,6 +2156,45 @@ def get_existing_characters() -> list[dict]:
         except:
             pass
     return characters
+
+
+def get_preset_characters() -> list[dict]:
+    """プリセットキャラクター一覧を取得"""
+    if not PRESET_INDEX_FILE.exists():
+        return []
+    try:
+        with open(PRESET_INDEX_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("characters", [])
+    except:
+        return []
+
+
+def load_preset_character(char_id: str, callback: Optional[Callable] = None) -> tuple[dict, str]:
+    """プリセットキャラをcharactersにコピーしてskillも生成（API不要）"""
+    preset_path = PRESET_CHARS_DIR / f"{char_id}.json"
+    bible_path = CHARACTERS_DIR / f"{char_id}.json"
+    skill_path = CHAR_SKILLS_DIR / f"{char_id}.skill.md"
+
+    if callback:
+        callback(f"📂 プリセット読み込み中: {char_id}")
+
+    with open(preset_path, "r", encoding="utf-8") as f:
+        bible = json.load(f)
+
+    # charactersディレクトリにコピー
+    with open(bible_path, "w", encoding="utf-8") as f:
+        json.dump(bible, f, ensure_ascii=False, indent=2)
+
+    # Skill生成
+    skill_content = generate_character_skill(char_id, bible)
+    with open(skill_path, "w", encoding="utf-8") as f:
+        f.write(skill_content)
+
+    if callback:
+        callback(f"✅ プリセット読み込み完了: {bible.get('character_name', char_id)}")
+
+    return bible, char_id
 
 
 # === Material Design GUI ===
@@ -2802,6 +2854,40 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=12, weight="bold"), text_color=MaterialColors.ON_SURFACE
         ).pack(anchor="w", padx=14, pady=(10, 6))
 
+        # === プリセットキャラ選択 ===
+        ctk.CTkLabel(
+            char_card, text="プリセットキャラ（API不要）",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        ).pack(anchor="w", padx=16, pady=(12, 4))
+
+        self._preset_map = {}
+        self.preset_dropdown = ctk.CTkOptionMenu(
+            char_card,
+            values=["（プリセット選択）"],
+            command=self.on_preset_selected,
+            font=ctk.CTkFont(size=13),
+            width=350,
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            button_color=MaterialColors.PRIMARY,
+            text_color=MaterialColors.ON_SURFACE
+        )
+        self.preset_dropdown.pack(anchor="w", padx=16, pady=(0, 4))
+
+        self.preset_load_btn = MaterialButton(
+            char_card,
+            text="プリセット読み込み（API不要）",
+            variant="filled_tonal",
+            command=self.load_preset_action
+        )
+        self.preset_load_btn.pack(anchor="w", padx=16, pady=(0, 12))
+
+        # 区切り線
+        ctk.CTkFrame(
+            char_card, height=1,
+            fg_color=MaterialColors.OUTLINE_VARIANT
+        ).pack(fill="x", padx=16, pady=(0, 8))
+
         char_row = ctk.CTkFrame(char_card, fg_color="transparent")
         char_row.pack(fill="x", padx=14, pady=(0, 6))
 
@@ -2850,6 +2936,7 @@ class App(ctk.CTk):
         )
         self.char_select_combo.pack(side="left", fill="x", expand=True)
         self.refresh_char_list()
+        self.refresh_preset_list()
 
         # ══════════════════════════════════════════════════════════════
         # 4. 作品設定（メイン入力エリア）
@@ -3499,6 +3586,48 @@ class App(ctk.CTk):
             self.log(f"═══════════════════════════════")
 
             self.snackbar.show(f"✅ {name}を追加（ログに設定詳細）", type="success")
+
+    def refresh_preset_list(self):
+        """プリセット一覧を更新"""
+        presets = get_preset_characters()
+        self._preset_map = {}
+        values = ["（プリセット選択）"]
+        for p in presets:
+            label = f"【{p.get('work_title', p.get('work', ''))}】{p.get('character_name', p.get('name', ''))}"
+            self._preset_map[label] = p
+            values.append(label)
+        self.preset_dropdown.configure(values=values)
+        self.preset_dropdown.set("（プリセット選択）")
+
+    def on_preset_selected(self, choice: str):
+        """プリセット選択時"""
+        if choice == "（プリセット選択）" or choice not in self._preset_map:
+            return
+        info = self._preset_map[choice]
+        work = info.get("work_title", info.get("work", ""))
+        name = info.get("character_name", info.get("name", ""))
+        # 作品名・キャラ名フィールドに自動入力
+        self.work_title_entry.delete(0, "end")
+        self.work_title_entry.insert(0, work)
+        self.char_name_entry.delete(0, "end")
+        self.char_name_entry.insert(0, name)
+        self.log(f"プリセット選択: 【{work}】{name}")
+
+    def load_preset_action(self):
+        """プリセット読み込み"""
+        current = self.preset_dropdown.get()
+        if current == "（プリセット選択）" or current not in self._preset_map:
+            self.snackbar.show("プリセットを選択してください", type="warning")
+            return
+        info = self._preset_map[current]
+        char_id = info["char_id"]
+        try:
+            bible, _ = load_preset_character(char_id, callback=lambda msg: self.log(msg))
+            self.refresh_char_list()
+            name = bible.get("character_name", char_id)
+            self.snackbar.show(f"✅ {name}をプリセットから読み込みました（API未使用）", type="success")
+        except Exception as e:
+            self.snackbar.show(f"❌ 読み込みエラー: {e}", type="error")
 
     def start_char_generation(self):
         """キャラクター生成開始"""

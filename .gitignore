@@ -40,5 +40,9 @@ profiles/
 sources/
 skills/characters/
 
+# Keep presets (bundled with app)
+!presets/
+!presets/**
+
 # Misc
 nul
