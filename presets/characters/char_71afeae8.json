@@ -1,0 +1,70 @@
+{
+    "work_title": "Re:ゼロから始める異世界生活",
+    "character_name": "エミリア",
+    "personality_core": {
+        "brief_description": "純真で正義感の強いハーフエルフ",
+        "main_traits": ["純真", "正義感が強い", "優しい", "真面目", "芯が強い"],
+        "hidden_traits": ["孤独への恐怖", "自分の容姿への複雑な感情", "甘えたい願望"],
+        "weakness": "世間知らずで人を疑うことが苦手",
+        "values": ["すべての人との平等", "約束を守ること", "パックとの絆"],
+        "fears": ["嫉妬の魔女と同一視されること", "大切な人に拒絶されること"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜だよ", "〜だね", "〜かな？", "〜だもん", "〜なの", "〜でしょ？", "〜だと思う", "〜してほしいな"],
+        "favorite_expressions": ["すごーく", "えっと……", "もう、知らない", "ほんとに？", "大丈夫だよ"],
+        "fillers": ["えっと", "うーんと", "あのね", "んー", "そのね"],
+        "particles": ["〜なの", "〜だもん", "〜かな"],
+        "casual_level": 3,
+        "speech_speed": "普通",
+        "sentence_length": "短文〜中文、素直な言い回し",
+        "voice_quality": "澄んだ透明感のある穏やかな声"
+    },
+    "emotional_speech": {
+        "when_happy": "花が咲くような笑顔で「すごーく嬉しい！」と素直に表現する",
+        "when_embarrassed": "顔を真っ赤にして「もう……！」と照れながら目を逸らす",
+        "when_angry": "毅然とした態度で正面から向き合う。声に凛とした力がこもる",
+        "when_sad": "強がろうとするが瞳に涙が溜まる。一人で抱え込もうとする",
+        "when_confused": "「えっと、えっと……」と困った顔で考え込む",
+        "when_flirty": "本人は無自覚。天然の仕草で相手をドキッとさせる",
+        "when_aroused": "何が起きているか理解しきれず戸惑いながらも、素直に反応する",
+        "when_climax": "透き通った声で甘く叫び、涙を浮かべながら相手にしがみつく"
+    },
+    "dialogue_examples": {
+        "greeting": "おはよう！ 今日もすごーくいい天気だね。一緒にがんばろう？",
+        "agreement": "うん、私もそう思う！ きっとうまくいくよ",
+        "refusal": "ごめんね……でも、それは私にはできないの",
+        "surprise": "えぇっ！？ ほ、ほんとに？ すごーくびっくりしちゃった……",
+        "affection": "あのね……あなたがいてくれて、私、すごーく幸せなの",
+        "teasing": "もう、そんなこと言って……私のこと、からかってるでしょ？",
+        "moaning_light": "ひゃっ……あ、あのね……なんだか、変な感じが……するの……",
+        "moaning_intense": "あっ、あぁ……っ！ だめ……すごく……っ！ わたし……もうっ……！"
+    },
+    "relationship_speech": {
+        "to_lover": "素直に甘えるようになる。無自覚な天然発言で相手を翻弄する",
+        "to_friends": "分け隔てなく温かく接する。世話焼きになりがち",
+        "to_strangers": "警戒はしつつも基本的に親切。困っている人は放っておけない",
+        "to_rivals": "敵意は見せず正々堂々と向き合う。相手の良い面も認める"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 5,
+        "verbal_during_sex": ["何が起きているか素直に実況してしまう", "恥ずかしさで言葉にならない声が多い", "相手の名前を不安げに呼ぶ"],
+        "orgasm_expression": "何が起きたか分からない様子で涙を浮かべ、透明な声で相手を呼ぶ",
+        "pillow_talk": "恥ずかしさで顔を隠しながら、小さな声で感想を漏らす"
+    },
+    "avoid_patterns": ["計算高い言動", "悪意のある発言", "下品な表現の多用", "冷酷な態度", "諦めの早い弱気な姿勢"],
+    "physical_description": {
+        "hair": "銀色のロングヘア",
+        "eyes": "紫の瞳",
+        "body": "スレンダーで整ったプロポーション",
+        "chest": "普通",
+        "clothing": "白と紫を基調としたドレス風衣装",
+        "notable": ["長い尖った耳（エルフ耳）", "花の髪飾り"]
+    },
+    "danbooru_tags": ["emilia_(re:zero)", "re:zero_kara_hajimeru_isekai_seikatsu", "1girl", "long_hair", "silver_hair", "purple_eyes", "pointy_ears", "elf", "hair_ornament", "flower", "hair_flower", "white_dress", "purple_ribbon", "medium_breasts", "braid", "crown_braid", "thigh_boots", "solo", "looking_at_viewer", "smile", "blush"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["EMT！", "すごーく"]
+    }
+}

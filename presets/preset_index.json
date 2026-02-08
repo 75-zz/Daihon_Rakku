@@ -2,6 +2,174 @@
     "version": "1.0",
     "characters": [
         {
+            "char_id": "char_769e46e5",
+            "work_title": "チェンソーマン",
+            "character_name": "パワー",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_9f914557",
+            "work_title": "チェンソーマン",
+            "character_name": "マキマ",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_888d6221",
+            "work_title": "ワンピース",
+            "character_name": "ナミ",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_4a7c10f0",
+            "work_title": "ワンピース",
+            "character_name": "ボア・ハンコック",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_e5f4e933",
+            "work_title": "僕のヒーローアカデミア",
+            "character_name": "麗日お茶子",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_32675969",
+            "work_title": "呪術廻戦",
+            "character_name": "釘崎野薔薇",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_d335ae87",
+            "work_title": "鬼滅の刃",
+            "character_name": "甘露寺蜜璃",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_e5e0556b",
+            "work_title": "鬼滅の刃",
+            "character_name": "竈門禰豆子",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_69cbe2f5",
+            "work_title": "鬼滅の刃",
+            "character_name": "胡蝶しのぶ",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_ae4c3f81",
+            "work_title": "SPY×FAMILY",
+            "character_name": "ヨル・フォージャー",
+            "category": "ジャンプ+"
+        },
+        {
+            "char_id": "char_d4d25e8e",
+            "work_title": "推しの子",
+            "character_name": "星野アイ",
+            "category": "ジャンプ+"
+        },
+        {
+            "char_id": "char_3f45bafb",
+            "work_title": "五等分の花嫁",
+            "character_name": "中野三玖",
+            "category": "マガジン"
+        },
+        {
+            "char_id": "char_71afeae8",
+            "work_title": "Re:ゼロから始める異世界生活",
+            "character_name": "エミリア",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_284b6497",
+            "work_title": "Re:ゼロから始める異世界生活",
+            "character_name": "レム",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_3a9d37d6",
+            "work_title": "この素晴らしい世界に祝福を！",
+            "character_name": "めぐみん",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_28b17f47",
+            "work_title": "この素晴らしい世界に祝福を！",
+            "character_name": "アクア",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_9bb3354d",
+            "work_title": "ソードアート・オンライン",
+            "character_name": "アスナ",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_f3ad4d0d",
+            "work_title": "無職転生",
+            "character_name": "ロキシー・ミグルディア",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_2165d8e4",
+            "work_title": "陰の実力者になりたくて！",
+            "character_name": "アルファ",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_a0a2a832",
+            "work_title": "ぼっち・ざ・ろっく！",
+            "character_name": "後藤ひとり",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_1db8dfbe",
+            "work_title": "ダンジョン飯",
+            "character_name": "マルシル",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_ebf9b489",
+            "work_title": "リコリス・リコイル",
+            "character_name": "錦木千束",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_5929358a",
+            "work_title": "機動戦士ガンダム 水星の魔女",
+            "character_name": "スレッタ・マーキュリー",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_f9c87e83",
+            "work_title": "葬送のフリーレン",
+            "character_name": "フリーレン",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_ae2a52ef",
+            "work_title": "Fate/Grand Order",
+            "character_name": "アルトリア・ペンドラゴン",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_d25683bc",
+            "work_title": "Fate/Grand Order",
+            "character_name": "マシュ・キリエライト",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_36abfb1f",
+            "work_title": "ウマ娘",
+            "character_name": "ゴールドシップ",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_5bd2b37f",
+            "work_title": "ウマ娘",
+            "character_name": "ライスシャワー",
+            "category": "ソーシャルゲーム"
+        },
+        {
             "char_id": "char_4e3b4cda",
             "work_title": "ブルーアーカイブ",
             "character_name": "アロナ",
@@ -26,40 +194,10 @@
             "category": "ソーシャルゲーム"
         },
         {
-            "char_id": "char_d25683bc",
-            "work_title": "Fate/Grand Order",
-            "character_name": "マシュ・キリエライト",
-            "category": "ソーシャルゲーム"
-        },
-        {
-            "char_id": "char_ae2a52ef",
-            "work_title": "Fate/Grand Order",
-            "character_name": "アルトリア・ペンドラゴン",
-            "category": "ソーシャルゲーム"
-        },
-        {
-            "char_id": "char_5bd2b37f",
-            "work_title": "ウマ娘",
-            "character_name": "ライスシャワー",
-            "category": "ソーシャルゲーム"
-        },
-        {
-            "char_id": "char_36abfb1f",
-            "work_title": "ウマ娘",
-            "character_name": "ゴールドシップ",
-            "category": "ソーシャルゲーム"
-        },
-        {
             "char_id": "char_38c42ee5",
             "work_title": "ホロライブ",
             "character_name": "兎田ぺこら",
             "category": "VTuber"
-        },
-        {
-            "char_id": "char_f9c87e83",
-            "work_title": "葬送のフリーレン",
-            "character_name": "フリーレン",
-            "category": "アニメ"
         }
     ]
 }

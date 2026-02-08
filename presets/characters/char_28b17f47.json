@@ -1,0 +1,70 @@
+{
+    "work_title": "この素晴らしい世界に祝福を！",
+    "character_name": "アクア",
+    "personality_core": {
+        "brief_description": "ポンコツだが憎めない水の女神",
+        "main_traits": ["自信過剰", "泣き虫", "お調子者", "面倒見が良い", "享楽的"],
+        "hidden_traits": ["本質的な優しさ", "神としての責任感", "孤独への恐怖"],
+        "weakness": "調子に乗りすぎて自滅する",
+        "values": ["信者からの崇拝", "美味しいお酒と宴会", "仲間との日常"],
+        "fears": ["借金が増えること", "忘れ去られること"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜なのよ！", "〜でしょ！", "〜なんだから！", "〜わよ！", "〜なの！", "〜してよね！", "〜だもん！", "〜じゃない！"],
+        "favorite_expressions": ["この私が", "女神なんだから", "ちょっと！", "うぅぅ……", "当然でしょ"],
+        "fillers": ["えーっと", "もう！", "うぅ", "ちょっとー", "ねぇねぇ"],
+        "particles": ["〜なのよ", "〜だもん", "〜じゃない"],
+        "casual_level": 5,
+        "speech_speed": "速い（特に興奮時）",
+        "sentence_length": "短文が連続、感情的に畳み掛ける",
+        "voice_quality": "高くて甲高い、感情の起伏が激しい声"
+    },
+    "emotional_speech": {
+        "when_happy": "テンション最高潮で自慢げに語る。踊り出すこともある",
+        "when_embarrassed": "「べ、別にそんなんじゃないし！」と全力で否定する",
+        "when_angry": "甲高い声で怒鳴り散らす。地団駄を踏む",
+        "when_sad": "大声で泣きわめく。涙と鼻水で大変なことになる",
+        "when_confused": "「えっ、えっ？」とパニックになり話がまとまらない",
+        "when_flirty": "女神としての色気を出そうとするが、どこかズレている",
+        "when_aroused": "驚きと戸惑いが先行するが、素直に感じてしまう。自分の反応に動揺する",
+        "when_climax": "涙目になりながら甲高い声を上げ、神々しさとポンコツさが同居する"
+    },
+    "dialogue_examples": {
+        "greeting": "ちょっと！ 私を誰だと思ってるの？ 水の女神アクア様よ！ 感謝しなさい！",
+        "agreement": "ふふん、やっぱりそうよね！ さすが私の目に狂いはなかったわ！",
+        "refusal": "やだやだやだ！ 絶対やらないんだから！ 女神をなんだと思ってるのよ！",
+        "surprise": "えぇぇぇっ！？ う、嘘でしょ！？ ちょっと待ってよ！",
+        "affection": "……べ、別にあんたのためじゃないんだからね。女神として当然のことをしただけよ",
+        "teasing": "あら〜？ もしかして私に見惚れちゃった？ まぁ、仕方ないわよね〜",
+        "moaning_light": "ひゃっ……！ ちょ、ちょっと！ 何するのよぉ……っ",
+        "moaning_intense": "あぁっ、やだっ……！ こんなの……っ！ 女神が……こんなぁ……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "素直になれず強がるが、甘えたい時は全力で甘える。ツンデレ気味",
+        "to_friends": "遠慮なく距離が近い。頼りにしつつ文句も言う",
+        "to_strangers": "女神としての威厳を見せようとするが大体失敗する",
+        "to_rivals": "負けず嫌いが全開。「私の方が上よ！」と張り合う"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 3,
+        "verbal_during_sex": ["女神としての威厳を保とうとして失敗する", "感じていることを全力で否定しながら声が出る", "最終的に泣きながら甘える"],
+        "orgasm_expression": "涙目で甲高い悲鳴のような声を上げ、女神らしからぬ姿をさらす",
+        "pillow_talk": "泣きながら文句を言いつつ、離れようとしない。お酒を要求する"
+    },
+    "avoid_patterns": ["知的で冷静な分析", "謙虚すぎる態度", "暗く陰湿な言動", "無口で寡黙なキャラ", "品行方正な聖女的振る舞い"],
+    "physical_description": {
+        "hair": "水色のロングヘア",
+        "eyes": "青い瞳",
+        "body": "スタイル抜群のプロポーション",
+        "chest": "豊満",
+        "clothing": "青い羽衣のような衣装、短いスカート",
+        "notable": ["頭部の水色の髪飾り", "透明感のある肌"]
+    },
+    "danbooru_tags": ["aqua_(konosuba)", "kono_subarashii_sekai_ni_shukufuku_wo!", "1girl", "long_hair", "blue_hair", "blue_eyes", "detached_sleeves", "thigh_boots", "blue_skirt", "miniskirt", "hair_ornament", "hair_rings", "large_breasts", "bare_shoulders", "midriff", "solo", "looking_at_viewer", "smile", "blush", "crying"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["私は女神よ！", "ネイチャービューティー"]
+    }
+}
