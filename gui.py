@@ -1755,6 +1755,16 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 - 「私は〜」「あなたが〜」のような文章はNG
 - 会話のキャッチボールではなく、画像の補強テキスト
 - **bubblesの内容はdescriptionのシーン内容と一致させる**こと
+- **画像+吹き出し+オノマトペだけで視聴者にシーンが伝わる**ようにする
+
+【thoughtの書き方（重要）】
+thoughtは感情の断片。説明や反省はNG。
+✅「やば…」「もう…むり…」「なにこれ…」「おかしく…なる」
+❌「彼氏に...ごめん...」（反省文→不自然）
+❌「彼のことなんて...忘れてしまった」（ナレーション→不自然）
+❌「こんなことをしている自分が信じられない」（独白→長すぎ）
+❌「なぜ私に…これは夢じゃない」（説明→不自然）
+NTR系のthoughtは: 「彼より…」「もう…戻れない」「なんで…こんなに」等の短い感情断片
 
 【intensity別の目安】
 - 1-2: 吹き出し1-2個（自然な一言）、オノマトペなし〜1個
@@ -1802,11 +1812,22 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 ✅「きもちぃ…♡」（堕落5文字）
 ❌「あなたに触れられて体が熱くなる」（15文字・小説）
 
-✅ 心の声:「バレたら…」（5文字）
-❌ 心の声:「こんなことをしている自分が信じられない」（19文字・独白）
+✅ 心の声:「彼より…」（3文字・感情断片）
+❌ 心の声:「彼氏に...ごめん...」（8文字・反省文で不自然）
+
+✅ 心の声:「もう…戻れない」（7文字・状態の暗示）
+❌ 心の声:「彼のことなんて...忘れてしまった」（15文字・ナレーション）
 
 ✅ オノマトペ: ズブッ, グチュグチュ, ビクッ
 ❌ オノマトペは吹き出しの中に入れない（別フィールド）
+
+## speech吹き出しで状況を伝えるテクニック
+
+descriptionの説明がなくても、画像+吹き出しで視聴者に伝わるようにする。
+・抵抗シーン: 「やめ…」+男「おとなしくしろ」→ 強制されているとわかる
+・堕落シーン: 「もっと…♡」+男「もう正直だな」→ 快楽に堕ちたとわかる
+・NTR比較: 「こんなの…初めて…♡」→ 彼氏より気持ちいいと暗示
+・絶頂シーン: 「イっ…ちゃ…♡」+オノマトペ「ドビュッ」→ 中出し絶頂とわかる
 
 全キャラ成人(18+)。JSON形式のみ出力。"""
     
@@ -2304,28 +2325,39 @@ def generate_pipeline(
             err_msg = str(e)
             log_message(f"シーン {i+1} 生成エラー: {err_msg}")
 
-            # コンテンツ拒否の場合、あらすじなしでリトライ
+            # リトライ判定（コンテンツ拒否 or JSONパースエラー）
             is_refusal = any(kw in err_msg for kw in ["倫理", "対応することはできません", "cannot", "inappropriate"])
-            if is_refusal:
-                log_message(f"シーン {i+1} コンテンツ拒否検出、あらすじ省略でリトライ")
+            is_json_error = any(kw in err_msg for kw in ["Invalid JSON", "No JSON", "Empty response", "JSONDecodeError"])
+
+            if is_refusal or is_json_error:
+                retry_reason = "コンテンツ拒否" if is_refusal else "JSONパースエラー"
+                log_message(f"シーン {i+1} {retry_reason}検出、リトライ")
                 if callback:
-                    callback(f"⚠️ シーン {i+1} リトライ中...")
-                try:
-                    draft = generate_scene_draft(
-                        client, context, scene, jailbreak, danbooru, sd_guide,
-                        cost_tracker, theme, char_profiles, callback,
-                        story_so_far=story_so_far,
-                        synopsis=""
-                    )
-                    results.append(draft)
-                    summary = extract_scene_summary(draft)
-                    story_summaries.append(summary)
-                    log_message(f"シーン {i+1} リトライ成功")
-                    if callback:
-                        callback(f"✅ シーン {i+1}/{len(outline)} リトライ成功")
+                    callback(f"⚠️ シーン {i+1} {retry_reason}、リトライ中...")
+
+                # 最大2回リトライ
+                retry_success = False
+                for retry_n in range(2):
+                    try:
+                        draft = generate_scene_draft(
+                            client, context, scene, jailbreak, danbooru, sd_guide,
+                            cost_tracker, theme, char_profiles, callback,
+                            story_so_far=story_so_far,
+                            synopsis="" if is_refusal else synopsis
+                        )
+                        results.append(draft)
+                        summary = extract_scene_summary(draft)
+                        story_summaries.append(summary)
+                        log_message(f"シーン {i+1} リトライ{retry_n+1}回目成功")
+                        if callback:
+                            callback(f"✅ シーン {i+1}/{len(outline)} リトライ成功")
+                        retry_success = True
+                        break
+                    except Exception as e2:
+                        log_message(f"シーン {i+1} リトライ{retry_n+1}回目失敗: {e2}")
+
+                if retry_success:
                     continue
-                except Exception as e2:
-                    log_message(f"シーン {i+1} リトライも失敗: {e2}")
 
             import traceback
             log_message(traceback.format_exc())
@@ -2336,7 +2368,8 @@ def generate_pipeline(
                 "scene_id": scene.get("scene_id", i + 1),
                 "title": f"シーン{i+1}",
                 "mood": "エラー",
-                "dialogue": [],
+                "bubbles": [],
+                "onomatopoeia": [],
                 "direction": f"生成エラー: {err_msg[:100]}",
                 "sd_prompt": ""
             }
