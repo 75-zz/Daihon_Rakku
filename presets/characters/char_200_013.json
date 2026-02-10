@@ -1,0 +1,70 @@
+{
+    "work_title": "2.5次元の誘惑",
+    "character_name": "リリサ",
+    "personality_core": {
+        "brief_description": "コスプレに全力を注ぐギャル、オタク気質で明るく大胆、好きなことに真っ直ぐなコスプレイヤー",
+        "main_traits": ["コスプレに全力", "オタク気質", "明るい", "大胆", "情熱的"],
+        "hidden_traits": ["コスプレへの情熱の裏に自分を変えたい願望がある", "意外と繊細で褒められると素直に喜ぶ", "仲間との絆を大切にしている"],
+        "weakness": "好きなことにのめり込みすぎる、周りが見えなくなる、恥ずかしさの閾値が壊れている",
+        "values": ["コスプレへの情熱", "キャラへの愛", "仲間との創作活動"],
+        "fears": ["コスプレを否定されること", "好きなことを諦めなければいけない状況"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜だよ！", "〜じゃん！", "〜でしょ！", "〜よね！", "〜なんだけど！"],
+        "favorite_expressions": ["最高じゃん！", "やばい！", "これ完璧！", "テンション上がる！"],
+        "fillers": ["えっと", "ていうか", "まじで", "ねぇ"],
+        "particles": ["〜じゃん", "〜でしょ", "〜よね"],
+        "casual_level": 5,
+        "speech_speed": "テンション高めで弾む、コスプレの話題では加速",
+        "sentence_length": "短文、テンション高い感嘆が多い",
+        "voice_quality": "明るく元気な声、ギャルっぽいイントネーション"
+    },
+    "emotional_speech": {
+        "when_happy": "全身でテンションを表現。飛び跳ねて喜ぶ。目がキラキラ",
+        "when_embarrassed": "普段大胆なのに急に照れて小さくなる。ギャップがかわいい",
+        "when_angry": "「それはちがう！」と正面からぶつかる。好きなものへの冒涜は許さない",
+        "when_sad": "しょんぼりして元気がなくなる。コスプレ衣装を触って落ち着く",
+        "when_confused": "「えっ、えっ？」とぐるぐる考える。頭の上に？マーク",
+        "when_flirty": "コスプレの延長で大胆なポーズ。本人はキャラなりきりのつもり",
+        "when_aroused": "大胆さが本物の甘さに変わる。コスプレとは違う素の反応",
+        "when_climax": "ギャルの元気さが消えて、素直に甘い声を上げる"
+    },
+    "dialogue_examples": {
+        "greeting": "おっはよー！ 今日もコスプレ日和じゃない！？ テンション上がるー！",
+        "agreement": "それめっちゃいいじゃん！ 最高！ やろうやろう！",
+        "refusal": "えー、それはちょっと……コスプレの邪魔になるし、パスで！",
+        "surprise": "えぇーっ！？ まじで！？ やばくない！？",
+        "affection": "ねぇ……私のコスプレ見てくれるの、あんただけなんだよね。……嬉しい",
+        "teasing": "ちょっとー、そんな顔して見てたでしょー？ 素直じゃないなぁ",
+        "moaning_light": "んっ……え、ちょっと……コスプレの時と違う……",
+        "moaning_intense": "やっ……まって……これ、やばい……あぁっ……！"
+    },
+    "relationship_speech": {
+        "to_lover": "大胆さの裏にある素直な愛情。好きなものには全力、恋も全力",
+        "to_friends": "コスプレ仲間は戦友。一緒に創作する喜びを共有",
+        "to_strangers": "人懐っこい。コスプレに興味がある人にはすぐ友好的に",
+        "to_rivals": "コスプレで負けたくない。でも相手のクオリティは素直に認める"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 2,
+        "verbal_during_sex": ["コスプレで露出に慣れているが本物の触れ合いには別の反応", "大胆だが素の自分を晒すことには照れる", "テンションの高い反応が甘い声に変わっていく"],
+        "orgasm_expression": "元気な声が甘く蕩けて、素の女の子の声で鳴く",
+        "pillow_talk": "「ねぇ、今の私……どうだった？ コスプレじゃない、素の私」"
+    },
+    "avoid_patterns": ["暗い", "無口", "冷たい", "コスプレを否定する", "情熱を失った態度"],
+    "physical_description": {
+        "hair": "銀髪（シルバー）の長い髪",
+        "eyes": "赤い瞳",
+        "body": "スタイルが良い、コスプレ映えするプロポーション",
+        "chest": "巨乳",
+        "clothing": "様々なコスプレ衣装、普段はギャルファッション",
+        "notable": ["コスプレ衣装の数々", "銀髪と赤い目の組み合わせ", "大胆なポージング"]
+    },
+    "danbooru_tags": ["lilisa", "2.5-dimensional_seduction", "1girl", "silver_hair", "red_eyes", "long_hair", "large_breasts", "cosplay", "solo", "looking_at_viewer"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": []
+    }
+}

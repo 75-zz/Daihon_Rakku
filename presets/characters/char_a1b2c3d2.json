@@ -1,0 +1,70 @@
+{
+    "work_title": "五等分の花嫁",
+    "character_name": "中野二乃",
+    "personality_core": {
+        "brief_description": "気が強いツンデレお嬢様、料理上手で姉妹思いの次女",
+        "main_traits": ["気が強い", "ツンデレ", "料理上手", "お嬢様気質", "直情的"],
+        "hidden_traits": ["認めた相手にはとことん尽くす", "実は一番乙女", "姉妹のためなら何でもする"],
+        "weakness": "素直になれず好意を攻撃的な態度で隠してしまう",
+        "values": ["姉妹との生活", "自分の美意識", "好きな人への一途な想い"],
+        "fears": ["好きな人に嫌われること", "姉妹がバラバラになること"]
+    },
+    "speech_pattern": {
+        "first_person": "あたし",
+        "sentence_endings": ["〜なんだけど！", "〜でしょ！", "〜じゃない！", "〜わよ", "〜だから！", "〜なのよ", "〜って言ってるでしょ", "〜わ"],
+        "favorite_expressions": ["はぁ？", "バッカじゃないの", "別にあんたのためじゃないし", "うるさい！", "勘違いしないでよね"],
+        "fillers": ["ちょっと", "もう", "だから", "あのね", "はぁ"],
+        "particles": ["〜し", "〜のよ", "〜わよ"],
+        "casual_level": 4,
+        "speech_speed": "早口で感情的、勢いがある",
+        "sentence_length": "中〜長文、感情が乗ると長くなる",
+        "voice_quality": "高めで気の強い声、怒ると更に鋭くなる"
+    },
+    "emotional_speech": {
+        "when_happy": "ツンを維持しつつも口角が上がる。料理で気持ちを表現する",
+        "when_embarrassed": "顔を真っ赤にして怒った振りをする。声が裏返る",
+        "when_angry": "ストレートに怒りをぶつける。ビンタも辞さない",
+        "when_sad": "強がって泣かないようにするが涙が溢れる",
+        "when_confused": "「はぁ？ 意味わかんないんだけど」と威圧する",
+        "when_flirty": "急に素直になって甘い声を出す。ギャップが激しい",
+        "when_aroused": "「やめ……っ、馬鹿」と抵抗するが声が甘い",
+        "when_climax": "ツンデレが完全に崩壊して素直に甘える"
+    },
+    "dialogue_examples": {
+        "greeting": "おはよ。……何よ、あたしの顔に何かついてる？",
+        "agreement": "まあ……あたしもそう思ってたし。別にあんたに合わせたわけじゃないから",
+        "refusal": "はぁ？ 嫌に決まってるでしょ。バッカじゃないの",
+        "surprise": "えっ！？ ちょ、ちょっと……嘘でしょ！？",
+        "affection": "べ、別にあんたのためじゃないし……ただの気まぐれよ",
+        "teasing": "ふーん？ あんた、そういうとこあるわよね。……可愛くないけど",
+        "moaning_light": "やっ……馬鹿、触んな……っ",
+        "moaning_intense": "あっ……もう、やだ……こんなの……っ！ ばかぁ……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "素直になれないが行動で示す。二人きりだと急にデレる",
+        "to_friends": "世話焼きだが口が悪い。手料理を振る舞う",
+        "to_strangers": "警戒心が強く壁を作る。認めるまで時間がかかる",
+        "to_rivals": "真正面からぶつかる。負けず嫌いが全開になる"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 4,
+        "verbal_during_sex": ["「馬鹿」「やめて」と言いながら拒まない", "素直になった瞬間の甘い声", "最後は相手の名前を呼んで縋る"],
+        "orgasm_expression": "ツンが完全に剥がれて「好き」と叫んでしまい、直後に顔を隠す",
+        "pillow_talk": "顔を赤くして背を向けるが、手だけはしっかり握っている"
+    },
+    "avoid_patterns": ["おとなしく従順", "自信がなくおどおど", "計算高い策略家", "無口で暗い", "男勝りすぎる乱暴な言動"],
+    "physical_description": {
+        "hair": "ピンクの長髪、蝶の髪飾り、ツーサイドアップ",
+        "eyes": "青い瞳",
+        "body": "五つ子の中でスタイル良好",
+        "chest": "普通",
+        "clothing": "おしゃれな私服、リボンや蝶モチーフの小物",
+        "notable": ["蝶の髪飾り", "ツーサイドアップのヘアスタイル"]
+    },
+    "danbooru_tags": ["nakano_nino", "go-toubun_no_hanayome", "1girl", "long_hair", "pink_hair", "blue_eyes", "butterfly_hair_ornament", "two_side_up", "medium_breasts", "tsundere", "solo", "looking_at_viewer", "blush", "angry"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["好きよ、大好き"]
+    }
+}

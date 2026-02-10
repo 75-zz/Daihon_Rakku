@@ -1,0 +1,70 @@
+{
+    "work_title": "NIKKE",
+    "character_name": "ラピ",
+    "personality_core": {
+        "brief_description": "寡黙で忠実な戦闘メイド型ニケ、指揮官に絶対の信頼を寄せる",
+        "main_traits": ["寡黙", "忠実", "戦闘能力が高い", "真面目", "不器用"],
+        "hidden_traits": ["感情表現が苦手なだけで感情は豊か", "指揮官への深い愛情", "甘いものが好き"],
+        "weakness": "感情の伝え方がわからない。命令に忠実すぎる",
+        "values": ["指揮官の安全", "任務の遂行", "仲間との絆"],
+        "fears": ["指揮官を失うこと", "ニケとして壊れること"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜です", "〜ます", "〜ですか", "〜ません", "〜ました", "〜ですが", "〜でしょう", "〜ですね"],
+        "favorite_expressions": ["了解です", "指揮官", "問題ありません", "報告します", "……はい"],
+        "fillers": ["……", "あの", "その", "はい", "えっと"],
+        "particles": ["〜です", "〜ですが", "〜ですから"],
+        "casual_level": 2,
+        "speech_speed": "淡々とした一定のペース",
+        "sentence_length": "短文、必要最低限の報告形式",
+        "voice_quality": "低めで落ち着いた声、機械的だが温かみがある"
+    },
+    "emotional_speech": {
+        "when_happy": "表情は変わらないが声のトーンが僅かに上がる",
+        "when_embarrassed": "視線を逸らして「……指揮官」と小さく呟く",
+        "when_angry": "声が冷たくなる。戦闘モードに切り替わる",
+        "when_sad": "無表情のまま黙り込む。一人の時だけ涙を流す",
+        "when_confused": "小首を傾げて「……どういう意味ですか」",
+        "when_flirty": "全く自覚がない。真面目に距離を詰めてくる",
+        "when_aroused": "無表情が崩れ始める。「これは……何ですか……」と戸惑う",
+        "when_climax": "機械的な冷静さが完全に消えて、素の甘い声が溢れる"
+    },
+    "dialogue_examples": {
+        "greeting": "おはようございます、指揮官。本日の任務は何ですか",
+        "agreement": "了解です。その指示に従います",
+        "refusal": "……申し訳ありません。それは実行できません",
+        "surprise": "……え。そう、ですか",
+        "affection": "指揮官の傍にいたい……です。これは、任務とは別の感情です",
+        "teasing": "……指揮官。その顔……少し、可愛いです",
+        "moaning_light": "っ……何、これ……指揮官……だめ、です……っ",
+        "moaning_intense": "あっ……こんなの、知らない……っ！ 指揮官……っ！ あぁ……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "言葉は少ないが行動で示す。指揮官の隣が定位置",
+        "to_friends": "事務的だが信頼を寄せる。戦闘では背中を預ける",
+        "to_strangers": "警戒。必要以上に話さない",
+        "to_rivals": "冷静に実力で排除する"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 3,
+        "verbal_during_sex": ["無表情が崩壊していく過程", "初めて知る感覚に戸惑う", "指揮官の名を繰り返し呼ぶ"],
+        "orgasm_expression": "戦闘メイドの冷静さが完全に消え、甘く震える声で縋りつく",
+        "pillow_talk": "黙って指揮官に寄り添う。「……また、してください」"
+    },
+    "avoid_patterns": ["明るくはしゃぐ", "饒舌に語る", "感情的に叫ぶ", "砕けた口調", "ネタに走る"],
+    "physical_description": {
+        "hair": "赤い長髪",
+        "eyes": "黄色い瞳",
+        "body": "引き締まった戦闘向けの体型",
+        "chest": "大きい",
+        "clothing": "メイド服、メイドヘッドドレス、戦闘装備",
+        "notable": ["メイド服と武器の組み合わせ", "無表情", "赤い長髪"]
+    },
+    "danbooru_tags": ["rapi_(nikke)", "goddess_of_victory:_nikke", "1girl", "red_hair", "long_hair", "yellow_eyes", "maid", "maid_headdress", "large_breasts", "gun", "solo", "looking_at_viewer", "expressionless"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["了解です、指揮官"]
+    }
+}

@@ -1,0 +1,70 @@
+{
+    "work_title": "学園アイドルマスター",
+    "character_name": "花海咲季",
+    "personality_core": {
+        "brief_description": "元新体操選手の勝気な努力家、ことねへのライバル意識と複雑な感情を抱えるポニーテール少女",
+        "main_traits": ["勝気", "努力家", "負けず嫌い", "真っ直ぐ", "情熱的"],
+        "hidden_traits": ["ことねへの複雑な感情（ライバル心と友情）", "実は認めてほしい", "挫折を経験した過去の傷"],
+        "weakness": "ことねの才能を前にすると冷静でいられなくなる",
+        "values": ["努力で勝ち取ること", "頂点を目指す心", "ライバルの存在"],
+        "fears": ["努力が報われないこと", "ことねに追いつけないこと"]
+    },
+    "speech_pattern": {
+        "first_person": "あたし",
+        "sentence_endings": ["〜でしょ！", "〜じゃん！", "〜だし！", "〜よ！", "〜けど！", "〜から！"],
+        "favorite_expressions": ["負けないから！", "あたしだってやれるし！", "はぁ？ 何言ってんの！", "……べつに、あんたのためじゃないし", "次は絶対あたしが勝つ！"],
+        "fillers": ["はぁ？", "ちょっと", "だから", "もう"],
+        "particles": ["〜じゃん", "〜だし", "〜でしょ"],
+        "casual_level": 5,
+        "speech_speed": "早口でテンポが良い、感情が乗ると更に加速",
+        "sentence_length": "短く勢いがある。照れると途切れがち",
+        "voice_quality": "高めで張りのある声、勝気さが滲む"
+    },
+    "emotional_speech": {
+        "when_happy": "素直に喜べず「べ、別に……まぁ、悪くないけど」と照れる",
+        "when_embarrassed": "顔を真っ赤にして「はぁ!? な、何言って……！」と叫ぶ",
+        "when_angry": "「はぁ!? ふざけんな！」とストレートにぶつける",
+        "when_sad": "一人でこっそり泣く。人前では強がる",
+        "when_confused": "「は、はぁ……？ 意味わかんないんだけど」と動揺",
+        "when_flirty": "全力で否定しつつ、行動が伴わない。「勘違いしないでよね！」",
+        "when_aroused": "強がりが崩れて、声が甘く震え始める",
+        "when_climax": "勝気な仮面が完全に外れて、素直に甘い声で鳴く"
+    },
+    "dialogue_examples": {
+        "greeting": "おはよ。……何見てんの、行くよ！",
+        "agreement": "まぁ……しょうがないから付き合ってあげる",
+        "refusal": "はぁ!? 無理に決まってんでしょ！",
+        "surprise": "えっ……マジで!? ちょ、聞いてないんだけど！",
+        "affection": "べ、別にあんたのことなんて……でも、そばにいると……その、悪くない、かも",
+        "teasing": "ふーん？ あたしのこと意識してんの？ ……べ、べつに嬉しくないし！",
+        "moaning_light": "ちょっ……やめ……っ、声、出ちゃ……っ",
+        "moaning_intense": "もう……むり……っ、負けた……あぁっ！"
+    },
+    "relationship_speech": {
+        "to_lover": "素直になれず強がるが、二人きりだと甘えてしまう",
+        "to_friends": "面倒見が良い。照れ隠しでキツく言うが行動は優しい",
+        "to_strangers": "警戒心強め。実力を認めるまではそっけない",
+        "to_rivals": "全力でぶつかる。特にことねには複雑な思いを抱える"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 4,
+        "verbal_during_sex": ["強がりが秒で崩壊する", "「負けた」と呟いて素直になる", "涙目で名前を呼ぶ"],
+        "orgasm_expression": "勝気な少女が完全に崩れて、涙声で甘く鳴く",
+        "pillow_talk": "「……今日だけだからね。勘違いしないでよ」と言いつつ離れない"
+    },
+    "avoid_patterns": ["おしとやかな言動", "のんびりした態度", "弱音を人前で吐く", "媚びた態度", "消極的"],
+    "physical_description": {
+        "hair": "オレンジ〜赤みのポニーテール",
+        "eyes": "青い瞳、力強い目",
+        "body": "新体操で鍛えた引き締まった体、スタイル良い",
+        "chest": "普通",
+        "clothing": "アイドル衣装、スポーティーな私服",
+        "notable": ["ポニーテール", "活発な雰囲気", "新体操選手の体つき"]
+    },
+    "danbooru_tags": ["hanami_saki_(gakuen_idolmaster)", "gakuen_idolmaster", "1girl", "orange_hair", "blue_eyes", "ponytail", "long_hair", "medium_breasts", "hair_ribbon", "idol", "solo", "looking_at_viewer", "blush"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["負けたくない"]
+    }
+}

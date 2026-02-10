@@ -46,20 +46,21 @@ class MaterialColors:
     """
     Material You / M3 Dynamic Color System
     Based on Google's Material Design 3 color guidelines
+    Adjusted for better visibility and contrast
     """
     
     # === M3 Tonal Palette (Purple seed) ===
     # Primary
-    PRIMARY = "#6750A4"           # M3 Primary (P-40)
-    PRIMARY_CONTAINER = "#EADDFF" # P-90
+    PRIMARY = "#5B3FA0"           # Deeper primary for better visibility
+    PRIMARY_CONTAINER = "#E8DBFF" # P-90
     ON_PRIMARY = "#FFFFFF"        # P-100
-    ON_PRIMARY_CONTAINER = "#21005D"  # P-10
+    ON_PRIMARY_CONTAINER = "#1C0055"  # P-10
     
     # Secondary  
-    SECONDARY = "#625B71"         # S-40
-    SECONDARY_CONTAINER = "#E8DEF8"   # S-90
+    SECONDARY = "#5A5370"         # S-40
+    SECONDARY_CONTAINER = "#DFD8F0"   # S-90 slightly deeper
     ON_SECONDARY = "#FFFFFF"
-    ON_SECONDARY_CONTAINER = "#1D192B"
+    ON_SECONDARY_CONTAINER = "#18122E"
     
     # Tertiary
     TERTIARY = "#7D5260"          # T-40
@@ -74,25 +75,25 @@ class MaterialColors:
     SUCCESS = "#1B6B32"
     SUCCESS_CONTAINER = "#A8F5B4"
     
-    # === Surface Tones (Neutral) ===
-    BACKGROUND = "#FFFBFE"        # N-99
-    SURFACE = "#FFFBFE"           # N-99
-    SURFACE_DIM = "#DED8E1"       # N-87
-    SURFACE_BRIGHT = "#FFFBFE"    # N-99
-    SURFACE_CONTAINER_LOWEST = "#FFFFFF"   # N-100
-    SURFACE_CONTAINER_LOW = "#F7F2FA"      # N-96
-    SURFACE_CONTAINER = "#F3EDF7"          # N-94
-    SURFACE_CONTAINER_HIGH = "#ECE6F0"     # N-92
-    SURFACE_CONTAINER_HIGHEST = "#E6E0E9"  # N-90
+    # === Surface Tones (Neutral) - Wider spacing for clarity ===
+    BACKGROUND = "#FAF8FF"        # Very subtle cool tint
+    SURFACE = "#FAF8FF"           # Match background
+    SURFACE_DIM = "#CEC6D9"       # N-82 (darker dim)
+    SURFACE_BRIGHT = "#FAF8FF"    # N-99
+    SURFACE_CONTAINER_LOWEST = "#FFFFFF"   # N-100 Pure white
+    SURFACE_CONTAINER_LOW = "#F2EDFA"      # N-95 (clear purple tint)
+    SURFACE_CONTAINER = "#E8E1F2"          # N-90 (visible difference)
+    SURFACE_CONTAINER_HIGH = "#DCD4EA"     # N-85 (clearly darker)
+    SURFACE_CONTAINER_HIGHEST = "#D0C7E0"  # N-80 (strong contrast)
     
-    # On Surface
-    ON_BACKGROUND = "#1C1B1F"     # N-10
-    ON_SURFACE = "#1C1B1F"        # N-10
-    ON_SURFACE_VARIANT = "#49454F"    # NV-30
+    # On Surface - Higher contrast text
+    ON_BACKGROUND = "#151318"     # Near black
+    ON_SURFACE = "#151318"        # Near black for readability
+    ON_SURFACE_VARIANT = "#3B3546"    # NV-25 (darker for readability)
     
-    # Outline
-    OUTLINE = "#79747E"           # NV-50
-    OUTLINE_VARIANT = "#CAC4D0"   # NV-80
+    # Outline - Stronger borders
+    OUTLINE = "#6B6478"           # NV-45 (more visible)
+    OUTLINE_VARIANT = "#B0A8BF"   # NV-70 (more visible)
     
     # Inverse
     INVERSE_SURFACE = "#313033"
@@ -105,7 +106,7 @@ class MaterialColors:
     
     # === Legacy aliases for compatibility ===
     SURFACE_VARIANT = SURFACE_CONTAINER
-    PRIMARY_VARIANT = "#7965AF"
+    PRIMARY_VARIANT = "#7058B8"
     PRIMARY_LIGHT = INVERSE_PRIMARY
     ACCENT = TERTIARY
     ACCENT_VARIANT = "#9A7B8A"
@@ -439,11 +440,526 @@ def deduplicate_sd_tags(prompt: str) -> str:
     seen = set()
     result = []
     for tag in tags:
-        normalized = _re.sub(r'\([^)]*:[\d.]+\)', '', tag).strip().lower().replace(" ", "_")
+        # (tag:weight) 形式のタグからタグ名を正しく抽出
+        m = _re.match(r'^\(([^:]+):([\d.]+)\)$', tag.strip())
+        if m:
+            normalized = m.group(1).strip().lower().replace(" ", "_")
+        else:
+            normalized = _re.sub(r'\([^)]*:[\d.]+\)', '', tag).strip().lower().replace(" ", "_")
         if normalized and normalized not in seen:
             seen.add(normalized)
             result.append(tag)
     return ", ".join(result)
+
+
+def validate_script(results: list, theme: str = "", char_profiles: list = None) -> dict:
+    """FANZA CG集基準で生成済み台本を自動検証（APIコスト不要）。
+
+    Returns:
+        dict with score, scene_issues, repeated_moans, repeated_onomatopoeia, total_issues, summary
+    """
+    import re as _re
+
+    heroine_names = set()
+    if char_profiles:
+        for cp in char_profiles:
+            name = cp.get("character_name", "")
+            if name:
+                heroine_names.add(name)
+
+    scene_issues = {}
+    all_moan_texts = []   # [(scene_id, text)]
+    all_onom_sets = []    # [(scene_id, frozenset)]
+    prev_angle_tags = set()
+
+    for i, scene in enumerate(results):
+        scene_id = scene.get("scene_id", i + 1)
+        if scene.get("mood") == "エラー":
+            continue
+        problems = []
+
+        # --- bubbles ---
+        bubbles = scene.get("bubbles", [])
+
+        # 吹き出し数（1-4個）
+        if len(bubbles) > 4:
+            problems.append(f"吹き出し{len(bubbles)}個（上限4個）")
+        elif len(bubbles) == 0:
+            problems.append("吹き出しが0個")
+
+        # テキスト長（1-10文字）
+        for j, b in enumerate(bubbles):
+            text = b.get("text", "")
+            if len(text) > 10:
+                problems.append(f"吹き出し{j+1}「{text[:12]}…」{len(text)}文字（上限10）")
+
+        # 男セリフ数（≤1/ページ）
+        male_speech_count = 0
+        for b in bubbles:
+            if b.get("type") == "speech":
+                speaker = b.get("speaker", "")
+                if speaker and heroine_names and speaker not in heroine_names:
+                    male_speech_count += 1
+        if male_speech_count > 1:
+            problems.append(f"男性セリフ{male_speech_count}個（推奨1個以下）")
+
+        # moan追跡（クロスシーン重複検出用）
+        for b in bubbles:
+            if b.get("type") == "moan":
+                all_moan_texts.append((scene_id, b.get("text", "")))
+
+        # --- onomatopoeia ---
+        onom = scene.get("onomatopoeia", [])
+        all_onom_sets.append((scene_id, frozenset(onom) if onom else frozenset()))
+
+        # --- 必須フィールド ---
+        for field in ("title", "description", "mood", "sd_prompt", "direction"):
+            if not scene.get(field):
+                problems.append(f"「{field}」が空")
+
+        # --- description品質 ---
+        desc = scene.get("description", "")
+        intensity = scene.get("intensity", 0)
+        if 0 < len(desc) < 30:
+            problems.append(f"description短すぎ（{len(desc)}文字）")
+        if intensity >= 4 and desc:
+            vague_words = ["愛撫", "行為に及ぶ", "関係を持つ", "一線を越える", "身体を重ねる"]
+            if any(vw in desc for vw in vague_words) and not any(
+                kw in desc for kw in ["挿入", "正常位", "騎乗位", "バック", "腰を", "突"]
+            ):
+                problems.append("descriptionが抽象的（具体的な体位・行為を記述すべき）")
+
+        # --- sd_prompt: 日本語混入 ---
+        sd = scene.get("sd_prompt", "")
+        jp_chars = _re.findall(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]+', sd)
+        if jp_chars:
+            problems.append(f"sd_promptに日本語: {', '.join(jp_chars[:3])}")
+
+        # --- sd_prompt: 連続同一アングル ---
+        angle_kw = {"from_above", "from_below", "from_behind", "from_side",
+                    "pov", "straight-on", "dutch_angle"}
+        cur_angles = {kw for kw in angle_kw if kw in sd.lower()}
+        if cur_angles and cur_angles == prev_angle_tags:
+            problems.append(f"前シーンと同一アングル: {', '.join(cur_angles)}")
+        prev_angle_tags = cur_angles
+
+        if problems:
+            scene_issues[scene_id] = problems
+
+    # --- クロスシーン: scene_id重複チェック ---
+    scene_ids = [s.get("scene_id", i+1) for i, s in enumerate(results)]
+    if len(scene_ids) != len(set(scene_ids)):
+        dupes = [sid for sid in scene_ids if scene_ids.count(sid) > 1]
+        for sid in set(dupes):
+            scene_issues.setdefault(sid, []).append(f"scene_id {sid} が重複している")
+
+    # --- クロスシーン: bubble完全重複チェック ---
+    prev_bubble_set = set()
+    for i, scene in enumerate(results):
+        scene_id = scene.get("scene_id", i + 1)
+        bubbles = scene.get("bubbles", [])
+        curr_bubble_set = frozenset(b.get("text", "") for b in bubbles if b.get("text"))
+        if curr_bubble_set and curr_bubble_set == prev_bubble_set:
+            scene_issues.setdefault(scene_id, []).append("前シーンとbubbleが完全同一（重複）")
+        prev_bubble_set = curr_bubble_set
+
+    # --- クロスシーン: 喘ぎ重複 ---
+    moan_map = {}
+    for sid, text in all_moan_texts:
+        moan_map.setdefault(text, []).append(sid)
+    repeated_moans = {t: sids for t, sids in moan_map.items() if len(sids) > 1}
+
+    # --- クロスシーン: オノマトペ連続重複 ---
+    repeated_onom = []
+    for k in range(1, len(all_onom_sets)):
+        _, prev_set = all_onom_sets[k - 1]
+        cur_sid, cur_set = all_onom_sets[k]
+        if prev_set and cur_set and prev_set == cur_set:
+            repeated_onom.append((all_onom_sets[k - 1][0], cur_sid))
+
+    n_issues = sum(len(v) for v in scene_issues.values()) + len(repeated_moans) + len(repeated_onom)
+    score = max(0, 100 - n_issues * 5)
+
+    return {
+        "score": score,
+        "scene_issues": scene_issues,
+        "repeated_moans": repeated_moans,
+        "repeated_onomatopoeia": repeated_onom,
+        "total_issues": n_issues,
+        "summary": f"品質スコア: {score}/100（{n_issues}件の問題検出）"
+    }
+
+
+
+
+def _fix_character_name(name: str, correct_names: list) -> str:
+    """キャラ名の表記ブレを修正"""
+    if not name or not correct_names:
+        return name
+    # 完全一致ならそのまま
+    if name in correct_names:
+        return name
+    # 部分一致: 正しい名前がnameに含まれる or nameが正しい名前に含まれる
+    for cn in correct_names:
+        if cn in name or name in cn:
+            return cn
+    # 姓が一致するパターン（中野三子→中野三玖）
+    for cn in correct_names:
+        if len(cn) >= 3 and len(name) >= 3:
+            # 姓（先頭2文字）が一致し、名が異なる場合
+            if cn[:2] == name[:2] and cn != name:
+                return cn
+            # 先頭1文字が一致し残り文字数が同じ場合
+            if cn[0] == name[0] and len(cn) == len(name) and cn != name:
+                return cn
+    return name
+
+
+def _fix_names_in_text(text: str, correct_names: list) -> str:
+    """テキスト内のキャラ名表記ブレを修正"""
+    import re
+    if not text or not correct_names:
+        return text
+    for correct in correct_names:
+        if len(correct) < 3:
+            continue
+        # 姓（先頭2文字）+ 名（残り）のパターンで検索
+        family = correct[:2]
+        given = correct[2:]
+        if not given:
+            continue
+        # family + given長と同じ文字数の漢字/ひらがな/カタカナを検索
+        # 正しい名前以外をマッチさせる
+        pattern = re.escape(family) + r'([\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff]{' + str(len(given)) + '})'
+        for m in re.finditer(pattern, text):
+            found_given = m.group(1)
+            if found_given != given:
+                wrong_name = family + found_given
+                text = text.replace(wrong_name, correct)
+                log_message(f"  名前修正: {wrong_name}→{correct}")
+    return text
+
+
+def _deduplicate_across_scenes(results: list) -> None:
+    """シーン間の同一セリフ・オノマトペ重複を除去"""
+    used_moan_texts = set()
+    used_thought_texts = set()
+
+    for scene in results:
+        if "bubbles" not in scene:
+            continue
+        cleaned_bubbles = []
+        for b in scene["bubbles"]:
+            text = b.get("text", "")
+            btype = b.get("type", "")
+
+            if btype == "moan" and text:
+                if text in used_moan_texts:
+                    # 重複喘ぎ → スキップ（除去）
+                    log_message(f"  シーン{scene.get('scene_id', '?')}: 重複喘ぎ除去「{text}」")
+                    continue
+                used_moan_texts.add(text)
+
+            elif btype == "thought" and text:
+                if text in used_thought_texts:
+                    log_message(f"  シーン{scene.get('scene_id', '?')}: 重複thought除去「{text}」")
+                    continue
+                used_thought_texts.add(text)
+
+            cleaned_bubbles.append(b)
+
+        # 最低1つのbubbleは残す
+        if cleaned_bubbles:
+            scene["bubbles"] = cleaned_bubbles
+
+    # オノマトペ: 前のシーンと完全同一なら除去
+    for i in range(1, len(results)):
+        prev_se = set(results[i-1].get("onomatopoeia", []))
+        curr_se = set(results[i].get("onomatopoeia", []))
+        if prev_se and curr_se and prev_se == curr_se:
+            results[i]["onomatopoeia"] = []
+            log_message(f"  シーン{results[i].get('scene_id', '?')}: 前シーンと同一SE除去")
+
+def auto_fix_script(results: list, char_profiles: list = None) -> list:
+    """生成結果の自動修正（APIコスト不要のローカル後処理）"""
+    import re
+
+    # === キャラ名の正規化マップ構築 ===
+    correct_names = []  # [(correct_full_name, family, given)]
+    if char_profiles:
+        for cp in char_profiles:
+            name = cp.get("character_name", "")
+            if not name or len(name) < 2:
+                continue
+            correct_names.append(name)
+
+    # テキストフィールド一覧
+    text_fields = ["description", "location_detail", "direction", "story_flow", "title"]
+
+    for scene in results:
+        # 1. "(XX字)" マーカーの除去
+        for field in text_fields + ["mood"]:
+            if field in scene and isinstance(scene[field], str):
+                scene[field] = re.sub(r'[（(]\d+字[以内程度上]*[）)]', '', scene[field]).strip()
+
+        if "character_feelings" in scene and isinstance(scene["character_feelings"], dict):
+            scene["character_feelings"] = {
+                k: re.sub(r'[（(]\d+字[以内程度上]*[）)]', '', v).strip()
+                for k, v in scene["character_feelings"].items()
+            }
+
+        # 2. キャラ名の修正（全フィールド対象）
+        if correct_names:
+            # 2a. character_feelingsのキー修正
+            if "character_feelings" in scene and isinstance(scene["character_feelings"], dict):
+                new_feelings = {}
+                for key, val in scene["character_feelings"].items():
+                    corrected_key = _fix_character_name(key, correct_names)
+                    new_feelings[corrected_key] = val
+                scene["character_feelings"] = new_feelings
+
+            # 2b. bubblesのspeaker修正
+            if "bubbles" in scene:
+                for bubble in scene["bubbles"]:
+                    speaker = bubble.get("speaker", "")
+                    if speaker:
+                        bubble["speaker"] = _fix_character_name(speaker, correct_names)
+
+            # 2c. テキストフィールド内のキャラ名修正
+            for field in text_fields:
+                text = scene.get(field, "")
+                if text:
+                    scene[field] = _fix_names_in_text(text, correct_names)
+
+        # 3. SDプロンプトのquality括弧修正
+        if "sd_prompt" in scene and scene["sd_prompt"]:
+            sd = scene["sd_prompt"]
+            quality_tags = {"masterpiece", "best_quality", "best quality", "high_quality", "highres", "absurdres"}
+            match = re.match(r'^\(([^)]+)\)', sd)
+            if match:
+                inner_tags = [t.strip() for t in match.group(1).split(",")]
+                quality_only = []
+                non_quality = []
+                for tag in inner_tags:
+                    base_tag = re.sub(r':[\d.]+$', '', tag).strip().lower()
+                    if base_tag in quality_tags:
+                        quality_only.append(tag)
+                    else:
+                        non_quality.append(tag)
+                if non_quality:
+                    new_quality = "(" + ", ".join(quality_only) + ")"
+                    rest = sd[match.end():].lstrip(", ")
+                    non_quality_str = ", ".join(non_quality)
+                    scene["sd_prompt"] = f"{new_quality}, {non_quality_str}, {rest}".rstrip(", ")
+
+    # 4. scene_id連番修正（1, 2, 3, ... に強制リナンバー）
+    for i, scene in enumerate(results):
+        scene["scene_id"] = i + 1
+
+    # 5. シーン間の同一セリフ・SE重複除去
+    _deduplicate_across_scenes(results)
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# 設定スタイル検出: コンセプトから背景の世界観を推定し、SDタグを補正する
+# ---------------------------------------------------------------------------
+SETTING_STYLES = {
+    "traditional_japanese_rural": {
+        "keywords": ["夜這い", "村", "田舎", "農村", "山里", "漁村", "集落",
+                     "古民家", "昔ながら", "伝統", "風習", "因習", "祭り",
+                     "大正", "昭和初期", "時代劇", "和風の村"],
+        "replace": {
+            "bed": "futon",
+            "bedroom": "japanese_room",
+            "brick_wall": "wooden_wall",
+            "concrete": "wooden_floor",
+            "warehouse": "storehouse",
+            "sofa": "zabuton",
+            "table": "chabudai",
+            "curtains": "shoji",
+            "nightstand": "andon",
+            "pillow": "sobagara_pillow",
+            "blanket": "futon_blanket",
+            "modern": "traditional",
+            "apartment": "old_japanese_house",
+            "hotel_room": "ryokan_room",
+            "alley": "village_path",
+            "narrow_street": "rural_path",
+        },
+        "prohibit": {"brick_wall", "concrete", "modern", "neon",
+                     "skyscraper", "office", "elevator", "subway",
+                     "highway", "parking", "urban", "city_lights",
+                     "apartment", "hotel"},
+        "append": ["traditional", "japanese", "wooden", "rural",
+                   "old_house", "tatami", "shoji", "dim"],
+        "prompt_hint": "和風田舎・伝統的日本家屋（茅葺き屋根、板壁、障子、畳、布団、囲炉裏、行灯、土間）。現代的な家具・建材(ベッド、レンガ、コンクリート)は絶対に使わない",
+    },
+    "traditional_japanese_urban": {
+        "keywords": ["遊郭", "花街", "吉原", "江戸", "京都", "芸者", "花魁",
+                     "大正ロマン", "料亭"],
+        "replace": {
+            "bed": "futon",
+            "bedroom": "japanese_room",
+            "brick_wall": "wooden_wall",
+            "concrete": "wooden_floor",
+            "sofa": "zabuton",
+            "curtains": "noren",
+            "nightstand": "andon",
+        },
+        "prohibit": {"concrete", "modern", "skyscraper", "office",
+                     "elevator", "subway", "highway"},
+        "append": ["traditional", "japanese", "wooden", "paper_lantern",
+                   "tatami", "fusuma", "ornate"],
+        "prompt_hint": "和風花街・遊郭風（襖、行灯、赤い照明、障子、畳、掛け軸、豪華な着物）。現代要素禁止",
+    },
+    "fantasy_medieval": {
+        "keywords": ["ファンタジー", "異世界", "中世", "魔法", "王国", "城",
+                     "冒険者", "ギルド", "騎士", "魔王", "勇者", "ドラゴン",
+                     "エルフ", "ダンジョン"],
+        "replace": {
+            "apartment": "stone_chamber",
+            "hotel_room": "inn_room",
+            "concrete": "stone_wall",
+            "office": "throne_room",
+            "subway": "underground_passage",
+        },
+        "prohibit": {"modern", "neon", "skyscraper", "office",
+                     "elevator", "subway", "highway", "smartphone",
+                     "computer"},
+        "append": ["fantasy", "medieval", "stone", "torch",
+                   "candlelight"],
+        "prompt_hint": "中世ファンタジー風（石造りの壁、蝋燭、松明、木製家具、革製品）。現代要素禁止",
+    },
+}
+
+
+def _detect_setting_style(concept: str) -> Optional[dict]:
+    """コンセプト文字列からSETTING_STYLESのどれに該当するか判定する。"""
+    if not concept:
+        return None
+    concept_lower = concept.lower()
+    for style_key, style in SETTING_STYLES.items():
+        for kw in style["keywords"]:
+            if kw in concept or kw in concept_lower:
+                return style
+    return None
+
+
+def enhance_sd_prompts(results: list, char_profiles: list = None,
+                       setting_style: Optional[dict] = None) -> list:
+    """全シーンのSDプロンプトを後処理で最適化（APIコスト不要）。
+
+    - 日本語タグ除去
+    - quality tags確保
+    - キャラタグ補完
+    - 照明タグ追加
+    - 重要表情タグにウェイト付加
+    - 設定スタイルに基づくタグ置換・追加・禁止
+    - 重複排除
+    """
+    import re as _re
+
+    char_danbooru = []
+    if char_profiles:
+        for cp in char_profiles:
+            char_danbooru.extend(cp.get("danbooru_tags", []))
+
+    LIGHTING_WORDS = {"lighting", "sunlight", "moonlight", "candlelight",
+                      "backlight", "rim_light", "neon", "lamp", "golden_hour",
+                      "light_rays", "volumetric"}
+
+    # ウェイト付加対象（SD画像の品質に直結する重要タグ）
+    WEIGHT_EXPRESSION = {"ahegao", "orgasm", "rolling_eyes", "tongue_out",
+                         "crying_with_eyes_open", "fucked_silly"}
+    WEIGHT_ACTION = {"deep_penetration", "cum_in_pussy", "overflow",
+                     "multiple_penises", "double_penetration"}
+
+    for scene in results:
+        sd = scene.get("sd_prompt", "")
+        if not sd:
+            continue
+
+        tags = [t.strip() for t in sd.split(",") if t.strip()]
+        sd_lower = sd.lower()
+
+        # 1. 日本語タグ除去
+        tags = [t for t in tags if not _re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', t)]
+
+        # 2. quality tags先頭確保
+        quality_found = any("masterpiece" in t.lower() or "best_quality" in t.lower() for t in tags)
+        if not quality_found:
+            tags.insert(0, QUALITY_POSITIVE_TAGS)
+
+        # 3. キャラタグ補完（上位タグが欠落していれば追加）
+        if char_danbooru:
+            existing = {t.strip().lower().replace(" ", "_") for t in tags}
+            insert_at = 1  # quality tagsの直後
+            for ct in char_danbooru[:8]:
+                if ct.lower().replace(" ", "_") not in existing:
+                    tags.insert(insert_at, ct)
+                    insert_at += 1
+                    existing.add(ct.lower().replace(" ", "_"))
+
+        # 4. 照明タグ追加
+        has_light = any(any(lw in t.lower() for lw in LIGHTING_WORDS) for t in tags)
+        if not has_light:
+            if any(kw in sd_lower for kw in ("night", "dark", "evening")):
+                tags.append("dim_lighting")
+            elif any(kw in sd_lower for kw in ("morning", "sunrise", "dawn")):
+                tags.append("soft_lighting")
+            elif any(kw in sd_lower for kw in ("sunset", "dusk", "golden")):
+                tags.append("warm_lighting")
+            else:
+                tags.append("natural_lighting")
+
+        # 5. 設定スタイル適用（タグ置換・禁止・追加）
+        if setting_style:
+            replace_map = setting_style.get("replace", {})
+            prohibit = setting_style.get("prohibit", set())
+            append_tags = setting_style.get("append", [])
+
+            new_tags = []
+            for t in tags:
+                norm = t.strip().lower().replace(" ", "_")
+                # ウェイト付きタグからnorm抽出
+                inner = _re.sub(r'[()]', '', norm).split(":")[0].strip()
+                # 禁止タグ除去
+                if inner in prohibit:
+                    continue
+                # タグ置換
+                if inner in replace_map:
+                    new_tags.append(replace_map[inner])
+                else:
+                    new_tags.append(t)
+            tags = new_tags
+
+            # 雰囲気タグ追加（未存在のもののみ）
+            existing_norm = {t.strip().lower().replace(" ", "_") for t in tags}
+            for at in append_tags:
+                if at.lower().replace(" ", "_") not in existing_norm:
+                    tags.append(at)
+                    existing_norm.add(at.lower().replace(" ", "_"))
+
+        # 6. 重要タグにウェイト付加（未ウェイトのもののみ）
+        weighted = []
+        for tag in tags:
+            norm = tag.strip().lower().replace(" ", "_").strip("()")
+            # 既にウェイト付きならスキップ
+            if ":" in tag and "(" in tag:
+                weighted.append(tag)
+                continue
+            if norm in WEIGHT_EXPRESSION:
+                weighted.append(f"({tag}:1.3)")
+            elif norm in WEIGHT_ACTION:
+                weighted.append(f"({tag}:1.2)")
+            else:
+                weighted.append(tag)
+
+        scene["sd_prompt"] = deduplicate_sd_tags(", ".join(weighted))
+
+    return results
 
 # タグDB（キャッシュ）
 _tag_db_cache = None
@@ -493,6 +1009,31 @@ def _load_tag_db() -> dict:
     return _tag_db_cache
 
 
+def _select_serihu_skill(theme: str = "", char_profiles: list = None) -> str:
+    """キャラ性格・テーマに応じてセリフスキルを自動選択"""
+    # 1. キャラ性格からツンデレ判定
+    if char_profiles:
+        for cp in char_profiles:
+            personality = cp.get("personality_core", {})
+            desc = personality.get("brief_description", "")
+            traits = personality.get("main_traits", [])
+            all_text = f"{desc} {' '.join(traits)}".lower()
+            if "ツンデレ" in all_text or "ツン" in all_text or "tsundere" in all_text:
+                return "ero_serihu_tundere"
+
+    # 2. テーマ判定
+    theme_lower = theme.lower() if theme else ""
+    # 純愛系 → 甘々スキル
+    if theme_lower in ("love", "vanilla"):
+        return "ero_serihu_jyunai"
+    # ハード系 → オホ声スキル
+    if theme_lower in ("netorare", "humiliation", "forced", "corruption", "gangbang"):
+        return "ero_serihu_ohogoe"
+
+    # 3. デフォルト
+    return "ero_serihu_nomal"
+
+
 # === データクラス ===
 @dataclass
 class CostTracker:
@@ -502,23 +1043,24 @@ class CostTracker:
     sonnet_output: int = 0
 
     def add(self, model: str, input_tokens: int, output_tokens: int):
-        if "haiku" in model:
+        if any(kw in model for kw in ("haiku", "mini", "fast")):
             self.haiku_input += input_tokens
             self.haiku_output += output_tokens
         else:
             self.sonnet_input += input_tokens
             self.sonnet_output += output_tokens
 
+    def _get_costs(self):
+        return COSTS.get(MODELS["haiku"], {"input": 0, "output": 0}), COSTS.get(MODELS["sonnet"], {"input": 0, "output": 0})
+
     def total_cost_usd(self) -> float:
-        haiku_cost = COSTS[MODELS["haiku"]]
-        sonnet_cost = COSTS[MODELS["sonnet"]]
-        cost = (
-            (self.haiku_input / 1_000_000) * haiku_cost["input"] +
-            (self.haiku_output / 1_000_000) * haiku_cost["output"] +
-            (self.sonnet_input / 1_000_000) * sonnet_cost["input"] +
-            (self.sonnet_output / 1_000_000) * sonnet_cost["output"]
+        cheap, premium = self._get_costs()
+        return (
+            (self.haiku_input / 1_000_000) * cheap["input"] +
+            (self.haiku_output / 1_000_000) * cheap["output"] +
+            (self.sonnet_input / 1_000_000) * premium["input"] +
+            (self.sonnet_output / 1_000_000) * premium["output"]
         )
-        return cost
 
     def summary(self) -> str:
         return (
@@ -590,8 +1132,8 @@ def load_config() -> dict:
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            log_message(f"設定ファイル読み込みエラー: {e}")
     return {}
 
 
@@ -702,10 +1244,11 @@ def call_claude(
             return response.content[0].text
 
         except anthropic.RateLimitError as e:
-            log_message(f"Rate limit: {e}")
+            wait_time = RETRY_DELAY * (2 ** (attempt + 1))
+            log_message(f"Rate limit: {e} (待機{wait_time}秒)")
             if callback:
-                callback(f"レート制限、{RETRY_DELAY * 2}秒待機...")
-            time.sleep(RETRY_DELAY * 2)
+                callback(f"レート制限、{wait_time}秒待機...")
+            time.sleep(wait_time)
 
         except anthropic.APIStatusError as e:
             if e.status_code == 401:
@@ -737,6 +1280,19 @@ def call_claude(
                 raise
 
     raise RuntimeError("最大リトライ回数を超えました")
+
+
+def _call_api(
+    client,
+    model: str,
+    system,
+    user: str,
+    cost_tracker: CostTracker,
+    max_tokens: int = 4096,
+    callback: Optional[Callable] = None
+) -> str:
+    """Claude API呼び出し"""
+    return call_claude(client, model, system, user, cost_tracker, max_tokens, callback)
 
 
 def parse_json_response(text: str):
@@ -856,7 +1412,7 @@ def compact_context(
     if callback:
         callback("📦 コンテキスト圧縮中...")
 
-    response = call_claude(
+    response = _call_api(
         client, MODELS["haiku"],
         skill if skill else "You compress prompts to save tokens. Output only JSON.",
         prompt, cost_tracker, 1024, callback
@@ -990,7 +1546,7 @@ def generate_synopsis(
 あらすじの文章のみ出力してください。JSON不要。"""
 
     try:
-        response = call_claude(
+        response = _call_api(
             client, MODELS["haiku"],
             f"FANZA同人CG集の脚本家です。ユーザーのコンセプトに基づき、エロ同人作品の完全なストーリーあらすじを作成します。成人向けコンテンツを忠実に生成します。",
             prompt, cost_tracker, 2048, callback
@@ -1029,7 +1585,11 @@ def generate_scene_batch(
     """複数のLow-Intensityシーンをまとめて1回のAPI呼び出しで生成（API節約）"""
     skill = load_skill("low_cost_pipeline")
     danbooru_nsfw = load_skill("danbooru_nsfw_tags")
-    
+    scene_composer = load_skill("nsfw_scene_composer")
+    serihu_skill_name = _select_serihu_skill(theme, char_profiles)
+    serihu_skill = load_skill(serihu_skill_name)
+    visual_skill = load_skill("cg_visual_variety")
+
     theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
     theme_name = theme_guide.get("name", "指定なし")
     dialogue_tone = theme_guide.get("dialogue_tone", "自然で楽しい雰囲気")
@@ -1037,7 +1597,7 @@ def generate_scene_batch(
     theme_sd_tags = theme_guide.get("sd_tags", "")
     theme_sd_expressions = theme_guide.get("sd_expressions", "")
     key_emotions = theme_guide.get("key_emotions", [])
-    
+
     tag_db = _load_tag_db()
     loc_tags_db = tag_db.get("locations", {})
     time_tags_db = tag_db.get("time_of_day", {})
@@ -1068,7 +1628,7 @@ def generate_scene_batch(
 ・NG: {', '.join(avoid) if avoid else 'なし'}
 """
 
-    heart_instruction = "♡は甘いシーンで自然に使用OK。" if use_heart else f"⚠️ ♡マークは使用禁止！テーマ「{theme_name}」では♡は不自然。代わりに「...」「っ」「〜」で感情を表現。"
+    heart_instruction = "♡は甘いシーンで自然に使用OK。" if use_heart else f"テーマ「{theme_name}」のspeechでは♡控えめ。ただしmoan（喘ぎ）では♡を積極的に使え（不本意な快楽表現として有効）。"
 
     # 共通システムプロンプト（CG集フォーマット対応）
     common_system = f"""{jailbreak}
@@ -1076,6 +1636,8 @@ def generate_scene_batch(
 {skill if skill else "FANZA同人CG集の脚本を生成します。"}
 
 {danbooru_nsfw if danbooru_nsfw else ""}
+
+{scene_composer if scene_composer else ""}
 
 {char_guide if char_guide else "（キャラ設定なし）"}
 
@@ -1093,6 +1655,25 @@ def generate_scene_batch(
 - 1吹き出し＝1〜10文字。句読点不要
 - type: speech（会話）/ moan（喘ぎ）/ thought（心の声）
 - 状況説明は吹き出しに入れない（descriptionに書く）
+
+{f'''
+## ⚠️ セリフ品質ガイド（厳守・最優先）
+
+bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】に厳密に従え。
+「タスク手順」「不自然診断」「改訂版セリフ」等のセクションは無視せよ。
+
+★ 喘ぎ声は必ず下記辞書の【段階1〜4】から選べ。自分で喘ぎを創作するな。
+★ intensityに対応する段階を使え（intensity 1-2=段階1、intensity 3=段階2、intensity 4=段階3、intensity 5=段階4）
+★ 前シーンで使った喘ぎと同じものは絶対禁止。毎シーン辞書の別パターンを選べ。
+
+{serihu_skill}
+''' if serihu_skill else ''}
+
+{f'''
+## CG集ビジュアル構成ガイド
+
+{visual_skill}
+''' if visual_skill else ''}
 
 全キャラ成人(18+)。JSON配列形式のみ出力。"""
 
@@ -1141,7 +1722,14 @@ def generate_scene_batch(
         background_tags = f"{location_tags}, {time_tags}".strip(", ")
         if theme_sd_tags:
             background_tags = f"{background_tags}, {theme_sd_tags}"
-        
+
+        # 設定スタイルの背景タグ追加
+        batch_setting_style = _detect_setting_style(context.get("setting", ""))
+        if batch_setting_style:
+            style_append = ", ".join(batch_setting_style.get("append", []))
+            if style_append:
+                background_tags = f"{background_tags}, {style_append}"
+
         composition_db = tag_db.get("compositions", {})
         composition_tags = composition_db.get(str(intensity), {}).get("tags", "")
 
@@ -1153,13 +1741,21 @@ def generate_scene_batch(
             "composition_tags": composition_tags
         })
 
+    # 設定スタイルのヒント行（バッチ共通）
+    batch_setting_style = _detect_setting_style(context.get("setting", ""))
+    batch_setting_hint = ""
+    if batch_setting_style:
+        batch_setting_hint = f"\n背景スタイル必須: {batch_setting_style.get('prompt_hint', '')}"
+
     # バッチプロンプト構築
     prompt_parts = []
     if story_context_section:
         prompt_parts.append(story_context_section)
     prompt_parts.append(f"設定: {json.dumps(context, ensure_ascii=False)}\n")
     prompt_parts.append(f"テーマ「{theme_name}」のトーン: {dialogue_tone}\n{heart_instruction}\n")
-    
+    if batch_setting_hint:
+        prompt_parts.append(batch_setting_hint)
+
     for idx, info in enumerate(scenes_info):
         scene = info["scene"]
         prompt_parts.append(f"""
@@ -1177,19 +1773,19 @@ def generate_scene_batch(
 [
   {{
     "scene_id": シーンID,
-    "title": "シーンタイトル（8字以内）",
-    "description": "このシーンの詳細説明（100字程度）",
-    "location_detail": "場所の具体的な描写（30字）",
-    "mood": "雰囲気（5字以内）",
+    "title": "シーンタイトル",
+    "description": "このシーンの詳細説明",
+    "location_detail": "場所の具体的な描写",
+    "mood": "雰囲気",
     "character_feelings": {{
-        "{char_names[0] if char_names else 'ヒロイン'}": "心情（20字）"
+        "{char_names[0] if char_names else 'ヒロイン'}": "心情"
     }},
     "bubbles": [
         {{"speaker": "キャラ名", "type": "speech", "text": "短い一言"}}
     ],
     "onomatopoeia": [],
-    "direction": "演出・ト書き（30字）",
-    "story_flow": "次のシーンへの繋がり（15字）",
+    "direction": "演出・ト書き",
+    "story_flow": "次のシーンへの繋がり",
     "sd_prompt": "{QUALITY_POSITIVE_TAGS}, キャラ外見タグ, ポーズ・行為タグ, 表情タグ, 場所・背景タグ"
   }}
 ]
@@ -1199,9 +1795,11 @@ def generate_scene_batch(
 2. 各シーンのscene_idは指定通りに
 3. **bubblesは1-2個、各text 1〜10文字**（CG集の吹き出し）
 4. sd_promptは「{QUALITY_POSITIVE_TAGS} + キャラ外見 + ポーズ + 表情 + 場所・背景」の順
-5. タグは重複なくカンマ区切り
-6. **シーン1→シーン2は自然に繋がるストーリーにすること**
-7. **前シーンまでの展開を必ず引き継ぐこと**
+5. **sd_promptにオノマトペ・日本語テキストを含めない**（英語のDanbooruタグのみ）
+6. タグは重複なくカンマ区切り
+7. **シーン1→シーン2は自然に繋がるストーリーにすること**
+8. **前シーンまでの展開を必ず引き継ぐこと**
+9. **同じセリフ・オノマトペを複数シーンで繰り返さない**
 
 JSON配列のみ出力。""")
 
@@ -1215,7 +1813,7 @@ JSON配列のみ出力。""")
         scene_ids = [s.get("scene_id") for s in scenes]
         callback(f"バッチ生成中: シーン {scene_ids} (Haiku, {len(scenes)}シーン一括)...")
 
-    response = call_claude(
+    response = _call_api(
         client, MODELS["haiku"],
         system_with_cache,
         prompt, cost_tracker, 2500 * len(scenes), callback
@@ -1267,11 +1865,11 @@ def generate_outline(
     chars = context.get("chars", [])
     char_names = [c["name"] for c in chars] if chars else ["ヒロイン"]
 
-    # シーン配分計算
-    act1 = max(1, round(num_scenes * 0.20))
-    act4 = max(1, round(num_scenes * 0.10))
-    act3 = max(2, round(num_scenes * 0.40))
-    act2 = num_scenes - act1 - act3 - act4
+    # シーン配分計算（エロ75-85%: FANZA CG集は導入最小限、エロがメイン）
+    act1 = 1  # 導入は1ページで十分（読者はサンプルで内容を把握済み）
+    act4 = 1  # 余韻は1ページ
+    act3 = max(3, round(num_scenes * 0.60))  # 本番エロ（60%）
+    act2 = num_scenes - act1 - act3 - act4    # 前戯・焦らし（残り）
     if act2 < 1:
         act2 = 1
         act3 = num_scenes - act1 - act2 - act4
@@ -1292,21 +1890,22 @@ def generate_outline(
 - ストーリー要素:
 {elements_str}
 
-## シーン配分（{num_scenes}シーン）
-- 第1幕・導入: {act1}シーン → intensity 1-2（プロローグ・状況設定）
-- 第2幕・展開: {act2}シーン → intensity 2-3（焦らし・ムード構築）
-- 第3幕・本番: {act3}シーン → intensity 4-5（エロシーン・クライマックス）
-- 第4幕・余韻: {act4}シーン → intensity 2（エピローグ）
+## シーン配分（{num_scenes}シーン・エロ70%以上）
+- 第1幕・導入: {act1}シーン → intensity 1-2（最低限の状況設定。1ページで済ませる）
+- 第2幕・前戯: {act2}シーン → intensity 3（焦らし・脱衣・愛撫）
+- 第3幕・本番: {act3}シーン → intensity 4（基本）と5（クライマックスのみ最大2シーン）。必ず4→4→5→5→4のように段階をつけること
+- 第4幕・余韻: {act4}シーン → intensity 3-4（事後・余韻。エロの余韻を残す）
+※ FANZA CG集は読者がエロを求めて購入する。導入は短く、エロシーンを手厚く。
 
 ## 出力形式（JSON配列）
 各シーンは以下の形式：
 {{
     "scene_id": シーン番号,
-    "title": "シーンタイトル（8字以内）",
-    "goal": "このシーンの目的（あらすじのどの部分に対応するか）",
-    "location": "場所（あらすじに沿った具体的な場所）",
+    "title": "シーンタイトル",
+    "goal": "このシーンの目的",
+    "location": "場所",
     "time": "時間帯",
-    "situation": "このシーンで何が起きるか（あらすじに基づく具体的な状況を50字以上で）",
+    "situation": "このシーンで何が起きるか（具体的な状況）",
     "story_flow": "前シーンからの繋がりと次シーンへの橋渡し",
     "emotional_arc": {{"start": "シーン冒頭の感情", "end": "シーン終わりの感情"}},
     "beats": ["展開ビート1", "展開ビート2", "展開ビート3"],
@@ -1323,12 +1922,41 @@ def generate_outline(
 5. 本番シーン（intensity 4-5）は段階的にエスカレートすること
 6. 最後から2番目のシーンがクライマックス（intensity 5）であること
 7. 各シーンのsituationは必ず前シーンと異なる具体的展開にすること（「近づく」「囲まれる」等の同パターン繰り返し禁止）
-8. 同じlocationを連続2シーン以上使わないこと（場所を変えてストーリーを進める）
+8. **locationは3シーン連続で同じ場所にしてはならない**。場所を変えてストーリーを進めること。例: 部屋→廊下→浴室、教室→体育館倉庫→屋上
+9. intensity 5は最大2シーンまで。残りの本番はintensity 4にして、緩急をつけること
+10. intensity 1の次にintensity 3以上は禁止。必ずintensity 2を挟むこと（1→2→3→4→5の段階的上昇）
+
+## ⚠️ エスカレーション段階ルール（飛躍禁止・最重要）
+
+### 行為の段階（必ずこの順序で進めること。段階をスキップ禁止）
+段階A: 会話・接近・ムード作り（intensity 1-2）
+段階B: キス・愛撫・脱衣・前戯（intensity 3）
+段階C: 1対1の性行為（intensity 4）
+段階D: 激しい1対1 or 複数人（intensity 4-5）
+段階E: クライマックス（intensity 5）
+
+❌ 段階B（前戯）→ 段階D（複数人）は禁止。必ず段階C（1対1性行為）を挟むこと
+❌ 1対1シーンの次にいきなり3人以上は禁止。1対1→2人→複数人と段階的に増やすこと
+
+### 相手人数の段階
+- 1人のシーンの次に3人以上のシーンは禁止
+- 複数人に移行するなら、間に「相手が増える過程」のシーンを挟むこと
+
+### 心理変化の段階
+- 「抵抗している」→「完全堕落」の1シーン飛躍は禁止
+- 抵抗→葛藤→受容→快楽→堕落の順で段階的に変化させること
+- emotional_arcのstartは必ず前シーンのendと一致させること
+
+### situationの具体性
+各シーンのsituationには以下を必ず明記すること:
+- 相手の人数（1人/2人/複数人）
+- 行為の具体的内容（キス/愛撫/挿入/体位名）
+- 場所の移動理由（前シーンと場所が変わる場合）
 
 JSON配列のみ出力。"""
 
     try:
-        response = call_claude(
+        response = _call_api(
             client, MODELS["haiku"],
             f"FANZA同人CG集の脚本プランナーです。ストーリーあらすじを忠実に{num_scenes}シーンに分割し、各シーンの詳細設計をJSON配列で出力します。",
             prompt, cost_tracker, 4096, callback
@@ -1353,6 +1981,39 @@ JSON配列のみ出力。"""
             scene.setdefault("intensity", 3)
             scene.setdefault("erotic_level", "medium")
             scene.setdefault("viewer_hook", "")
+
+        # intensity分布の自動修正
+        intensity_5_count = sum(1 for s in outline if s.get("intensity", 3) == 5)
+        if intensity_5_count > 2:
+            # intensity 5を最大2シーンに制限（最後の2シーンを5にし、残りを4に）
+            five_indices = [i for i, s in enumerate(outline) if s.get("intensity", 3) == 5]
+            keep_five = five_indices[-2:]  # 最後の2つを5のまま
+            for i in five_indices:
+                if i not in keep_five:
+                    outline[i]["intensity"] = 4
+            log_message(f"intensity 5を{intensity_5_count}→2シーンに自動修正")
+
+        # intensity 1→3以上の飛躍を修正
+        for i in range(1, len(outline)):
+            prev_intensity = outline[i-1].get("intensity", 3)
+            curr_intensity = outline[i].get("intensity", 3)
+            if prev_intensity == 1 and curr_intensity >= 3:
+                outline[i]["intensity"] = 2
+                log_message(f"シーン{i+1}: intensity {curr_intensity}→2に修正（1→3以上の飛躍防止）")
+
+        # intensity 2段階以上の飛躍を修正（2→4, 2→5, 3→5 等）
+        for i in range(1, len(outline)):
+            prev_intensity = outline[i-1].get("intensity", 3)
+            curr_intensity = outline[i].get("intensity", 3)
+            if curr_intensity - prev_intensity >= 2:
+                fixed = prev_intensity + 1
+                outline[i]["intensity"] = fixed
+                log_message(f"シーン{i+1}: intensity {curr_intensity}→{fixed}に修正（{prev_intensity}→{curr_intensity}の飛躍防止）")
+
+        # erotic_levelとintensityの整合性を修正
+        erotic_map = {1: "none", 2: "light", 3: "medium", 4: "heavy", 5: "climax"}
+        for scene in outline:
+            scene["erotic_level"] = erotic_map.get(scene.get("intensity", 3), "medium")
 
         log_message(f"アウトライン生成完了（API）: {len(outline)}シーン, テーマ: {theme_name}")
         if callback:
@@ -1411,48 +2072,44 @@ JSON配列のみ出力。"""
 
 
 
-def extract_scene_summary(scene_result: dict) -> str:
-    """生成済みシーンから要約を抽出（吹き出し全件含む・反復防止用）"""
-    sid = scene_result.get("scene_id", "?")
-    title = scene_result.get("title", "")
-    desc = scene_result.get("description", "")[:80]
-    flow = scene_result.get("story_flow", "")
+def extract_scene_summary(scene: dict) -> str:
+    """シーンの要約を抽出（次シーンのstory_so_farに使用）"""
+    sid = scene.get("scene_id", "?")
+    title = scene.get("title", "")
+    desc = scene.get("description", "")[:120]
+    location = scene.get("location_detail", "")
+    mood = scene.get("mood", "")
+    intensity = scene.get("intensity", 3)
     
-    # 吹き出しテキストを抽出（新フォーマット: bubbles）
-    bubbles = scene_result.get("bubbles", [])
-    # 旧フォーマット互換: dialogueフィールドも確認
-    if not bubbles:
-        bubbles = scene_result.get("dialogue", [])
-    
-    key_lines = []
+    # 吹き出しの要約
+    bubbles = scene.get("bubbles", [])
+    bubble_texts = []
     for b in bubbles:
-        if isinstance(b, dict):
-            speaker = b.get("speaker", "")
-            text = b.get("text", "") or b.get("line", "")
-            if text:
-                key_lines.append(f"{speaker}「{text}」")
+        speaker = b.get("speaker", "")
+        btype = b.get("type", "")
+        text = b.get("text", "")
+        bubble_texts.append(f"{speaker}({btype}):「{text}」")
+    bubbles_str = ", ".join(bubble_texts) if bubble_texts else "なし"
     
-    # オノマトペも記録
-    onomatopoeia = scene_result.get("onomatopoeia", [])
+    # オノマトペの要約
+    onomatopoeia = scene.get("onomatopoeia", [])
+    se_str = ", ".join(onomatopoeia) if onomatopoeia else "なし"
     
-    feelings = scene_result.get("character_feelings", {})
-    feelings_str = ""
-    if isinstance(feelings, dict):
-        for k, v in feelings.items():
-            feelings_str = f"{k}の心情: {str(v)[:30]}"
-            break
+    # 心情の要約
+    feelings = scene.get("character_feelings", {})
+    feelings_str = ", ".join(f"{k}: {v}" for k, v in feelings.items()) if feelings else ""
     
-    summary = f"[シーン{sid}: {title}] {desc}"
-    if key_lines:
-        summary += f" / 吹き出し: {'; '.join(key_lines)}"
-    if onomatopoeia:
-        summary += f" / SE: {', '.join(onomatopoeia)}"
-    if feelings_str:
-        summary += f" / {feelings_str}"
-    if flow:
-        summary += f" → {flow}"
+    # ストーリーフロー（次への繋がり）
+    story_flow = scene.get("story_flow", "")
     
-    return summary
+    return (
+        f"[シーン{sid}] {title} (intensity={intensity}, {mood}) "
+        f"場所:{location} / {desc}\n"
+        f"  心情: {feelings_str}\n"
+        f"  吹き出し: {bubbles_str}\n"
+        f"  SE: {se_str}\n"
+        f"  次への繋がり: {story_flow}"
+    )
 
 def generate_scene_draft(
     client: anthropic.Anthropic,
@@ -1469,10 +2126,20 @@ def generate_scene_draft(
     synopsis: str = ""
 ) -> dict:
     skill = load_skill("low_cost_pipeline")
-    
+
     # Danbooruタグ強化スキルを読み込み
     danbooru_nsfw = load_skill("danbooru_nsfw_tags")
-    
+
+    # NSFWシーン構成スキル
+    scene_composer = load_skill("nsfw_scene_composer")
+
+    # エロ漫画セリフスキルを性格・テーマ別に選択
+    serihu_skill_name = _select_serihu_skill(theme, char_profiles)
+    serihu_skill = load_skill(serihu_skill_name)
+
+    # CG集ビジュアル多様性スキル
+    visual_skill = load_skill("cg_visual_variety")
+
     # テーマ別ガイドを取得
     theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
     theme_name = theme_guide.get("name", "指定なし")
@@ -1581,8 +2248,9 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
         heart_instruction = "♡は甘いシーンで自然に使用OK。"
     else:
         heart_instruction = f"""
-⚠️ ♡マークは使用禁止！
-テーマ「{theme_name}」では♡は不自然。代わりに「...」「っ」「〜」で感情を表現。
+テーマ「{theme_name}」のspeech（会話）では♡は控えめに。
+ただし**moan（喘ぎ）では♡を積極的に使え**（不本意な快楽の表現として効果的）。
+セリフ品質ガイドの喘ぎ辞書にある♡はそのまま使用すること。
 """
 
     # テーマ別セリフトーン指示
@@ -1607,9 +2275,13 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 最高潮のエロシーン。画像が全てを語る。絶頂・射精・快楽堕ちの瞬間。
 
+【descriptionの書き方（50字以上）】
+具体的な行為・体位・身体の状態を描写。
+例: 「正常位で激しくピストンされ、両足を男の腰に巻きつけた三玖が絶頂を迎える。目を見開き舌を出し、膣が痙攣する中で中出しされている。」
+❌ 「快感に溺れている」のような抽象表現は禁止。何をされて、体がどうなっているか書け。
+
 【吹き出し指針（3-4個）】
-・女: 絶頂系の喘ぎ2-3個（辞書から選べ。前シーンと被らないこと）
-  例: 「イっ…ちゃ…っ♡」「あああっ…♡♡」「もぅ…むり…♡」「おかしく…なる♡」「頭…真っ白…♡」
+・女: 絶頂系の喘ぎ2-3個（★セリフ品質ガイドの【段階4】から選べ。自作するな。前シーンと被らないこと）
 ・男: 言葉責め0-1個
   例: 「中に出すぞ」「全部受けろ」「イケ」
 
@@ -1633,9 +2305,13 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 濃厚なエロシーン。挿入・激しい行為。画像の行為を吹き出しが補強。
 
+【descriptionの書き方（50字以上）】
+具体的な行為・体位・身体の反応を描写。
+例: 「背後から挿入され、机に手をついて喘ぐ三玖。男の手が胸を鷲掴みにし、乳首を弄っている。腰が自然と動き出し、快感に抗えなくなっている。」
+❌ 「快感に溺れていく」「罪悪感と快楽の狭間」のような抽象表現のみは禁止
+
 【吹き出し指針（3-4個）】
-・女: 喘ぎ+短い反応2-3個（辞書から選べ。バリエーション重視）
-  例: 「んっ…あぁ…♡」「そこ…だめ…♡」「奥…当たって…」「やぁ…っ」「くぅん…♡」
+・女: 喘ぎ+短い反応2-3個（★セリフ品質ガイドの【段階3】から選べ。自作するな。前シーンと被らないこと）
 ・男: 言葉責め1個
   例: 「いい声だな」「もっと鳴け」「感じてんだろ？」「締まりいいな」
 
@@ -1659,8 +2335,7 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 エロの助走。脱衣・愛撫・キス等。期待感を煽る画像に短い吹き出し。
 
 【吹き出し指針（2-3個）】
-・女: ドキドキ感のある反応1-2個
-  例: 「あっ…」「やだ…見ないで…」「んっ…」「ひゃっ…」「そこ…だめ」
+・女: ドキドキ感のある反応1-2個（★セリフ品質ガイドの【段階2】から選べ）
 ・男: 煽りor会話0-1個
   例: 「おとなしくしろ」「いい体してんな」「脱げ」
 
@@ -1719,6 +2394,8 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 {danbooru_nsfw if danbooru_nsfw else ""}
 
+{scene_composer if scene_composer else ""}
+
 {char_guide if char_guide else "（キャラ設定なし）"}
 
 ## FANZA同人CG集とは
@@ -1738,14 +2415,13 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 2. moan（喘ぎ）: 声・息・反応。「あっ♡」「んぁ…っ」「はぁ…はぁ…」
 3. thought（心の声）: 画像上の小さい文字。「やばい…」「もう…」「彼氏に…」
 
-【男性キャラの吹き出し】
-男性キャラもspeech吹き出しを持てる（1シーン0-2個）。
-・言葉責め系: 「いい声だな」「もっと鳴け」「正直になれよ」
-・支配系: 「逃がさねぇよ」「おとなしくしろ」
-・煽り系: 「感じてんだろ？」「もう濡れてる」
-・称賛系: 「いい子だ」「上手だぞ」
-・催促系: 「中に出すぞ」「締めろ」
-※男のセリフは短く粗野に。丁寧語は使わない。
+【男性キャラの吹き出し（0-1個/ページ厳守）】
+男のセリフが多いと「うるさい」と不評になる。女性の喘ぎが主役。
+・支配系: 「逃がさねぇよ」「おとなしくしろ」「言えよ」
+・事実描写系（最も効果的）: 「すげえ締まる」「全部出すぞ」「奥まで入ったな」
+・挑発系: 「感じてんだろ？」「もう濡れてる」「弱いとこわかってるよ」
+・優しめ責め: 「気持ちいい？」「もっと聞かせて」「我慢しなくていいよ」
+※男のセリフは短く粗野に。丁寧語禁止。1ページ最大1個。
 
 【鉄則】
 - 1吹き出し = 1〜10文字（最大でも12文字）
@@ -1771,7 +2447,27 @@ NTR系のthoughtは: 「彼より…」「もう…戻れない」「なんで�
 - 3: 吹き出し2-3個（反応+短い声）、オノマトペ1-2個
 - 4-5: 吹き出し2-4個（喘ぎメイン+男の言葉責め）、オノマトペ2-4個
 
-## 喘ぎ声パターン辞書（同じパターン連続禁止・毎シーン違うものを使え）
+## ⚠️ 絶対厳守ルール
+
+### セリフ・オノマトペ重複禁止
+**全シーンを通じて同じセリフ・喘ぎ・オノマトペの組み合わせを2回以上使うな。**
+story_so_farに含まれるセリフと同じ・類似のものは絶対禁止。
+毎シーン必ず辞書の別パターンを選べ。バリエーションがCG集の生命線。
+
+### 場所名の一貫性
+同じ場所は**全シーンで同一の表記**を使え。
+❌ 「神社の境内」→「神殿の祭壇」→「神社の祭壇」（表記ブレ）
+✅ 「村の神社」→「村の神社」→「村の神社」（統一）
+最初のシーンで確定した場所名をそのまま使い続けること。
+
+### エロシーン優先
+FANZA CG集はエロがメイン。**全体の70%以上をエロシーンに充てる**こと。
+・10ページなら導入1-2ページ、エロ7-8ページ
+・導入は最小限に。読者は素早くエロシーンに入りたい
+・descriptionよりも**sd_promptとbubblesの質にこだわれ**
+・エロシーンではdescriptionは行為の具体的描写（体位、状態、反応）を書け
+
+## 喘ぎ声パターン辞書（補助。★セリフ品質ガイドの段階別辞書を優先して使え）
 
 ・吐息系: はぁ…, ふぅ…♡, んはぁ…, ふぁ…っ, すぅ…はぁ…
 ・声漏れ系: あっ, やぁ…, ひゃっ, くぅん, あぅ…, きゃっ, みゃっ
@@ -1829,8 +2525,27 @@ descriptionの説明がなくても、画像+吹き出しで視聴者に伝わ�
 ・NTR比較: 「こんなの…初めて…♡」→ 彼氏より気持ちいいと暗示
 ・絶頂シーン: 「イっ…ちゃ…♡」+オノマトペ「ドビュッ」→ 中出し絶頂とわかる
 
+{f'''
+## ⚠️ セリフ品質ガイド（厳守・最優先）
+
+bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】に厳密に従え。
+「タスク手順」「不自然診断」「改訂版セリフ」等のセクションは無視せよ。
+
+★ 喘ぎ声は必ず下記辞書の【段階1〜4】から選べ。自分で喘ぎを創作するな。
+★ intensityに対応する段階を使え（intensity 1-2=段階1、intensity 3=段階2、intensity 4=段階3、intensity 5=段階4）
+★ 前シーンで使った喘ぎと同じものは絶対禁止。毎シーン辞書の別パターンを選べ。
+
+{serihu_skill}
+''' if serihu_skill else ''}
+
+{f'''
+## CG集ビジュアル構成ガイド
+
+{visual_skill}
+''' if visual_skill else ''}
+
 全キャラ成人(18+)。JSON形式のみ出力。"""
-    
+
     # シーン固有部分（毎回変わる）
     scene_system = f"""{erotic_instruction}
 
@@ -1855,10 +2570,21 @@ descriptionの説明がなくても、画像+吹き出しで視聴者に伝わ�
     
     # 背景タグを組み合わせ
     background_tags = f"{location_tags}, {time_tags}".strip(", ")
-    
+
     # テーマタグを背景に追加（intensity 3以上のみ）
     if theme_sd_tags and intensity >= 3:
         background_tags = f"{background_tags}, {theme_sd_tags}"
+
+    # 設定スタイルから背景ヒントを取得
+    setting_style = _detect_setting_style(context.get("setting", ""))
+    setting_hint_line = ""
+    if setting_style:
+        hint = setting_style.get("prompt_hint", "")
+        style_append = ", ".join(setting_style.get("append", []))
+        if style_append:
+            background_tags = f"{background_tags}, {style_append}"
+        if hint:
+            setting_hint_line = f"\n背景スタイル必須: {hint}"
 
     # 構図タグ（intensity連動）
     composition_db = tag_db.get("compositions", {})
@@ -1872,9 +2598,18 @@ descriptionの説明がなくても、画像+吹き出しで視聴者に伝わ�
 ---
 """
 
-    # ストーリー連続性セクション
+    # ストーリー連続性セクション（使用済みセリフを明示抽出）
     story_context_section = ""
     if story_so_far:
+        # story_so_farから使用済みセリフ・SEを抽出してブラックリスト化
+        import re as _re
+        used_lines = []
+        for line in story_so_far.split("\n"):
+            line = line.strip()
+            if line.startswith("吹き出し:") or line.startswith("SE:"):
+                used_lines.append(line)
+        used_blacklist = "\n".join(used_lines) if used_lines else ""
+
         story_context_section = f"""
 ## ⚠️ ストーリーの連続性（最重要）
 
@@ -1882,10 +2617,22 @@ descriptionの説明がなくても、画像+吹き出しで視聴者に伝わ�
 
 {story_so_far}
 
-### 禁止事項
-- 上記に含まれるセリフと同じ・類似のセリフは使用禁止
-- 前シーンと同じ状況描写の繰り返し禁止
-- ストーリーを必ず前シーンより先に進めること
+### 🚫 使用禁止リスト（以下と同じ・類似は絶対禁止）
+{used_blacklist}
+
+### 禁止事項（違反したら不合格）
+- **上の使用禁止リストにあるセリフ・SE・thoughtと同一または類似は使用不可**
+- **前シーンと同じ状況描写・同じ展開の繰り返し禁止**
+- **ストーリーを必ず前シーンより先に進めること（行為をエスカレート）**
+- **同じ場所名は前シーンと同じ表記を使え（表記ブレ禁止）**
+- **キャラ名は{', '.join(char_names) if char_names else 'ヒロイン'}のみ使用**
+
+### ⚠️ エスカレーション制御（段階飛躍禁止）
+- **前シーンの行為レベルから1段階だけ進めること**
+- 前シーンが前戯なら→このシーンは挿入開始。いきなり複数人や絶頂は禁止
+- 前シーンが1対1なら→このシーンも1対1か、せいぜい2人目の登場まで
+- 前シーンで抵抗していたなら→このシーンは葛藤。いきなり完全堕落は禁止
+- **心情の変化は前シーンの「次への繋がり」を必ず引き継ぐこと**
 ---
 """
 
@@ -1896,12 +2643,12 @@ descriptionの説明がなくても、画像+吹き出しで視聴者に伝わ�
 
 {{
     "scene_id": {scene['scene_id']},
-    "title": "シーンタイトル（8字以内）",
-    "description": "このシーンの詳細説明。場所、状況、何が起きているか、画像として何が描かれるかを100字程度で説明",
-    "location_detail": "場所の具体的な描写（30字）",
-    "mood": "雰囲気（5字以内）",
+    "title": "シーンタイトル",
+    "description": "このシーンの詳細説明。場所、状況、何が起きているか、画像として何が描かれるかを説明",
+    "location_detail": "場所の具体的な描写",
+    "mood": "雰囲気",
     "character_feelings": {{
-        "{char_names[0] if char_names else 'ヒロイン'}": "このシーンでの心情（20字）"
+        "{char_names[0] if char_names else 'ヒロイン'}": "このシーンでの心情"
     }},
     "bubbles": [
         {{"speaker": "キャラ名", "type": "speech", "text": "短い一言"}},
@@ -1909,8 +2656,8 @@ descriptionの説明がなくても、画像+吹き出しで視聴者に伝わ�
         {{"speaker": "キャラ名", "type": "thought", "text": "心の声"}}
     ],
     "onomatopoeia": ["効果音1", "効果音2"],
-    "direction": "演出・ト書き（30字）",
-    "story_flow": "次のシーンへの繋がり（15字）",
+    "direction": "演出・ト書き",
+    "story_flow": "次のシーンへの繋がり",
     "sd_prompt": "{QUALITY_POSITIVE_TAGS}, キャラ外見タグ, ポーズ・行為タグ, 表情タグ, 場所・背景タグ, 照明タグ, テーマタグ"
 }}
 
@@ -1920,30 +2667,48 @@ descriptionの説明がなくても、画像+吹き出しで視聴者に伝わ�
 ポーズ・表情: {sd_intensity_tags}
 背景・場所: {background_tags}
 構図: {composition_tags}
-テーマ専用: {theme_tags_combined}
+テーマ専用: {theme_tags_combined}{setting_hint_line}
 
 ## ルール
 
-1. descriptionは必ず100字程度で詳しく書く（画像として描かれる内容を説明）
-2. character_feelingsで心情を明確に
+1. descriptionは必ず100字程度で詳しく書く。**具体的な体位・行為・身体の状態・表情**を書け。「囲まれている」「溺れている」のような抽象表現のみは不可
+2. character_feelingsで心情を明確に。前シーンと異なる感情変化を示すこと
 3. **bubblesは1-4個。各textは1〜10文字**（CG集の吹き出し。短いほど良い）
 4. typeはspeech/moan/thoughtの3種。intensity 4-5はmoanメイン
 5. **onomatopoeiaは場面に合った効果音**（intensity 1-2はなし〜1個、3は1-2個、4-5は2-4個）
-6. sd_promptは「{QUALITY_POSITIVE_TAGS} + キャラ外見 + ポーズ + 表情 + 場所・背景 + 照明」の順で統合
+6. sd_promptは「{QUALITY_POSITIVE_TAGS}」の後にカンマで区切り「キャラ外見 + ポーズ + 表情 + 場所・背景 + 照明」を続ける。quality括弧の中にはmasterpiece, best_qualityのみ入れる。キャラ名やheadphones等の外見タグは括弧外に書くこと
 7. **sd_promptはこのシーンの実際の内容のみを反映**すること
-8. **前シーンの流れを必ず引き継ぐこと**
-9. **キャラの一人称・語尾はキャラガイドを絶対厳守**
+8. **sd_promptにオノマトペ・日本語テキストを含めない**（英語のDanbooruタグのみ使用）
+9. **前シーンの流れを必ず引き継ぐこと**
+10. **キャラの一人称・語尾はキャラガイドを絶対厳守**
+11. **descriptionは全て日本語で書くこと**（英語タグはsd_promptのみ）
+12. **titleに「○回戦」「続き」等の安易な表現禁止**。具体的な行為・状況を反映した簡潔なタイトルにすること
+13. **キャラ名は必ず以下の表記を使え**（表記ブレ厳禁）: {', '.join(char_names) if char_names else 'ヒロイン'}
+14. **descriptionに具体的な行為・体位を必ず書け**。「囲まれる」「溺れる」だけの抽象表現は禁止。何をどうされているか書くこと"""
 
-JSONのみ出力。"""
+    # 重複禁止の最終警告（user promptの末尾に配置 = モデルが最も注目する位置）
+    dedup_warning = ""
+    if story_so_far:
+        dedup_warning = f"""
+
+## ⚠️⚠️⚠️ 最終チェック（出力前に必ず確認） ⚠️⚠️⚠️
+
+以下の条件を1つでも満たす場合、出力をやり直せ:
+- bubblesのtextに前シーンと同じ文言がある → 辞書から別パターンを選び直せ
+- onomatopoeiaが前シーンと同じ組み合わせ → 別の効果音に変えろ
+- descriptionが前シーンと類似している → 具体的な行為を変えろ
+- キャラ名が「{', '.join(char_names) if char_names else 'ヒロイン'}」以外の表記になっている → 修正しろ"""
+
+    prompt = prompt + dedup_warning + "\n\nJSONのみ出力。"
 
     # intensity 4以上はSonnetで高品質に
     model = MODELS["sonnet"] if intensity >= 4 else MODELS["haiku"]
     model_name = "Sonnet" if intensity >= 4 else "Haiku"
     
     if callback:
-        callback(f"シーン {scene['scene_id']} 生成中 ({model_name}, 重要度{intensity}, {theme_name})...")
+        callback(f"シーン {scene['scene_id']} 生成中 ({model_name}, 重要度{intensity}, {theme_name}, セリフ:{serihu_skill_name})...")
     
-    response = call_claude(
+    response = _call_api(
         client, model,
         system_with_cache,
         prompt, cost_tracker, 2500, callback
@@ -2040,7 +2805,7 @@ Output JSON only."""
 
 同じJSON形式で出力。JSONのみ。"""
 
-    response = call_claude(
+    response = _call_api(
         client, MODELS["sonnet"],
         system_prompt,
         prompt, cost_tracker, 2500, callback
@@ -2084,7 +2849,7 @@ def check_quality(
     if callback:
         callback("🔍 品質チェック中...")
 
-    response = call_claude(
+    response = _call_api(
         client, MODELS["haiku"],
         skill if skill else "You check script quality and suggest minimal fixes.",
         prompt, cost_tracker, 2048, callback
@@ -2108,7 +2873,7 @@ def apply_fix(
 
 同じJSON形式で出力。JSONのみ。"""
 
-    response = call_claude(
+    response = _call_api(
         client, MODELS["haiku"],
         "You apply minimal fixes to scripts. Never regenerate entirely.",
         prompt, cost_tracker, 2048, callback
@@ -2124,9 +2889,10 @@ def generate_pipeline(
     num_scenes: int,
     theme: str,
     callback: Optional[Callable] = None,
-    skip_quality_check: bool = True
+    skip_quality_check: bool = True,
 ) -> tuple[list, CostTracker]:
     client = anthropic.Anthropic(api_key=api_key)
+    log_message("Claude (Anthropic) バックエンドで生成開始")
     cost_tracker = CostTracker()
 
     jailbreak = load_file(JAILBREAK_FILE)
@@ -2259,8 +3025,31 @@ def generate_pipeline(
             intensity_counts[i] = intensity_counts.get(i, 0) + 1
         log_message(f"intensity分布: {intensity_counts}")
     except Exception as e:
-        log_message(f"アウトライン生成エラー: {e}")
-        raise
+        log_message(f"アウトライン生成エラー: {e}、フォールバック（均等分割）を使用")
+        if callback:
+            callback(f"⚠️ シーン分割エラー、均等分割で代替中...")
+        # フォールバック: テーマガイドのarc構造に基づく均等分割
+        theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
+        story_arc = theme_guide.get("story_arc", "導入→展開→本番→余韻")
+        outline = []
+        for idx in range(1, num_scenes + 1):
+            ratio = idx / num_scenes
+            if ratio <= 0.10:
+                intensity = 1  # 導入1ページ
+            elif ratio <= 0.25:
+                intensity = 3  # 前戯
+            elif ratio <= 0.85:
+                intensity = 4 + (1 if ratio > 0.65 else 0)  # 本番エロ
+            else:
+                intensity = 3  # 余韻
+            outline.append({
+                "scene_id": idx,
+                "summary": f"シーン{idx}",
+                "intensity": min(intensity, 5),
+                "location": "室内",
+                "time": ""
+            })
+        log_message(f"フォールバックアウトライン生成: {num_scenes}シーン")
 
     if callback:
         high_intensity = sum(1 for s in outline if s.get("intensity", 0) >= 4)
@@ -2303,8 +3092,9 @@ def generate_pipeline(
                 synopsis=synopsis
             )
 
+            draft["intensity"] = intensity
             results.append(draft)
-            
+
             # 要約を蓄積して次シーンに渡す
             summary = extract_scene_summary(draft)
             story_summaries.append(summary)
@@ -2345,6 +3135,7 @@ def generate_pipeline(
                             story_so_far=story_so_far,
                             synopsis="" if is_refusal else synopsis
                         )
+                        draft["intensity"] = intensity
                         results.append(draft)
                         summary = extract_scene_summary(draft)
                         story_summaries.append(summary)
@@ -2376,12 +3167,62 @@ def generate_pipeline(
             results.append(error_result)
             story_summaries.append(f"[シーン{i+1}: エラーにより欠落]")
 
+    # Phase 5: 品質検証 + SDプロンプト最適化（APIコスト不要）
+    log_message("Phase 5 開始: 品質検証 + SDプロンプト最適化")
+    if callback:
+        callback("🔍 Phase 5: 品質検証 + SDプロンプト最適化")
+
+    # 5-1: FANZA基準で自動検証
+    validation = validate_script(results, theme, char_profiles)
+    log_message(f"品質検証完了: {validation['summary']}")
+    if callback:
+        callback(f"📊 {validation['summary']}")
+
+    # シーン別問題をログ
+    for sid, issues in validation["scene_issues"].items():
+        for issue in issues:
+            log_message(f"  シーン{sid}: {issue}")
+            if callback:
+                callback(f"  ⚠️ シーン{sid}: {issue}")
+
+    # 喘ぎ重複
+    if validation["repeated_moans"]:
+        for text, sids in validation["repeated_moans"].items():
+            msg = f"喘ぎ重複「{text}」→ シーン{', '.join(str(s) for s in sids)}"
+            log_message(f"  {msg}")
+            if callback:
+                callback(f"  ⚠️ {msg}")
+
+    # オノマトペ連続重複
+    for s1, s2 in validation["repeated_onomatopoeia"]:
+        msg = f"オノマトペ連続重複: シーン{s1}→{s2}"
+        log_message(f"  {msg}")
+        if callback:
+            callback(f"  ⚠️ {msg}")
+
+    # 5-2: SDプロンプト最適化（設定スタイル適用）
+    setting_style = _detect_setting_style(concept)
+    if setting_style:
+        log_message(f"設定スタイル検出: {setting_style.get('prompt_hint', '')[:40]}...")
+        if callback:
+            callback(f"🏠 設定スタイル適用: {setting_style.get('prompt_hint', '')[:30]}...")
+    results = enhance_sd_prompts(results, char_profiles, setting_style=setting_style)
+    log_message("SDプロンプト最適化完了")
+    if callback:
+        callback("✨ SDプロンプト最適化完了")
+
+    # 5-3: 自動修正（文字数マーカー除去、キャラ名統一、SDタグ整理）
+    results = auto_fix_script(results, char_profiles)
+    log_message("自動修正完了")
+    if callback:
+        callback("🔧 自動修正完了")
+
     # 完了サマリー
     success_count = sum(1 for r in results if r.get("mood") != "エラー")
     log_message(f"パイプライン完了: {success_count}/{len(results)}シーン成功")
-    
+
     if callback:
-        callback(f"🎉 生成完了: {success_count}シーン成功")
+        callback(f"🎉 生成完了: {success_count}シーン成功（品質: {validation['score']}/100）")
 
     return results, cost_tracker
 
@@ -2557,8 +3398,12 @@ def export_excel(results: list, output_path: Path):
 
 
 def export_json(results: list, output_path: Path):
+    data = {
+        "generated_at": datetime.now().isoformat(),
+        "scenes": results,
+    }
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 # === キャラクター自動生成システム ===
@@ -2641,7 +3486,7 @@ def analyze_character(
     "character_name": "{char_name}",
     
     "personality_core": {{
-        "brief_description": "このキャラを一言で表すと（20字以内）",
+        "brief_description": "このキャラを一言で表すと",
         "main_traits": ["性格特性を5個"],
         "hidden_traits": ["表に出さない特性を3個"],
         "weakness": "弱点・苦手なこと",
@@ -2724,7 +3569,7 @@ def analyze_character(
 - JSONのみ出力"""
 
     # キャラ分析はSonnetで高品質に
-    response = call_claude(
+    response = _call_api(
         client, MODELS["sonnet"],
         system_prompt,
         prompt, cost_tracker, 4096, callback
@@ -2853,7 +3698,7 @@ def build_character(
     work_title: str,
     char_name: str,
     force_refresh: bool = False,
-    callback: Optional[Callable] = None
+    callback: Optional[Callable] = None,
 ) -> tuple[dict, str, CostTracker]:
     """キャラクター生成パイプライン"""
     client = anthropic.Anthropic(api_key=api_key)
@@ -2932,7 +3777,7 @@ def get_existing_characters() -> list[dict]:
                     "name": data.get("character_name", json_file.stem),
                     "work": data.get("work_title", "Unknown")
                 })
-        except:
+        except Exception:
             pass
     return characters
 
@@ -2945,7 +3790,7 @@ def get_preset_characters() -> list[dict]:
         with open(PRESET_INDEX_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
         return data.get("characters", [])
-    except:
+    except Exception:
         return []
 
 
@@ -3107,7 +3952,7 @@ class MaterialButton(ctk.CTkButton):
         variants = {
             "filled": {
                 "fg_color": MaterialColors.PRIMARY,
-                "hover_color": "#7965AF",  # Slightly lighter on hover
+                "hover_color": "#7058B8",  # Slightly lighter on hover
                 "text_color": MaterialColors.ON_PRIMARY,
                 "border_width": 0,
             },
@@ -3514,9 +4359,17 @@ class App(ctk.CTk):
         self.config_data = load_config()
         self.is_generating = False
         self.stop_requested = False
+        self.work_type_var = ctk.StringVar(value="二次創作")
 
         self.create_widgets()
         self.load_saved_config()
+
+        # ウィンドウ閉じ保護
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+        # ショートカットキー
+        self.bind("<Control-Return>", lambda e: self.start_generation())
+        self.bind("<Escape>", lambda e: self.stop_generation() if self.is_generating else None)
 
     def create_widgets(self):
         # ══════════════════════════════════════════════════════════════
@@ -3536,7 +4389,7 @@ class App(ctk.CTk):
         ).pack(side="left")
 
         ctk.CTkLabel(
-            header_inner, text="v0.9.2",
+            header_inner, text="v1.7.0",
             font=ctk.CTkFont(size=10), text_color=MaterialColors.ON_SURFACE_VARIANT,
             fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4, padx=6, pady=2
         ).pack(side="left", padx=(8, 0))
@@ -3569,6 +4422,7 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=12, weight="bold"), text_color=MaterialColors.ON_SURFACE
         ).pack(anchor="w", padx=14, pady=(10, 6))
 
+        # APIキー
         self.api_field = ctk.CTkEntry(
             api_card, height=42, placeholder_text="Anthropic API Key (sk-ant-...)", show="*",
             font=ctk.CTkFont(size=13),
@@ -3591,11 +4445,15 @@ class App(ctk.CTk):
         profile_row = ctk.CTkFrame(profile_card, fg_color="transparent")
         profile_row.pack(fill="x", padx=14, pady=(0, 10))
 
-        self.profile_combo = ctk.CTkComboBox(
+        self.profile_combo = ctk.CTkOptionMenu(
             profile_row, values=["（新規）"] + get_profile_list(), height=36, width=150,
             font=ctk.CTkFont(size=12),
             fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
-            button_color=MaterialColors.PRIMARY, command=self.on_profile_selected
+            button_color=MaterialColors.PRIMARY,
+            text_color=MaterialColors.ON_SURFACE,
+            dropdown_text_color=MaterialColors.ON_SURFACE,
+            dropdown_fg_color=MaterialColors.SURFACE,
+            command=self.on_profile_selected
         )
         self.profile_combo.pack(side="left", padx=(0, 6))
         self.profile_combo.set("（新規）")
@@ -3603,7 +4461,9 @@ class App(ctk.CTk):
         self.profile_name_entry = ctk.CTkEntry(
             profile_row, height=36, width=120, placeholder_text="プロファイル名",
             font=ctk.CTkFont(size=12),
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            text_color=MaterialColors.ON_SURFACE,
+            border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
         )
         self.profile_name_entry.pack(side="left", padx=(0, 8))
 
@@ -3633,184 +4493,76 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=12, weight="bold"), text_color=MaterialColors.ON_SURFACE
         ).pack(anchor="w", padx=14, pady=(10, 6))
 
-        # --- タブビュー ---
-        self.char_tabview = ctk.CTkTabview(
-            char_card, fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
-            segmented_button_fg_color=MaterialColors.SURFACE_CONTAINER,
-            segmented_button_selected_color=MaterialColors.PRIMARY,
-            segmented_button_unselected_color=MaterialColors.SURFACE_CONTAINER,
-            height=420, corner_radius=8
-        )
-        self.char_tabview.pack(fill="x", padx=14, pady=(0, 10))
+        # --- 作品タイプ ラジオボタン ---
+        type_row = ctk.CTkFrame(char_card, fg_color="transparent")
+        type_row.pack(fill="x", padx=14, pady=(0, 8))
 
-        # タブ作成
-        tab_preset = self.char_tabview.add("プリセット")
-        tab_custom = self.char_tabview.add("オリジナル作成")
-        tab_api = self.char_tabview.add("API生成")
+        ctk.CTkRadioButton(
+            type_row, text="二次創作（プリセットキャラ）",
+            variable=self.work_type_var, value="二次創作",
+            font=ctk.CTkFont(size=12), text_color=MaterialColors.ON_SURFACE,
+            fg_color=MaterialColors.PRIMARY, border_color=MaterialColors.OUTLINE,
+            hover_color=MaterialColors.PRIMARY_CONTAINER,
+            command=self._on_work_type_changed
+        ).pack(side="left", padx=(0, 16))
 
-        # --- Tab: プリセット ---
-        ctk.CTkLabel(
-            tab_preset, text="プリセットキャラ（API不要・33体収録）",
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color=MaterialColors.ON_SURFACE
-        ).pack(anchor="w", pady=(8, 4))
+        ctk.CTkRadioButton(
+            type_row, text="オリジナル（カスタム作成）",
+            variable=self.work_type_var, value="オリジナル",
+            font=ctk.CTkFont(size=12), text_color=MaterialColors.ON_SURFACE,
+            fg_color=MaterialColors.PRIMARY, border_color=MaterialColors.OUTLINE,
+            hover_color=MaterialColors.PRIMARY_CONTAINER,
+            command=self._on_work_type_changed
+        ).pack(side="left")
 
+        # --- プリセットコンテナ（二次創作時のみ表示） ---
+        self._preset_container = ctk.CTkFrame(char_card, fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST, corner_radius=8)
+
+        # --- カスタムコンテナ（オリジナル時のみ表示） ---
+        self._custom_container = ctk.CTkFrame(char_card, fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST, corner_radius=8)
+
+        # --- 共通: 使用キャラ選択（常時表示、切替の基準点） ---
+        self._char_select_row = ctk.CTkFrame(char_card, fg_color="transparent")
+        self._char_select_row.pack(fill="x", padx=14, pady=(0, 10))
+
+        # --- プリセットタブ構築 ---
+        self._all_presets = []
         self._preset_map = {}
-        self.preset_dropdown = ctk.CTkOptionMenu(
-            tab_preset, values=["（プリセット選択）"],
-            command=self.on_preset_selected,
-            font=ctk.CTkFont(size=13), width=380,
-            fg_color=MaterialColors.SURFACE_CONTAINER,
-            button_color=MaterialColors.PRIMARY,
-            text_color=MaterialColors.ON_SURFACE
-        )
-        self.preset_dropdown.pack(anchor="w", pady=(0, 6))
+        self._category_chips = {}
+        self._selected_category = "全て"
+        self._preset_card_frame = None
+        self._build_preset_tab(self._preset_container)
 
-        self.preset_load_btn = MaterialButton(
-            tab_preset, text="プリセット読み込み（API不要）",
-            variant="filled_tonal", command=self.load_preset_action
-        )
-        self.preset_load_btn.pack(anchor="w", pady=(0, 8))
+        # --- オリジナル作成タブ構築 ---
+        self._selected_archetype = "ツンデレ"
+        self._selected_hair_color = "黒髪"
+        self._archetype_chips = {}
+        self._hair_color_chips = {}
+        self._build_custom_tab(self._custom_container)
 
-        # --- Tab: オリジナル作成 ---
-        custom_scroll = ctk.CTkScrollableFrame(
-            tab_custom, fg_color="transparent", height=360
-        )
-        custom_scroll.pack(fill="both", expand=True)
+        # --- API生成セクション（カスタムコンテナ内） ---
+        self._build_api_section(self._custom_container)
 
-        # ヘルパー関数
-        def add_dropdown(parent, label, options, default=None):
-            ctk.CTkLabel(parent, text=label, font=ctk.CTkFont(size=11, weight="bold"),
-                        text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(6,0))
-            dd = ctk.CTkOptionMenu(parent, values=options, font=ctk.CTkFont(size=12),
-                                   width=350, fg_color=MaterialColors.SURFACE_CONTAINER,
-                                   button_color=MaterialColors.PRIMARY,
-                                   text_color=MaterialColors.ON_SURFACE)
-            dd.pack(anchor="w", pady=(2, 0))
-            if default:
-                dd.set(default)
-            return dd
+        # ネストスクロール衝突防止
+        self._setup_nested_scroll()
 
-        # 基本情報
-        ctk.CTkLabel(custom_scroll, text="── 基本情報 ──",
-                    font=ctk.CTkFont(size=12, weight="bold"),
-                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(4,2))
+        # 初期表示切替
+        self._on_work_type_changed()
 
-        ctk.CTkLabel(custom_scroll, text="キャラ名", font=ctk.CTkFont(size=11, weight="bold"),
-                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(6,0))
-        self.custom_name_entry = ctk.CTkEntry(
-            custom_scroll, height=36, placeholder_text="例: 佐藤花子",
-            font=ctk.CTkFont(size=13), width=350,
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6
-        )
-        self.custom_name_entry.pack(anchor="w", pady=(2, 0))
-
-        self.custom_age_dd = add_dropdown(custom_scroll, "年齢・外見", AGE_OPTIONS, "JK（女子高生）")
-        self.custom_rel_dd = add_dropdown(custom_scroll, "主人公との関係", RELATIONSHIP_OPTIONS, "クラスメイト")
-
-        # 性格・口調
-        ctk.CTkLabel(custom_scroll, text="── 性格・口調 ──",
-                    font=ctk.CTkFont(size=12, weight="bold"),
-                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(12,2))
-
-        self.custom_archetype_dd = add_dropdown(custom_scroll, "性格タイプ", ARCHETYPE_OPTIONS, "ツンデレ")
-        self.custom_first_person_dd = add_dropdown(custom_scroll, "一人称", FIRST_PERSON_OPTIONS, "あたし")
-        self.custom_speech_dd = add_dropdown(custom_scroll, "口調", SPEECH_STYLE_OPTIONS, "タメ口")
-
-        # 外見
-        ctk.CTkLabel(custom_scroll, text="── 外見 ──",
-                    font=ctk.CTkFont(size=12, weight="bold"),
-                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(12,2))
-
-        self.custom_hair_color_dd = add_dropdown(custom_scroll, "髪色", HAIR_COLOR_OPTIONS, "黒髪")
-        self.custom_hair_style_dd = add_dropdown(custom_scroll, "髪型", HAIR_STYLE_OPTIONS, "ロングストレート")
-        self.custom_body_dd = add_dropdown(custom_scroll, "体型", BODY_TYPE_OPTIONS, "普通")
-        self.custom_chest_dd = add_dropdown(custom_scroll, "胸", CHEST_OPTIONS, "普通（C）")
-        self.custom_clothing_dd = add_dropdown(custom_scroll, "服装", CLOTHING_OPTIONS, "制服（ブレザー）")
-
-        # エロシーン設定
-        ctk.CTkLabel(custom_scroll, text="── エロシーン設定 ──",
-                    font=ctk.CTkFont(size=12, weight="bold"),
-                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(12,2))
-
-        shyness_labels = [s[0] for s in SHYNESS_OPTIONS]
-        self.custom_shyness_dd = add_dropdown(custom_scroll, "恥ずかしがり度", shyness_labels, "3 - 普通")
-
-        # カスタム特性（自由入力）
-        ctk.CTkLabel(custom_scroll, text="── 追加設定（任意） ──",
-                    font=ctk.CTkFont(size=12, weight="bold"),
-                    text_color=MaterialColors.PRIMARY).pack(anchor="w", pady=(12,2))
-
-        ctk.CTkLabel(custom_scroll, text="追加の性格特性（「、」区切り）",
-                    font=ctk.CTkFont(size=11), text_color=MaterialColors.ON_SURFACE_VARIANT
-                    ).pack(anchor="w", pady=(6,0))
-        self.custom_traits_entry = ctk.CTkEntry(
-            custom_scroll, height=36, placeholder_text="例: 読書好き、猫が好き",
-            font=ctk.CTkFont(size=12), width=350,
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6
-        )
-        self.custom_traits_entry.pack(anchor="w", pady=(2, 0))
-
-        # 保存ボタン
-        self.custom_save_btn = MaterialButton(
-            custom_scroll, text="キャラクターを保存（API不要）",
-            variant="filled", command=self.save_custom_character
-        )
-        self.custom_save_btn.pack(anchor="w", pady=(16, 8))
-
-        # --- Tab: API生成 ---
-        ctk.CTkLabel(
-            tab_api, text="Claude APIでキャラクター分析（Sonnet使用）",
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color=MaterialColors.ON_SURFACE
-        ).pack(anchor="w", pady=(8, 4))
-
-        api_char_row = ctk.CTkFrame(tab_api, fg_color="transparent")
-        api_char_row.pack(fill="x", pady=(0, 6))
-
-        work_frame = ctk.CTkFrame(api_char_row, fg_color="transparent")
-        work_frame.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        ctk.CTkLabel(work_frame, text="作品名", font=ctk.CTkFont(size=11),
-                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
-        self.work_title_entry = ctk.CTkEntry(
-            work_frame, height=38, placeholder_text="例: 五等分の花嫁",
-            font=ctk.CTkFont(size=13), fg_color=MaterialColors.SURFACE_CONTAINER,
-            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
-        )
-        self.work_title_entry.pack(fill="x", pady=(3, 0))
-
-        char_name_frame = ctk.CTkFrame(api_char_row, fg_color="transparent")
-        char_name_frame.pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(char_name_frame, text="キャラ名", font=ctk.CTkFont(size=11),
-                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
-        self.char_name_entry = ctk.CTkEntry(
-            char_name_frame, height=38, placeholder_text="例: 中野一花",
-            font=ctk.CTkFont(size=13), fg_color=MaterialColors.SURFACE_CONTAINER,
-            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
-        )
-        self.char_name_entry.pack(fill="x", pady=(3, 0))
-
-        self.char_generate_btn = ctk.CTkButton(
-            tab_api, text="✨ キャラ生成（API使用）", height=36,
-            font=ctk.CTkFont(size=12, weight="bold"), corner_radius=6,
-            fg_color=MaterialColors.PRIMARY, hover_color=MaterialColors.PRIMARY_VARIANT,
-            command=self.start_char_generation
-        )
-        self.char_generate_btn.pack(anchor="w", pady=(0, 8))
-
-        # --- 共通: 使用キャラ選択 ---
-        char_select_row = ctk.CTkFrame(char_card, fg_color="transparent")
-        char_select_row.pack(fill="x", padx=14, pady=(0, 10))
+        # --- 使用キャラ選択ウィジェット ---
+        char_select_row = self._char_select_row
 
         ctk.CTkLabel(char_select_row, text="使用キャラ:",
                     font=ctk.CTkFont(size=11, weight="bold"),
                     text_color=MaterialColors.ON_SURFACE_VARIANT).pack(side="left", padx=(0, 6))
 
-        self.char_select_combo = ctk.CTkComboBox(
+        self.char_select_combo = ctk.CTkOptionMenu(
             char_select_row, values=["（キャラ選択）"], height=36,
             font=ctk.CTkFont(size=12),
             fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
             button_color=MaterialColors.PRIMARY, dropdown_fg_color=MaterialColors.SURFACE,
+            text_color=MaterialColors.ON_SURFACE,
+            dropdown_text_color=MaterialColors.ON_SURFACE,
             command=self.on_char_selected
         )
         self.char_select_combo.pack(side="left", fill="x", expand=True)
@@ -3915,6 +4667,7 @@ class App(ctk.CTk):
         self.scenes_entry = ctk.CTkEntry(
             scenes_frame, height=38, font=ctk.CTkFont(size=13),
             fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            text_color=MaterialColors.ON_SURFACE,
             border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
         )
         self.scenes_entry.pack(fill="x", pady=(3, 0))
@@ -3924,11 +4677,13 @@ class App(ctk.CTk):
         theme_frame = ctk.CTkFrame(settings_row, fg_color="transparent")
         theme_frame.pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(theme_frame, text="テーマ", font=ctk.CTkFont(size=11), text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
-        self.theme_combo = ctk.CTkComboBox(
+        self.theme_combo = ctk.CTkOptionMenu(
             theme_frame, values=list(THEME_OPTIONS.keys()), height=38,
             font=ctk.CTkFont(size=12),
             fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
-            button_color=MaterialColors.PRIMARY, dropdown_fg_color=MaterialColors.SURFACE
+            button_color=MaterialColors.PRIMARY, dropdown_fg_color=MaterialColors.SURFACE,
+            text_color=MaterialColors.ON_SURFACE,
+            dropdown_text_color=MaterialColors.ON_SURFACE
         )
         self.theme_combo.pack(fill="x", pady=(3, 0))
         self.theme_combo.set("指定なし")
@@ -3958,7 +4713,7 @@ class App(ctk.CTk):
         phase_frame = ctk.CTkFrame(status_row, fg_color="transparent")
         phase_frame.pack(side="right")
         self.phase_labels = []
-        for phase in ["圧縮", "生成", "完了"]:
+        for phase in ["圧縮", "あらすじ", "分割", "シーン生成", "品質検証"]:
             pill = ctk.CTkFrame(phase_frame, fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=8)
             pill.pack(side="left", padx=2)
             lbl = ctk.CTkLabel(pill, text=phase, font=ctk.CTkFont(size=10), text_color=MaterialColors.ON_SURFACE_VARIANT, padx=6, pady=2)
@@ -4083,7 +4838,10 @@ class App(ctk.CTk):
             self.scenes_entry.insert(0, str(self.config_data["num_scenes"]))
         if self.config_data.get("theme_jp"):
             self.theme_combo.set(self.config_data["theme_jp"])
-        
+        if self.config_data.get("work_type"):
+            self.work_type_var.set(self.config_data["work_type"])
+            self._on_work_type_changed()
+
         # 初期コスト予測を表示
         self.after(100, self.update_cost_preview)
 
@@ -4113,9 +4871,11 @@ class App(ctk.CTk):
             "api_key": self.api_field.get(),
             "concept": self.concept_text.get("1.0", "end-1c"),
             "characters": self.characters_text.get("1.0", "end-1c"),
+            "other_characters": self.other_chars_text.get("1.0", "end-1c") if hasattr(self, "other_chars_text") else "",
             "num_scenes": int(self.scenes_entry.get() or "10"),
             "theme_jp": theme_jp,
             "theme": THEME_OPTIONS.get(theme_jp, ""),
+            "work_type": self.work_type_var.get(),
         }
         save_config(self.config_data)
         self.snackbar.show("✅ 設定を保存しました", type="success")
@@ -4134,6 +4894,7 @@ class App(ctk.CTk):
             "theme": THEME_OPTIONS.get(theme_jp, ""),
             "work_title": self.work_title_entry.get(),
             "char_name": self.char_name_entry.get(),
+            "work_type": self.work_type_var.get(),
         }
 
     def apply_config(self, config: dict):
@@ -4158,6 +4919,9 @@ class App(ctk.CTk):
         if config.get("char_name"):
             self.char_name_entry.delete(0, "end")
             self.char_name_entry.insert(0, config["char_name"])
+        if config.get("work_type"):
+            self.work_type_var.set(config["work_type"])
+            self._on_work_type_changed()
         self.update_cost_preview()
 
     def refresh_profile_list(self):
@@ -4258,62 +5022,105 @@ class App(ctk.CTk):
         self.update_phase_indicator(message)
 
     def update_phase_indicator(self, message: str):
-        """フェーズインジケーターを更新"""
-        # リセット - 新構造: (pill, lbl)のタプル
-        for pill, lbl in self.phase_labels:
-            pill.configure(fg_color=MaterialColors.SURFACE_CONTAINER)
-            lbl.configure(text_color=MaterialColors.ON_SURFACE_VARIANT)
+        """フェーズインジケーターを更新（5段階: 圧縮/あらすじ/分割/シーン生成/品質検証）"""
+        import re
 
-        # 現在のフェーズをハイライト
-        if "Phase 1" in message or "圧縮" in message:
-            pill, lbl = self.phase_labels[0]
-            pill.configure(fg_color=MaterialColors.PRIMARY)
-            lbl.configure(text_color=MaterialColors.ON_PRIMARY)
-            self.progress.set(0.15)
-        elif "Phase 2" in message or "アウトライン" in message or "シーン" in message:
-            # Phase 1 complete
-            pill0, lbl0 = self.phase_labels[0]
-            pill0.configure(fg_color=MaterialColors.SUCCESS)
-            lbl0.configure(text_color=MaterialColors.ON_PRIMARY)
-            # Phase 2 active
-            pill1, lbl1 = self.phase_labels[1]
-            pill1.configure(fg_color=MaterialColors.PRIMARY)
-            lbl1.configure(text_color=MaterialColors.ON_PRIMARY)
-            # シーン進捗を計算
-            if "シーン" in message:
-                import re
-                match = re.search(r'(\d+)/(\d+)', message)
-                if match:
-                    current, total = int(match.group(1)), int(match.group(2))
-                    progress = 0.3 + (current / total) * 0.5
-                    self.progress.set(progress)
-            else:
-                self.progress.set(0.3)
-        elif "Phase 3" in message or "品質" in message:
-            for i in range(2):
-                pill, lbl = self.phase_labels[i]
-                pill.configure(fg_color=MaterialColors.SUCCESS)
+        def mark_done(*indices):
+            for i in indices:
+                if i < len(self.phase_labels):
+                    pill, lbl = self.phase_labels[i]
+                    pill.configure(fg_color=MaterialColors.SUCCESS)
+                    lbl.configure(text_color=MaterialColors.ON_PRIMARY)
+
+        def mark_active(idx):
+            if idx < len(self.phase_labels):
+                pill, lbl = self.phase_labels[idx]
+                pill.configure(fg_color=MaterialColors.PRIMARY)
                 lbl.configure(text_color=MaterialColors.ON_PRIMARY)
-            pill2, lbl2 = self.phase_labels[2]
-            pill2.configure(fg_color=MaterialColors.PRIMARY)
-            lbl2.configure(text_color=MaterialColors.ON_PRIMARY)
-            self.progress.set(0.9)
-        elif "完了" in message:
+
+        def reset_all():
             for pill, lbl in self.phase_labels:
-                pill.configure(fg_color=MaterialColors.SUCCESS)
-                lbl.configure(text_color=MaterialColors.ON_PRIMARY)
+                pill.configure(fg_color=MaterialColors.SURFACE_CONTAINER)
+                lbl.configure(text_color=MaterialColors.ON_SURFACE_VARIANT)
+
+        # フェーズ検出（優先順位付き）
+        new_phase = None
+
+        if "🎉" in message or ("生成完了" in message and "シーン" in message):
+            new_phase = "done"
+        elif "Phase 5" in message or "品質検証" in message:
+            new_phase = 4
+        elif "Phase 1" in message and "圧縮" in message:
+            new_phase = 0
+        elif "✅" in message and "圧縮完了" in message:
+            new_phase = 1  # Phase 1完了→Phase 2待ち
+        elif "Phase 2" in message or "原案作成" in message:
+            new_phase = 1
+        elif "✅" in message and "原案完成" in message:
+            new_phase = 2  # Phase 2完了→Phase 3待ち
+        elif "Phase 3" in message or "シーン分割" in message:
+            new_phase = 2
+        elif "✅" in message and "分割完成" in message:
+            new_phase = 3  # Phase 3完了→Phase 4待ち
+        elif re.search(r'シーン \d+/\d+', message):
+            new_phase = 3
+
+        # 状態が変わらない場合はプログレスバーのみ更新
+        if new_phase is None:
+            # シーン進捗のみ更新（フェーズ表示はそのまま維持）
+            match = re.search(r'(\d+)/(\d+)', message)
+            if match and hasattr(self, '_current_phase') and self._current_phase == 3:
+                current, total = int(match.group(1)), int(match.group(2))
+                progress = 0.35 + (current / total) * 0.50
+                self.progress.set(progress)
+            return
+
+        # フェーズ状態を保存
+        self._current_phase = new_phase
+
+        # 表示更新
+        reset_all()
+        if new_phase == "done":
+            mark_done(0, 1, 2, 3, 4)
             self.progress.set(1.0)
+        elif new_phase == 0:
+            mark_active(0)
+            self.progress.set(0.05)
+        elif new_phase == 1:
+            mark_done(0)
+            mark_active(1)
+            self.progress.set(0.12)
+        elif new_phase == 2:
+            mark_done(0, 1)
+            mark_active(2)
+            self.progress.set(0.20)
+        elif new_phase == 3:
+            mark_done(0, 1, 2)
+            mark_active(3)
+            match = re.search(r'(\d+)/(\d+)', message)
+            if match:
+                current, total = int(match.group(1)), int(match.group(2))
+                progress = 0.35 + (current / total) * 0.50
+                self.progress.set(progress)
+            else:
+                self.progress.set(0.30)
+        elif new_phase == 4:
+            mark_done(0, 1, 2, 3)
+            mark_active(4)
+            self.progress.set(0.90)
 
     def start_generation(self):
         if self.is_generating:
             return
 
         api_key = self.api_field.get().strip()
+
         concept = self.concept_text.get("1.0", "end-1c").strip()
         characters = self.characters_text.get("1.0", "end-1c").strip()
+        other_chars = self.other_chars_text.get("1.0", "end-1c").strip() if hasattr(self, "other_chars_text") else ""
 
         if not api_key:
-            self.snackbar.show("❌ APIキーを入力してください", type="error")
+            self.snackbar.show("❌ Anthropic APIキーを入力してください", type="error")
             return
         if not concept:
             self.snackbar.show("❌ コンセプトを入力してください", type="error")
@@ -4323,7 +5130,7 @@ class App(ctk.CTk):
             num_scenes = int(self.scenes_entry.get())
             if num_scenes < 1 or num_scenes > 50:
                 raise ValueError()
-        except:
+        except (ValueError, TypeError):
             self.snackbar.show("❌ シーン数は1〜50の整数で", type="error")
             return
 
@@ -4337,7 +5144,7 @@ class App(ctk.CTk):
         theme_name = theme_guide.get("name", "指定なし")
 
         # 簡易コスト見積もり（新パイプライン: あらすじ+分割+シーン生成）
-        act3_count = max(2, round(num_scenes * 0.40))
+        act3_count = max(3, round(num_scenes * 0.60))
         low_count = num_scenes - act3_count
         high_count = act3_count
         prep_calls = 2  # あらすじ生成 + シーン分割
@@ -4352,11 +5159,12 @@ class App(ctk.CTk):
         self.log(f"{'='*50}")
         self.log(f"📋 生成プレビュー")
         self.log(f"{'='*50}")
+        self.log(f"バックエンド: Claude (Anthropic)")
         self.log(f"テーマ: {theme_name}")
         self.log(f"シーン数: {num_scenes}")
         self.log(f"ストーリー構成: {theme_guide.get('story_arc', '導入→展開→本番→余韻')}")
         self.log(f"")
-        self.log(f"📊 新パイプライン:")
+        self.log(f"📊 パイプライン:")
         self.log(f"  Step 1: ストーリー原案作成（Haiku×1）")
         self.log(f"  Step 2: シーン分割（Haiku×1）")
         self.log(f"  Step 3: シーン生成")
@@ -4383,7 +5191,7 @@ class App(ctk.CTk):
 
         thread = threading.Thread(
             target=self.run_generation,
-            args=(api_key, concept, characters, num_scenes),
+            args=(api_key, concept, characters, num_scenes, other_chars),
             daemon=True
         )
         thread.start()
@@ -4394,7 +5202,7 @@ class App(ctk.CTk):
             self.update_status("⏹ 停止リクエスト送信...")
             self.stop_btn.configure(state="disabled", text="停止中...")
 
-    def run_generation(self, api_key: str, concept: str, characters: str, num_scenes: int):
+    def run_generation(self, api_key: str, concept: str, characters: str, num_scenes: int, other_chars: str = ""):
         try:
             theme_jp = self.theme_combo.get()
             theme = THEME_OPTIONS.get(theme_jp, "")
@@ -4404,10 +5212,15 @@ class App(ctk.CTk):
                     raise InterruptedError("ユーザーによる停止")
                 self.after(0, lambda: self.update_status(msg))
 
-            self.after(0, lambda: self.update_status("🚀 パイプライン開始..."))
+            self.after(0, lambda: self.update_status("🚀 パイプライン開始... [Claude (Anthropic)]"))
+
+            # その他の登場人物をcharactersに統合
+            full_characters = characters
+            if other_chars:
+                full_characters = f"{characters}\n\n【その他の登場人物】\n{other_chars}"
 
             results, cost_tracker = generate_pipeline(
-                api_key, concept, characters, num_scenes, theme, callback
+                api_key, concept, full_characters, num_scenes, theme, callback
             )
 
             if self.stop_requested:
@@ -4428,14 +5241,33 @@ class App(ctk.CTk):
             self.after(0, lambda: self.on_complete(results, cost_tracker, csv_path, json_path, xlsx_path if excel_ok else None))
 
         except InterruptedError:
-            self.after(0, lambda: self.on_stopped())
+            # 中断時でも途中結果をエクスポート
+            if results:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                partial_json = EXPORTS_DIR / f"script_{timestamp}_partial.json"
+                try:
+                    export_json(results, partial_json)
+                    partial_path = str(partial_json)
+                    self.after(0, lambda: self.on_stopped_with_partial(partial_path, len(results)))
+                except Exception:
+                    self.after(0, lambda: self.on_stopped())
+            else:
+                self.after(0, lambda: self.on_stopped())
         except Exception as e:
+            # エラー時も途中結果があれば保存
+            if results:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                partial_json = EXPORTS_DIR / f"script_{timestamp}_error.json"
+                try:
+                    export_json(results, partial_json)
+                except Exception:
+                    pass
             self.after(0, lambda: self.on_error(str(e)))
 
     def reset_buttons(self):
         self.is_generating = False
         self.stop_requested = False
-        self.generate_btn.configure(state="normal", text="脚本を生成")
+        self.generate_btn.configure(state="normal", text="\U0001f680 脚本を生成")
         self.stop_btn.configure(
             state="disabled",
             text="⏹ 停止",
@@ -4460,11 +5292,56 @@ class App(ctk.CTk):
         self.log(f"💰 {cost_tracker.summary()}")
         self.snackbar.show(f"✅ {len(results)}シーン生成完了!", type="success")
 
+        # エクスポートフォルダを開くボタンを表示
+        self._show_open_folder_btn()
+
+    def _show_open_folder_btn(self):
+        """エクスポートフォルダを開くボタンをログ領域の上に表示"""
+        if hasattr(self, "_open_folder_btn") and self._open_folder_btn.winfo_exists():
+            self._open_folder_btn.destroy()
+        self._open_folder_btn = ctk.CTkButton(
+            self.log_text.master, text="\U0001f4c2 エクスポートフォルダを開く",
+            font=ctk.CTkFont(size=12), height=32,
+            fg_color=MaterialColors.SECONDARY_CONTAINER,
+            text_color=MaterialColors.ON_SECONDARY_CONTAINER,
+            hover_color=MaterialColors.PRIMARY,
+            corner_radius=8,
+            command=self.open_export_folder
+        )
+        self._open_folder_btn.pack(pady=(4, 4))
+
+    def open_export_folder(self):
+        """エクスポートフォルダをエクスプローラーで開く"""
+        import subprocess
+        folder = str(EXPORTS_DIR)
+        try:
+            subprocess.Popen(["explorer", folder])
+        except Exception as e:
+            self.log(f"フォルダを開けません: {e}")
+
+    def on_close(self):
+        """ウィンドウ閉じ時の処理（生成中なら確認ダイアログ）"""
+        if self.is_generating:
+            import tkinter.messagebox as mb
+            if mb.askokcancel("確認", "生成中です。停止して終了しますか？"):
+                self.stop_requested = True
+                self.after(500, self.destroy)
+        else:
+            self.destroy()
+
     def on_stopped(self):
         self.reset_buttons()
         self.progress.set(0)
         self.update_status("⏹ 生成を停止しました")
         self.snackbar.show("⏹ 生成を停止しました", type="warning")
+
+    def on_stopped_with_partial(self, partial_path: str, count: int):
+        """中断時に部分結果を保存して通知"""
+        self.reset_buttons()
+        self.progress.set(0)
+        self.update_status(f"⏹ 停止（{count}シーン保存済み）")
+        self.log(f"📄 途中結果: {partial_path}")
+        self.snackbar.show(f"⏹ 停止（{count}シーン保存済み）", type="warning")
 
     def on_error(self, error: str):
         self.reset_buttons()
@@ -4534,45 +5411,28 @@ class App(ctk.CTk):
 
     def refresh_preset_list(self):
         """プリセット一覧を更新"""
-        presets = get_preset_characters()
+        self._all_presets = get_preset_characters()
         self._preset_map = {}
-        values = ["（プリセット選択）"]
-        for p in presets:
+        for p in self._all_presets:
             label = f"【{p.get('work_title', p.get('work', ''))}】{p.get('character_name', p.get('name', ''))}"
             self._preset_map[label] = p
-            values.append(label)
-        self.preset_dropdown.configure(values=values)
-        self.preset_dropdown.set("（プリセット選択）")
+
+        # Update title with count
+        count = len(self._all_presets)
+        if hasattr(self, '_preset_title_label'):
+            self._preset_title_label.configure(text=f"プリセットキャラ（API不要・{count}体収録）")
+
+        # Show all characters immediately
+        if hasattr(self, '_category_chips') and self._category_chips:
+            self._on_category_chip_click("全て")
 
     def on_preset_selected(self, choice: str):
-        """プリセット選択時"""
-        if choice == "（プリセット選択）" or choice not in self._preset_map:
-            return
-        info = self._preset_map[choice]
-        work = info.get("work_title", info.get("work", ""))
-        name = info.get("character_name", info.get("name", ""))
-        # 作品名・キャラ名フィールドに自動入力
-        self.work_title_entry.delete(0, "end")
-        self.work_title_entry.insert(0, work)
-        self.char_name_entry.delete(0, "end")
-        self.char_name_entry.insert(0, name)
-        self.log(f"プリセット選択: 【{work}】{name}")
+        """プリセット選択時（後方互換）"""
+        pass
 
     def load_preset_action(self):
-        """プリセット読み込み"""
-        current = self.preset_dropdown.get()
-        if current == "（プリセット選択）" or current not in self._preset_map:
-            self.snackbar.show("プリセットを選択してください", type="warning")
-            return
-        info = self._preset_map[current]
-        char_id = info["char_id"]
-        try:
-            bible, _ = load_preset_character(char_id, callback=lambda msg: self.log(msg))
-            self.refresh_char_list()
-            name = bible.get("character_name", char_id)
-            self.snackbar.show(f"✅ {name}をプリセットから読み込みました（API未使用）", type="success")
-        except Exception as e:
-            self.snackbar.show(f"❌ 読み込みエラー: {e}", type="error")
+        """プリセット読み込み（後方互換）"""
+        pass
 
     def save_custom_character(self):
         """オリジナルキャラクターを保存"""
@@ -4582,12 +5442,7 @@ class App(ctk.CTk):
             return
 
         # shyness_levelの取得
-        shyness_text = self.custom_shyness_dd.get()
-        shyness_level = 3
-        for label, val in SHYNESS_OPTIONS:
-            if label == shyness_text:
-                shyness_level = val
-                break
+        shyness_level = int(round(self.shyness_slider.get()))
 
         # その他の登場人物テキスト取得
         other_chars = ""
@@ -4598,10 +5453,10 @@ class App(ctk.CTk):
             char_name=name,
             age=self.custom_age_dd.get(),
             relationship=self.custom_rel_dd.get(),
-            archetype=self.custom_archetype_dd.get(),
+            archetype=self._selected_archetype,
             first_person=self.custom_first_person_dd.get(),
             speech_style=self.custom_speech_dd.get(),
-            hair_color=self.custom_hair_color_dd.get(),
+            hair_color=self._selected_hair_color,
             hair_style=self.custom_hair_style_dd.get(),
             body_type=self.custom_body_dd.get(),
             chest=self.custom_chest_dd.get(),
@@ -4624,11 +5479,759 @@ class App(ctk.CTk):
             f.write(skill_content)
 
         self.refresh_char_list()
-        self.log(f"✅ オリジナルキャラ保存: {name} ({self.custom_archetype_dd.get()})")
+        self.log(f"✅ オリジナルキャラ保存: {name} ({self._selected_archetype})")
         self.log(f"   性格: {bible['personality_core']['brief_description']}")
         self.log(f"   一人称: {bible['speech_pattern']['first_person']} / 口調: {self.custom_speech_dd.get()}")
         self.log(f"   外見: {bible['physical_description']['hair']}")
         self.snackbar.show(f"✅ {name}を保存しました（API未使用）", type="success")
+
+    # ======== Preset Tab Methods ========
+
+    def _build_preset_tab(self, parent):
+        """プリセットタブUIを構築"""
+        # Title with dynamic count
+        title_row = ctk.CTkFrame(parent, fg_color="transparent")
+        title_row.pack(fill="x", pady=(8, 6))
+
+        self._preset_title_label = ctk.CTkLabel(
+            title_row, text="プリセットキャラ（API不要・0体収録）",
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        )
+        self._preset_title_label.pack(side="left")
+
+        # Category chip row
+        chip_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        chip_frame.pack(fill="x", pady=(0, 6))
+
+        categories = ["全て", "ジャンプ", "マガジン", "ラノベ", "アニメ", "ソシャゲ", "ゲーム", "サンデー", "VTuber"]
+        self._category_map = {
+            "全て": None,
+            "ジャンプ": ["ジャンプ", "ジャンプ+"],
+            "マガジン": ["マガジン"],
+            "ラノベ": ["ラノベ"],
+            "アニメ": ["アニメ"],
+            "ソシャゲ": ["ソーシャルゲーム"],
+            "ゲーム": ["ゲーム"],
+            "サンデー": ["サンデー"],
+            "VTuber": ["VTuber"],
+        }
+
+        for cat in categories:
+            chip = MaterialChip(
+                chip_frame, text=cat,
+                selected=(cat == "全て"),
+                chip_type="filter",
+                command=lambda c=cat: self._on_category_chip_click(c)
+            )
+            chip.pack(side="left", padx=(0, 4))
+            self._category_chips[cat] = chip
+
+        # Work filter dropdown (optional narrowing)
+        filter_row = ctk.CTkFrame(parent, fg_color="transparent")
+        filter_row.pack(fill="x", pady=(0, 6))
+
+        ctk.CTkLabel(
+            filter_row, text="作品で絞り込み:",
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(side="left", padx=(0, 6))
+
+        self._work_dropdown = ctk.CTkOptionMenu(
+            filter_row, values=["（すべて表示）"],
+            command=self._on_work_selected,
+            font=ctk.CTkFont(family="Segoe UI", size=12), width=300,
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            button_color=MaterialColors.PRIMARY,
+            text_color=MaterialColors.ON_SURFACE,
+            dropdown_text_color=MaterialColors.ON_SURFACE,
+            dropdown_fg_color=MaterialColors.SURFACE
+        )
+        self._work_dropdown.pack(side="left")
+
+        # Character card scroll area
+        self._preset_card_frame = ctk.CTkScrollableFrame(
+            parent, fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
+            height=260, corner_radius=8
+        )
+        self._preset_card_frame.pack(fill="both", expand=True, pady=(0, 4))
+
+        # Placeholder text
+        self._preset_placeholder = ctk.CTkLabel(
+            self._preset_card_frame,
+            text="カテゴリを選択してください",
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        )
+        self._preset_placeholder.pack(pady=20)
+
+    def _on_category_chip_click(self, category):
+        """カテゴリチップ選択→キャラ一覧を即座に表示"""
+        # Toggle chips (exclusive selection)
+        for cat, chip in self._category_chips.items():
+            if cat == category:
+                if not chip.selected:
+                    chip.toggle()
+            else:
+                if chip.selected:
+                    chip.toggle()
+        self._selected_category = category
+
+        # Filter by category
+        cat_filters = self._category_map.get(category)
+        if cat_filters is None:
+            filtered = self._all_presets
+        else:
+            filtered = [p for p in self._all_presets if p.get("category", "") in cat_filters]
+
+        # Update work dropdown with available works
+        seen = set()
+        works = []
+        for p in filtered:
+            wt = p.get("work_title", p.get("work", ""))
+            if wt not in seen:
+                seen.add(wt)
+                works.append(wt)
+
+        values = ["（すべて表示）"] + works
+        self._work_dropdown.configure(values=values)
+        self._work_dropdown.set("（すべて表示）")
+
+        # Show all characters grouped by work
+        self._render_preset_list(filtered)
+
+    def _on_work_selected(self, work_title):
+        """作品選択→キャラカード表示（絞り込み）"""
+        cat_filters = self._category_map.get(self._selected_category)
+
+        if work_title == "（すべて表示）":
+            if cat_filters is None:
+                filtered = self._all_presets
+            else:
+                filtered = [p for p in self._all_presets if p.get("category", "") in cat_filters]
+        else:
+            filtered = []
+            for p in self._all_presets:
+                wt = p.get("work_title", p.get("work", ""))
+                cat = p.get("category", "")
+                if wt == work_title:
+                    if cat_filters is None or cat in cat_filters:
+                        filtered.append(p)
+
+        self._render_preset_list(filtered)
+
+    def _render_char_card(self, preset_info):
+        """キャラカードを描画（リッチ版）"""
+        card = ctk.CTkFrame(
+            self._preset_card_frame,
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOW,
+            corner_radius=10, height=56
+        )
+        card.pack(fill="x", pady=(0, 4), padx=6)
+        card.pack_propagate(False)
+
+        name = preset_info.get("character_name", preset_info.get("name", ""))
+        work = preset_info.get("work_title", preset_info.get("work", ""))
+        category = preset_info.get("category", "")
+
+        # Left accent bar based on category
+        cat_colors = {
+            "ジャンプ": "#E85D3A", "ジャンプ+": "#E85D3A",
+            "マガジン": "#3A8FE8", "ラノベ": "#8F5FD6",
+            "アニメ": "#40B080", "ソーシャルゲーム": "#E8A83A",
+            "ゲーム": "#6B8E23", "サンデー": "#FF8C00",
+            "VTuber": "#E84F8A",
+        }
+        accent = cat_colors.get(category, MaterialColors.PRIMARY)
+
+        accent_bar = ctk.CTkFrame(card, fg_color=accent, width=4, corner_radius=2)
+        accent_bar.pack(side="left", fill="y", padx=(0, 0), pady=6)
+
+        # Name (bold)
+        ctk.CTkLabel(
+            card, text=name,
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        ).pack(side="left", padx=(10, 6), pady=6)
+
+        # Work title (smaller, muted)
+        ctk.CTkLabel(
+            card, text=work,
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(side="left", padx=(0, 8), pady=6)
+
+        # Load button
+        MaterialButton(
+            card, text="読み込み", variant="filled_tonal", size="small",
+            command=lambda p=preset_info: self._load_preset_direct(p)
+        ).pack(side="right", padx=(0, 10), pady=8)
+
+    def _render_preset_list(self, presets):
+        """プリセット一覧を作品グループごとに描画"""
+        self._clear_preset_cards()
+
+        if not presets:
+            self._preset_placeholder.pack(pady=20)
+            self._preset_placeholder.configure(text="キャラが見つかりません")
+            return
+
+        self._preset_placeholder.pack_forget()
+
+        # Group by work title (dict preserves insertion order in Python 3.7+)
+        groups = {}
+        for p in presets:
+            wt = p.get("work_title", p.get("work", ""))
+            if wt not in groups:
+                groups[wt] = []
+            groups[wt].append(p)
+
+        for work_title, chars in groups.items():
+            # Work title header
+            header = ctk.CTkFrame(
+                self._preset_card_frame, fg_color="transparent", height=28
+            )
+            header.pack(fill="x", padx=6, pady=(8, 2))
+            header.pack_propagate(False)
+
+            ctk.CTkLabel(
+                header, text=f"  {work_title}  ({len(chars)})",
+                font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                text_color=MaterialColors.PRIMARY
+            ).pack(side="left")
+
+            # Divider line
+            divider = ctk.CTkFrame(
+                self._preset_card_frame,
+                fg_color=MaterialColors.OUTLINE_VARIANT, height=1
+            )
+            divider.pack(fill="x", padx=10, pady=(0, 4))
+
+            for ch in chars:
+                self._render_char_card(ch)
+
+    def _clear_preset_cards(self):
+        """プリセットカードをクリア"""
+        for widget in self._preset_card_frame.winfo_children():
+            if widget != self._preset_placeholder:
+                widget.destroy()
+        try:
+            self._preset_placeholder.pack_forget()
+        except:
+            pass
+
+    def _setup_nested_scroll(self):
+        """ネストされたスクロール領域のスムーズスクロール制御
+
+        1. 全CTkScrollableFrameの内部MouseWheelバインドを無効化
+        2. winfo_containingベースでスクロール先を判定
+        3. ピクセル単位の慣性アニメーションでスムーズに移動
+        4. 内側フレーム端到達時にメインへバブルアップ
+        """
+        inner_frames = []
+        for frame in [
+            getattr(self, '_preset_card_frame', None),
+            getattr(self, '_custom_scroll', None),
+        ]:
+            if frame:
+                inner_frames.append(frame)
+
+        # 全CTkScrollableFrameの内部バインドを無効化
+        all_frames = [self.main_container] + inner_frames
+        for frame in all_frames:
+            try:
+                frame.unbind("<MouseWheel>")
+            except Exception:
+                pass
+            try:
+                frame._parent_canvas.unbind("<MouseWheel>")
+            except Exception:
+                pass
+
+        # スムーズスクロール用の状態
+        self._scroll_velocity = 0.0
+        self._scroll_target_frame = None
+        self._scroll_animating = False
+
+        PIXELS_PER_NOTCH = 45
+        FRICTION = 0.65
+        FRAME_MS = 12
+        MIN_VELOCITY = 0.5
+
+        def _find_inner_ancestor(widget):
+            """ウィジェットの祖先を辿り、内側CTkScrollableFrameを見つける"""
+            w = widget
+            depth = 0
+            while w is not None and depth < 50:
+                for inner in inner_frames:
+                    if w is inner:
+                        return inner
+                try:
+                    w = w.master
+                except Exception:
+                    break
+                depth += 1
+            return None
+
+        def _can_scroll(frame, direction):
+            """フレームがその方向にスクロール可能かチェック"""
+            try:
+                canvas = frame._parent_canvas
+                top, bottom = canvas.yview()
+                if direction < 0 and top <= 0.001:
+                    return False
+                if direction > 0 and bottom >= 0.999:
+                    return False
+                return True
+            except Exception:
+                return False
+
+        def _scroll_pixels(frame, pixels):
+            """フレームをピクセル単位でスクロール"""
+            try:
+                canvas = frame._parent_canvas
+                scroll_region = canvas.cget("scrollregion")
+                if scroll_region:
+                    parts = scroll_region.split()
+                    total_height = float(parts[3]) - float(parts[1])
+                else:
+                    total_height = canvas.winfo_height()
+                if total_height <= 0:
+                    return
+                fraction = pixels / total_height
+                current = canvas.yview()[0]
+                new_pos = max(0.0, min(1.0, current + fraction))
+                canvas.yview_moveto(new_pos)
+            except Exception:
+                pass
+
+        def _animate_scroll():
+            """慣性スクロールアニメーション"""
+            if not self._scroll_animating:
+                return
+            if abs(self._scroll_velocity) < MIN_VELOCITY:
+                self._scroll_velocity = 0.0
+                self._scroll_animating = False
+                return
+
+            frame = self._scroll_target_frame
+            if frame is None:
+                self._scroll_animating = False
+                return
+
+            direction = 1 if self._scroll_velocity > 0 else -1
+
+            # 内側フレームの端到達時にメインへバブルアップ
+            if frame is not self.main_container and not _can_scroll(frame, direction):
+                self._scroll_target_frame = self.main_container
+                frame = self.main_container
+
+            _scroll_pixels(frame, self._scroll_velocity)
+            self._scroll_velocity *= FRICTION
+            self.after(FRAME_MS, _animate_scroll)
+
+        def _on_mousewheel(event):
+            """マウスホイールイベント → 慣性スクロール開始"""
+            raw_delta = -event.delta / 120.0
+            impulse = raw_delta * PIXELS_PER_NOTCH
+
+            try:
+                x, y = self.winfo_pointerxy()
+                widget = self.winfo_containing(x, y)
+            except Exception:
+                return "break"
+
+            if widget is None:
+                return "break"
+
+            inner = _find_inner_ancestor(widget)
+            direction = 1 if impulse > 0 else -1
+
+            if inner is not None and _can_scroll(inner, direction):
+                target = inner
+            else:
+                target = self.main_container
+
+            # 速度加算（連続ホイールで加速、方向転換時はリセット）
+            if self._scroll_target_frame is not target:
+                self._scroll_velocity = impulse
+            elif (self._scroll_velocity > 0) != (impulse > 0):
+                self._scroll_velocity = impulse
+            else:
+                self._scroll_velocity += impulse
+
+            self._scroll_target_frame = target
+
+            if not self._scroll_animating:
+                self._scroll_animating = True
+                _animate_scroll()
+
+            return "break"
+
+        self.bind_all("<MouseWheel>", _on_mousewheel)
+
+    def _on_work_type_changed(self):
+        """ラジオボタン切替で表示コンテナを切替"""
+        is_preset = self.work_type_var.get() == "二次創作"
+        if is_preset:
+            self._custom_container.pack_forget()
+            self._preset_container.pack(fill="x", padx=14, pady=(0, 10),
+                                        before=self._char_select_row)
+        else:
+            self._preset_container.pack_forget()
+            self._custom_container.pack(fill="x", padx=14, pady=(0, 10),
+                                        before=self._char_select_row)
+
+    def _build_api_section(self, parent):
+        """API生成セクションを構築（カスタムコンテナ内）"""
+        api_card = MaterialCard(parent, title="API キャラ生成", variant="outlined")
+        api_card.pack(fill="x", padx=8, pady=(8, 8))
+
+        api_inner = ctk.CTkFrame(api_card, fg_color="transparent")
+        api_inner.pack(fill="x", padx=16, pady=(0, 12))
+
+        ctk.CTkLabel(
+            api_inner, text="Claude APIでキャラクター分析（Sonnet使用）",
+            font=ctk.CTkFont(size=12),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(anchor="w", pady=(0, 4))
+
+        api_char_row = ctk.CTkFrame(api_inner, fg_color="transparent")
+        api_char_row.pack(fill="x", pady=(0, 6))
+
+        work_frame = ctk.CTkFrame(api_char_row, fg_color="transparent")
+        work_frame.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        ctk.CTkLabel(work_frame, text="作品名", font=ctk.CTkFont(size=11),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
+        self.work_title_entry = ctk.CTkEntry(
+            work_frame, height=38, placeholder_text="例: 五等分の花嫁",
+            font=ctk.CTkFont(size=13), fg_color=MaterialColors.SURFACE_CONTAINER,
+            text_color=MaterialColors.ON_SURFACE,
+            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
+        )
+        self.work_title_entry.pack(fill="x", pady=(3, 0))
+
+        char_name_frame = ctk.CTkFrame(api_char_row, fg_color="transparent")
+        char_name_frame.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(char_name_frame, text="キャラ名", font=ctk.CTkFont(size=11),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
+        self.char_name_entry = ctk.CTkEntry(
+            char_name_frame, height=38, placeholder_text="例: 中野一花",
+            font=ctk.CTkFont(size=13), fg_color=MaterialColors.SURFACE_CONTAINER,
+            text_color=MaterialColors.ON_SURFACE,
+            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
+        )
+        self.char_name_entry.pack(fill="x", pady=(3, 0))
+
+        self.char_generate_btn = ctk.CTkButton(
+            api_inner, text="✨ キャラ生成（API使用）", height=36,
+            font=ctk.CTkFont(size=12, weight="bold"), corner_radius=6,
+            fg_color=MaterialColors.PRIMARY, hover_color=MaterialColors.PRIMARY_VARIANT,
+            command=self.start_char_generation
+        )
+        self.char_generate_btn.pack(anchor="w", pady=(0, 4))
+
+    def _load_preset_direct(self, preset_info):
+        """ワンクリックでプリセット読み込み"""
+        char_id = preset_info["char_id"]
+        try:
+            bible, _ = load_preset_character(char_id, callback=lambda msg: self.log(msg))
+            self.refresh_char_list()
+            name = bible.get("character_name", char_id)
+            work = preset_info.get("work_title", "")
+            # Also populate work/char fields in API tab
+            self.work_title_entry.delete(0, "end")
+            self.work_title_entry.insert(0, work)
+            self.char_name_entry.delete(0, "end")
+            self.char_name_entry.insert(0, name)
+            self.snackbar.show(f"✅ {name}を読み込みました", type="success")
+        except Exception as e:
+            self.snackbar.show(f"❌ 読み込みエラー: {e}", type="error")
+
+    # ======== Custom Character Tab Methods ========
+
+    def _build_custom_tab(self, parent):
+        """オリジナル作成タブUIを構築"""
+        custom_scroll = ctk.CTkScrollableFrame(
+            parent, fg_color="transparent", height=400
+        )
+        custom_scroll.pack(fill="both", expand=True)
+        self._custom_scroll = custom_scroll
+
+        # Helper for dropdowns
+        def add_dropdown(p, label, options, default=None):
+            ctk.CTkLabel(p, text=label, font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+                        text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(6,0))
+            dd = ctk.CTkOptionMenu(p, values=options, font=ctk.CTkFont(family="Segoe UI", size=12),
+                                   width=350, fg_color=MaterialColors.SURFACE_CONTAINER,
+                                   button_color=MaterialColors.PRIMARY,
+                                   text_color=MaterialColors.ON_SURFACE,
+                                   dropdown_text_color=MaterialColors.ON_SURFACE,
+                                   dropdown_fg_color=MaterialColors.SURFACE)
+            dd.pack(anchor="w", pady=(2, 0))
+            if default:
+                dd.set(default)
+            return dd
+
+        # === Template Quick Start ===
+        tmpl_label = ctk.CTkLabel(custom_scroll, text="テンプレート（ワンクリック雛形）",
+                    font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
+                    text_color=MaterialColors.PRIMARY)
+        tmpl_label.pack(anchor="w", pady=(4, 4))
+
+        tmpl_row = ctk.CTkFrame(custom_scroll, fg_color="transparent")
+        tmpl_row.pack(fill="x", pady=(0, 8))
+
+        templates = {
+            "JKツンデレ": {"age": "JK（女子高生）", "archetype": "ツンデレ", "first_person": "あたし",
+                         "speech": "タメ口", "hair_color": "金髪", "hair_style": "ツインテール",
+                         "body": "普通", "chest": "大きめ（D-E）", "clothing": "制服（ブレザー）", "shyness": 4},
+            "大人クール": {"age": "OL（20代）", "archetype": "クーデレ", "first_person": "私",
+                         "speech": "丁寧語", "hair_color": "黒髪", "hair_style": "ロングストレート",
+                         "body": "スレンダー", "chest": "普通（C）", "clothing": "スーツ", "shyness": 2},
+            "甘え妹": {"age": "JK（女子高生）", "archetype": "妹系・甘えん坊", "first_person": "私",
+                      "speech": "タメ口", "hair_color": "茶髪", "hair_style": "ツインテール",
+                      "body": "小柄・華奢", "chest": "控えめ（A-B）", "clothing": "パジャマ・部屋着", "shyness": 4},
+            "お嬢様": {"age": "JD（女子大生）", "archetype": "お嬢様", "first_person": "わたくし",
+                      "speech": "お嬢様言葉", "hair_color": "金髪", "hair_style": "ロングウェーブ",
+                      "body": "グラマー", "chest": "大きめ（D-E）", "clothing": "ドレス", "shyness": 3},
+        }
+        self._custom_templates = templates
+
+        for tname in templates:
+            MaterialButton(
+                tmpl_row, text=tname, variant="outlined", size="small",
+                command=lambda t=tname: self._apply_custom_template(t)
+            ).pack(side="left", padx=(0, 6))
+
+        # === 基本情報 Card ===
+        basic_card = MaterialCard(custom_scroll, title="基本情報", variant="outlined")
+        basic_card.pack(fill="x", pady=(0, 8))
+        bc = basic_card.content_frame
+
+        ctk.CTkLabel(bc, text="キャラ名", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(0,0))
+        self.custom_name_entry = ctk.CTkEntry(
+            bc, height=36, placeholder_text="例: 佐藤花子",
+            font=ctk.CTkFont(family="Segoe UI", size=13), width=350,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            text_color=MaterialColors.ON_SURFACE,
+            border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
+        )
+        self.custom_name_entry.pack(anchor="w", pady=(2, 0))
+
+        self.custom_age_dd = add_dropdown(bc, "年齢・外見", AGE_OPTIONS, "JK（女子高生）")
+        self.custom_rel_dd = add_dropdown(bc, "主人公との関係", RELATIONSHIP_OPTIONS, "クラスメイト")
+
+        # === 性格・口調 Card ===
+        personality_card = MaterialCard(custom_scroll, title="性格・口調", variant="outlined")
+        personality_card.pack(fill="x", pady=(0, 8))
+        pc = personality_card.content_frame
+
+        ctk.CTkLabel(pc, text="性格タイプ", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(0, 4))
+
+        # Archetype chip grid (4 cols x 3 rows)
+        archetype_grid = ctk.CTkFrame(pc, fg_color="transparent")
+        archetype_grid.pack(fill="x", pady=(0, 6))
+
+        for i, arch in enumerate(ARCHETYPE_OPTIONS):
+            chip = MaterialChip(
+                archetype_grid, text=arch,
+                selected=(arch == self._selected_archetype),
+                chip_type="filter",
+                command=lambda a=arch: self._select_archetype_chip(a)
+            )
+            row_num = i // 4
+            col_num = i % 4
+            chip.grid(row=row_num, column=col_num, padx=2, pady=2, sticky="w")
+            self._archetype_chips[arch] = chip
+
+        self.custom_first_person_dd = add_dropdown(pc, "一人称", FIRST_PERSON_OPTIONS, "あたし")
+        self.custom_speech_dd = add_dropdown(pc, "口調", SPEECH_STYLE_OPTIONS, "タメ口")
+
+        # === 外見 Card ===
+        appearance_card = MaterialCard(custom_scroll, title="外見", variant="outlined")
+        appearance_card.pack(fill="x", pady=(0, 8))
+        ac = appearance_card.content_frame
+
+        ctk.CTkLabel(ac, text="髪色", font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(0, 4))
+
+        # Hair color chips
+        hair_color_frame = ctk.CTkFrame(ac, fg_color="transparent")
+        hair_color_frame.pack(fill="x", pady=(0, 6))
+
+        for color in HAIR_COLOR_OPTIONS:
+            chip = MaterialChip(
+                hair_color_frame, text=color,
+                selected=(color == self._selected_hair_color),
+                chip_type="filter",
+                command=lambda c=color: self._select_hair_color_chip(c)
+            )
+            chip.pack(side="left", padx=(0, 3), pady=2)
+            self._hair_color_chips[color] = chip
+
+        self.custom_hair_style_dd = add_dropdown(ac, "髪型", HAIR_STYLE_OPTIONS, "ロングストレート")
+        self.custom_body_dd = add_dropdown(ac, "体型", BODY_TYPE_OPTIONS, "普通")
+        self.custom_chest_dd = add_dropdown(ac, "胸", CHEST_OPTIONS, "普通（C）")
+        self.custom_clothing_dd = add_dropdown(ac, "服装", CLOTHING_OPTIONS, "制服（ブレザー）")
+
+        # === エロシーン設定 Card ===
+        ero_card = MaterialCard(custom_scroll, title="エロシーン設定", variant="outlined")
+        ero_card.pack(fill="x", pady=(0, 8))
+        ec = ero_card.content_frame
+
+        slider_row = ctk.CTkFrame(ec, fg_color="transparent")
+        slider_row.pack(fill="x", pady=(0, 4))
+
+        ctk.CTkLabel(slider_row, text="大胆",
+                    font=ctk.CTkFont(family="Segoe UI", size=11),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(side="left", padx=(0, 8))
+
+        self.shyness_slider = ctk.CTkSlider(
+            slider_row, from_=1, to=5, number_of_steps=4,
+            width=200,
+            fg_color=MaterialColors.SURFACE_CONTAINER_HIGH,
+            progress_color=MaterialColors.PRIMARY,
+            button_color=MaterialColors.PRIMARY,
+            button_hover_color=MaterialColors.PRIMARY_VARIANT
+        )
+        self.shyness_slider.set(3)
+        self.shyness_slider.pack(side="left", padx=(0, 8))
+
+        ctk.CTkLabel(slider_row, text="恥ずかしがり",
+                    font=ctk.CTkFont(family="Segoe UI", size=11),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(side="left")
+
+        self._shyness_value_label = ctk.CTkLabel(ec, text="恥ずかしがり度: 3",
+                    font=ctk.CTkFont(family="Segoe UI", size=11),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT)
+        self._shyness_value_label.pack(anchor="w")
+        self.shyness_slider.configure(command=self._on_shyness_change)
+
+        # === 追加設定 ===
+        extra_card = MaterialCard(custom_scroll, title="追加設定（任意）", variant="outlined")
+        extra_card.pack(fill="x", pady=(0, 8))
+        xc = extra_card.content_frame
+
+        ctk.CTkLabel(xc, text="追加の性格特性（「、」区切り）",
+                    font=ctk.CTkFont(family="Segoe UI", size=11),
+                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(0,0))
+        self.custom_traits_entry = ctk.CTkEntry(
+            xc, height=36, placeholder_text="例: 読書好き、猫が好き",
+            font=ctk.CTkFont(family="Segoe UI", size=12), width=350,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            text_color=MaterialColors.ON_SURFACE,
+            border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
+        )
+        self.custom_traits_entry.pack(anchor="w", pady=(2, 0))
+
+        # === Live Preview ===
+        preview_card = MaterialCard(custom_scroll, title="プレビュー", variant="filled")
+        preview_card.pack(fill="x", pady=(0, 8))
+        self._custom_preview_label = ctk.CTkLabel(
+            preview_card.content_frame,
+            text="キャラ名を入力してください",
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color=MaterialColors.ON_SURFACE_VARIANT,
+            wraplength=380, justify="left"
+        )
+        self._custom_preview_label.pack(anchor="w")
+
+        # === Save Button ===
+        self.custom_save_btn = MaterialButton(
+            custom_scroll, text="キャラクターを保存（API不要）",
+            variant="filled", command=self.save_custom_character
+        )
+        self.custom_save_btn.pack(anchor="w", pady=(8, 8))
+
+    def _select_archetype_chip(self, archetype):
+        """性格タイプチップの排他選択"""
+        self._selected_archetype = archetype
+        for arch, chip in self._archetype_chips.items():
+            if arch == archetype:
+                if not chip.selected:
+                    chip.toggle()
+            else:
+                if chip.selected:
+                    chip.toggle()
+        self._update_custom_preview()
+
+    def _select_hair_color_chip(self, color):
+        """髪色チップの排他選択"""
+        self._selected_hair_color = color
+        for c, chip in self._hair_color_chips.items():
+            if c == color:
+                if not chip.selected:
+                    chip.toggle()
+            else:
+                if chip.selected:
+                    chip.toggle()
+        self._update_custom_preview()
+
+    def _on_shyness_change(self, value):
+        """恥ずかしがり度スライダー変更"""
+        v = int(round(value))
+        labels = {1: "大胆・積極的", 2: "やや積極的", 3: "普通", 4: "恥ずかしがり", 5: "超恥ずかしがり"}
+        self._shyness_value_label.configure(text=f"恥ずかしがり度: {v} - {labels.get(v, '')}")
+        self._update_custom_preview()
+
+    def _update_custom_preview(self, *args):
+        """ライブプレビュー更新"""
+        name = self.custom_name_entry.get().strip() if hasattr(self, 'custom_name_entry') else ""
+        if not name:
+            name = "（未入力）"
+        age = self.custom_age_dd.get() if hasattr(self, 'custom_age_dd') else ""
+        archetype = self._selected_archetype
+        hair_color = self._selected_hair_color
+        hair_style = self.custom_hair_style_dd.get() if hasattr(self, 'custom_hair_style_dd') else ""
+        chest = self.custom_chest_dd.get() if hasattr(self, 'custom_chest_dd') else ""
+        clothing = self.custom_clothing_dd.get() if hasattr(self, 'custom_clothing_dd') else ""
+        shyness = int(round(self.shyness_slider.get())) if hasattr(self, 'shyness_slider') else 3
+
+        preview = f"{name} / {age} / {archetype} / {hair_color}{hair_style} / {chest} / {clothing} / 恥度{shyness}"
+        if hasattr(self, '_custom_preview_label'):
+            self._custom_preview_label.configure(text=preview)
+
+    def _apply_custom_template(self, template_name):
+        """テンプレート適用"""
+        t = self._custom_templates.get(template_name, {})
+        if not t:
+            return
+
+        # Set age
+        if hasattr(self, 'custom_age_dd'):
+            self.custom_age_dd.set(t.get("age", "JK（女子高生）"))
+        # Set archetype
+        self._select_archetype_chip(t.get("archetype", "ツンデレ"))
+        # Set first person
+        if hasattr(self, 'custom_first_person_dd'):
+            self.custom_first_person_dd.set(t.get("first_person", "私"))
+        # Set speech
+        if hasattr(self, 'custom_speech_dd'):
+            self.custom_speech_dd.set(t.get("speech", "タメ口"))
+        # Set hair color
+        self._select_hair_color_chip(t.get("hair_color", "黒髪"))
+        # Set hair style
+        if hasattr(self, 'custom_hair_style_dd'):
+            self.custom_hair_style_dd.set(t.get("hair_style", "ロングストレート"))
+        # Set body
+        if hasattr(self, 'custom_body_dd'):
+            self.custom_body_dd.set(t.get("body", "普通"))
+        # Set chest
+        if hasattr(self, 'custom_chest_dd'):
+            self.custom_chest_dd.set(t.get("chest", "普通（C）"))
+        # Set clothing
+        if hasattr(self, 'custom_clothing_dd'):
+            self.custom_clothing_dd.set(t.get("clothing", "制服（ブレザー）"))
+        # Set shyness
+        if hasattr(self, 'shyness_slider'):
+            self.shyness_slider.set(t.get("shyness", 3))
+            self._on_shyness_change(t.get("shyness", 3))
+
+        self._update_custom_preview()
+        self.snackbar.show(f"テンプレート「{template_name}」を適用", type="info")
 
     def start_char_generation(self):
         """キャラクター生成開始"""
@@ -4637,11 +6240,12 @@ class App(ctk.CTk):
             return
 
         api_key = self.api_field.get().strip()
+
         work_title = self.work_title_entry.get().strip()
         char_name = self.char_name_entry.get().strip()
 
         if not api_key:
-            self.snackbar.show("❌ APIキーを入力してください", type="error")
+            self.snackbar.show("❌ Anthropic APIキーを入力してください", type="error")
             return
         if not work_title:
             self.snackbar.show("❌ 作品名を入力してください", type="error")
@@ -4670,7 +6274,7 @@ class App(ctk.CTk):
             bible, char_id, cost_tracker = build_character(
                 api_key, work_title, char_name,
                 force_refresh=False,
-                callback=callback
+                callback=callback,
             )
 
             self.after(0, lambda: self.on_char_complete(bible, char_id, cost_tracker))

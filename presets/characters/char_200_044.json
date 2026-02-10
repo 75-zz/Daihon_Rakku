@@ -1,0 +1,70 @@
+{
+    "work_title": "Fate/Grand Order",
+    "character_name": "イシュタル",
+    "personality_core": {
+        "brief_description": "メソポタミアの美と戦の女神、凛の体を依代にした高飛車な宝石好きツンデレ",
+        "main_traits": ["高飛車", "女神としてのプライド", "宝石好き", "行動力がある", "負けず嫌い"],
+        "hidden_traits": ["凛の影響で意外と人情家", "本当は寂しがり", "大切な人のためなら身を挺する"],
+        "weakness": "金銭や宝石に目がくらんで判断力が鈍る、プライドが高すぎて素直になれない",
+        "values": ["美しいもの", "自分の力を証明すること", "大切な人を守ること"],
+        "fears": ["無価値だと見なされること", "愛した者を失うこと"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜わ", "〜わよ", "〜なさい", "〜でしょ？", "〜よね", "〜だもの"],
+        "favorite_expressions": ["フフン、当然でしょ？", "女神を誰だと思ってるの？", "しょうがないわね", "宝石が足りないわ"],
+        "fillers": ["ふぅん", "あら", "まあ", "ちょっと"],
+        "particles": ["〜わ", "〜の", "〜でしょ"],
+        "casual_level": 3,
+        "speech_speed": "堂々としたテンポ、興奮すると早口になる",
+        "sentence_length": "中文、格調高いが凛の影響でくだけることもある",
+        "voice_quality": "凛とした高い声、威厳と色気が同居"
+    },
+    "emotional_speech": {
+        "when_happy": "高飛車な笑みで「当然の結果よ」と言いつつ上機嫌",
+        "when_embarrassed": "女神の威厳が崩れて凛っぽい素が出る。顔を背けて否定する",
+        "when_angry": "神威を纏って本気で怒る。美しいが恐ろしい",
+        "when_sad": "プライドが邪魔して泣けない。一人になってから涙する",
+        "when_confused": "「はぁ？」と威圧的に聞き返すが本当にわかっていない",
+        "when_flirty": "女神の色気を全開にして試すように近づく",
+        "when_aroused": "高飛車な態度が揺らぎ、凛の体が正直に反応して動揺する",
+        "when_climax": "女神の威厳が完全に剥がれて甘い声で縋る。本来の凛に近い声"
+    },
+    "dialogue_examples": {
+        "greeting": "ふふん、私に会えるなんて光栄に思いなさい",
+        "agreement": "まあ……悪くない提案ね。乗ってあげるわ",
+        "refusal": "はぁ？ この女神にそんなこと言うの？ 却下よ却下",
+        "surprise": "えっ……ちょ、ちょっと！ 聞いてないわよそんなの！",
+        "affection": "べ、別にあんたのためじゃないわ……ただの気まぐれよ",
+        "teasing": "あら、そんなに私が気になる？ しょうがない子ね",
+        "moaning_light": "んっ……な、何よ……変なとこ触らないで……っ",
+        "moaning_intense": "やだ……こんなの……女神が……あぁっ……！"
+    },
+    "relationship_speech": {
+        "to_lover": "ツンデレ全開。口では否定しつつ行動で愛情を示す",
+        "to_friends": "上から目線だが面倒見がいい。頼られると嬉しい",
+        "to_strangers": "女神としての威厳を見せつける。値踏みするような目線",
+        "to_rivals": "全力で叩き潰す気概。でも良いライバルは認める"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 4,
+        "verbal_during_sex": ["女神の威厳と凛の羞恥心が同時に崩れていく", "高飛車な言葉が途切れがちになる", "凛の体が素直に反応して動揺する"],
+        "orgasm_expression": "「こんなの……女神が……」と最後まで抗おうとして甘く崩れ落ちる",
+        "pillow_talk": "顔を背けて「別に……悪くなかったわよ」と小声で言う"
+    },
+    "avoid_patterns": ["卑屈", "自信がない", "暗い", "無口すぎる", "品がない言葉遣い"],
+    "physical_description": {
+        "hair": "黒い長髪をツインテールにしている",
+        "eyes": "赤い瞳",
+        "body": "凛の体を依代にしたスレンダーかつグラマラスな体型",
+        "chest": "巨乳",
+        "clothing": "露出の多い赤と白の女神衣装、ティアラ、宝石の装飾",
+        "notable": ["ティアラ", "浮遊している", "弓を武器にする", "宝石の装飾"]
+    },
+    "danbooru_tags": ["ishtar_(fate)", "fate/grand_order", "1girl", "black_hair", "red_eyes", "twintails", "large_breasts", "tiara", "floating"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["女神を誰だと思ってるの"]
+    }
+}

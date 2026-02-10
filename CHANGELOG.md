@@ -1,5 +1,107 @@
 # Changelog
 
+## [2.6.0] - 2026-02-10
+
+### Added (タグDB v13.2 NSFW本格拡充 + 設定スタイル自動検出)
+
+#### タグDB v13.0→v13.2（14,000→16,820エントリー、168カテゴリ）
+- **背景・場所タグ大幅拡充（v13.1）**: 14既存カテゴリ拡充 + 4新カテゴリ追加
+  - locations 602→820 / city_background 76→140 / background_nature 68→140
+  - 室内系9カテゴリ拡充: room_states→105 / background_details→100 / furniture_props→90 等
+  - 新カテゴリ: transportation_interior(50) / shop_restaurant(50) / school_facility(45) / seasonal_scenery(53)
+- **NSFWタグ本格拡充（v13.2）**: 02_全タグ.txt（66行リアルSDプロンプト集）参考に4エージェント並列で大幅拡充
+  - NSFW合計: 3,812→5,239（+1,427タグ）、27→29カテゴリ
+  - nsfw_positions 450→621(+171) / nsfw_acts 500→670(+170)
+  - nsfw_body_details 170→257(+87) / nsfw_body_reactions 145→230(+85)
+  - nsfw_fluids 40→102(+62) / nsfw_expression_sex 200→284(+84)
+  - nsfw_clothing_states 112→202(+90) / nsfw_scenarios_detailed 141→232(+91)
+  - nsfw_camera_angles 100→167(+67) / nsfw_clothing 92→157(+65)
+  - nsfw_aftermath 95→161(+66) / nsfw_aftermath_detailed 65→115(+50)
+  - nsfw_bdsm 265→335(+70) / nsfw_fetish 230→299(+69)
+  - nsfw_foreplay 225→280(+55) / nsfw_toys_detailed 100→145(+45)
+  - 新カテゴリ: nsfw_clothed_sex(50) / nsfw_nipple_play(50)
+
+#### 設定スタイル自動検出（SETTING_STYLES）
+- コンセプトのキーワードからSD背景タグの世界観を自動補正
+- 3スタイル: traditional_japanese_rural / traditional_japanese_urban / fantasy_medieval
+- `_detect_setting_style()`: コンセプト→スタイル自動判定
+- `enhance_sd_prompts()`: タグ置換(bed→futon等) + 禁止タグ除去(concrete等) + 雰囲気タグ追加(tatami,shoji等)
+- `generate_scene_draft()`: プロンプトに「背景スタイル必須」ヒント行追加
+- 例: 「夜這い風習のある村」→ 和風田舎タグ自動適用、現代建材タグ自動除去
+
+### Changed
+- danbooru_tags.json: version 13.0→13.2
+
+---
+
+## [2.5.0] - 2026-02-10
+
+### Added (プリセット200体到達 + タグDB v13.0)
+- **プリセットキャラ100→200体（+100体）**: 12エージェント並列作成
+  - ジャンプ+10 / ジャンプ++3 / マガジン+5 / ラノベ+10 / アニメ+15 / ソシャゲ+15
+  - ゲーム+22（P5/FF7/ゼノブレイド/FE/DQ/DOA/崩壊/グラブル/ニーア）
+  - サンデー+10（らんま/犬夜叉/コナン/マギ/ハヤテ/みなみけ/うる星やつら）
+  - VTuber+10（にじさんじ5/ホロライブ5）
+- **新GUIカテゴリ**: ゲーム(#6B8E23) / サンデー(#FF8C00)
+- **タグDB v13.0（12,003→14,000タグ、+1,997）**: 158→162カテゴリ
+  - 新カテゴリ4個: nsfw_fluids / sky_colors / building_architecture / room_furniture
+  - 重点拡充: nsfw_expression_sex 125→200 / time_of_day 45→110 / locations 474→602
+
+### Changed
+- GUI: カテゴリ別キャラ数を動的表示
+
+---
+
+## [2.4.0] - 2026-02-09
+
+### Added (プリセット100体到達)
+- **プリセットキャラ57→100体（+43体）**
+  - カテゴリ別: ジャンプ21 / ジャンプ+5 / マガジン7 / ラノベ15 / アニメ15 / ソシャゲ30 / VTuber7
+
+---
+
+## [2.3.0] - 2026-02-09
+
+### Changed (Grokバックエンド削除 + タグDB v8.0)
+- **Grok(xAI)バックエンド完全削除** → Claude API単一バックエンド
+- **タグDB v8.0（3,392→5,146タグ、86→121カテゴリ）**: 35新カテゴリ追加
+
+---
+
+## [2.2.0] - 2026-02-09
+
+### Added (プリセット拡張 + UI/UX大幅改善)
+- **プリセットキャラ33→57体（+24体）**
+- **プリセットタブ**: カテゴリチップフィルタ→作品ドロップダウン→キャラカードリスト
+- **オリジナル作成タブ**: テンプレートクイックスタート、MaterialCardセクション分割、性格チップグリッド
+
+---
+
+## [2.1.0] - 2026-02-09
+
+### Fixed (品質大幅改善)
+- JSONテンプレートから文字数ヒント全除去（出力漏れ防止）
+- `generate_outline`: intensity 5を最大2シーンに自動制限
+- `auto_fix_script()`: 文字数マーカー除去/キャラ名統一/SDタグ括弧修正
+- `extract_scene_summary`: 使用済みbubbles+SE追跡で重複防止強化
+- SDプロンプト: quality括弧修正、外見タグ括弧外配置
+- v2.1.1: クロスシーン重複除去、使用禁止リスト明示化、description品質指示強化
+
+---
+
+## [2.0.0] - 2026-02-09
+
+### Added (品質検証 + SD最適化 + UX改善)
+- `validate_script()`: FANZA基準ローカル自動検証
+- `enhance_sd_prompts()`: SDプロンプト後処理最適化
+- フェーズインジケーター5段階化
+- CTkComboBox→CTkOptionMenu全面移行
+- ウィンドウ閉じ保護 / ショートカット(Ctrl+Enter,Esc) / フォルダ開くボタン
+- セリフスキル4種自動選択（nomal/ohogoe/jyunai/tundere）
+- cg_visual_variety / nsfw_scene_composer / eromanga_serihu_sensei スキル追加
+
+---
+
 ## [1.6.1] - 2026-02-09
 
 ### Fixed

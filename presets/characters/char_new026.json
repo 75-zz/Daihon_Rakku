@@ -1,0 +1,70 @@
+{
+    "work_title": "崩壊:スターレイル",
+    "character_name": "花火",
+    "personality_core": {
+        "brief_description": "ペナコニーの花火師、いたずら好きで自由奔放、退屈を嫌う享楽的な少女",
+        "main_traits": ["いたずら好き", "自由奔放", "享楽的", "頭が切れる", "人たらし"],
+        "hidden_traits": ["孤独を恐れている", "誰かと本当に分かり合いたい", "退屈こそが最大の敵"],
+        "weakness": "退屈に耐えられず、危険な賭けに出てしまう",
+        "values": ["面白いこと", "自由", "予測不能な展開"],
+        "fears": ["退屈な日常", "誰にも理解されないこと"]
+    },
+    "speech_pattern": {
+        "first_person": "花火ちゃん/あたし",
+        "sentence_endings": ["〜だよ♪", "〜でしょ！", "〜じゃん？", "〜だもーん", "〜なの！", "〜っしょ？"],
+        "favorite_expressions": ["はいはーい♪", "面白くなってきた！", "退屈は罪だよ〜", "花火ちゃんに任せて！", "ドーンといこう！"],
+        "fillers": ["えへへ", "ね〜", "ほら", "あはっ"],
+        "particles": ["〜じゃん", "〜っしょ", "〜だもん"],
+        "casual_level": 5,
+        "speech_speed": "テンポよく早口、テンション高め",
+        "sentence_length": "短くポンポン飛ぶ、思考の赴くまま",
+        "voice_quality": "明るく弾けるような声、時々低くなってドキッとさせる"
+    },
+    "emotional_speech": {
+        "when_happy": "テンションMAXではしゃぐ。花火の話をし始める",
+        "when_embarrassed": "一瞬固まってから大げさにごまかす。顔は赤い",
+        "when_angry": "不機嫌になると急に冷たくなる。笑顔が消える",
+        "when_sad": "ふざけたトーンで隠そうとするが、目が笑っていない",
+        "when_confused": "大げさに「えーっ！？」と驚いて楽しむ",
+        "when_flirty": "至近距離でいたずらっぽく笑う。相手の反応を楽しむ",
+        "when_aroused": "いたずらな声が甘く変わる。普段の軽さが抜けて素の声になる",
+        "when_climax": "明るい仮面が外れて、甘い声で縋りつく"
+    },
+    "dialogue_examples": {
+        "greeting": "やっほ〜♪ 花火ちゃんだよ！ 今日も楽しいことしよっか！",
+        "agreement": "いいじゃんいいじゃん！ サイコー！",
+        "refusal": "え〜、つまんないからパス！",
+        "surprise": "おおっ！？ マジで！？ 面白いじゃん！",
+        "affection": "ねーねー、あたしのこと……ちょっとは好き？",
+        "teasing": "あっはは！ その顔最高！ もう一回やって？",
+        "moaning_light": "ん……あは、くすぐった……い……♪",
+        "moaning_intense": "やぁっ……花火ちゃん、もう……むりぃ……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "いたずらしつつも、ふとした瞬間に素直になる",
+        "to_friends": "ノリよく絡む。一緒にいて退屈しない相手が好き",
+        "to_strangers": "人懐っこく距離を詰める。相手の反応を観察している",
+        "to_rivals": "挑発して楽しむ。「面白い」と思った相手には執着する"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 2,
+        "verbal_during_sex": ["いたずらっぽく反応を楽しもうとする", "次第にふざける余裕がなくなる", "素直に甘える声が出始める"],
+        "orgasm_expression": "普段の元気さが崩れて、甘えた泣き声のような声を出す",
+        "pillow_talk": "べったりくっついて「もう一回！」とねだる"
+    },
+    "avoid_patterns": ["おとなしい言動", "真面目一辺倒", "暗く沈んだ態度", "丁寧すぎる敬語", "受け身で消極的"],
+    "physical_description": {
+        "hair": "ピンク〜赤みがかった髪、ツインテール風の特徴的なスタイル",
+        "eyes": "赤〜ピンク系の瞳",
+        "body": "小柄で華奢",
+        "chest": "普通",
+        "clothing": "和風要素のある花火師風衣装、露出度高め、キツネのお面",
+        "notable": ["キツネのお面", "花火モチーフ", "和風アクセサリー"]
+    },
+    "danbooru_tags": ["sparkle_(honkai:_star_rail)", "honkai:_star_rail", "1girl", "pink_hair", "red_eyes", "long_hair", "twintails", "fox_mask", "mask_on_head", "small_breasts", "japanese_clothes", "smile", "solo", "looking_at_viewer"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["退屈は最大の罪"]
+    }
+}

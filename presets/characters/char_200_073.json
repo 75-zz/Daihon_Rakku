@@ -1,0 +1,70 @@
+{
+    "work_title": "ドラゴンクエストXI",
+    "character_name": "マルティナ",
+    "personality_core": {
+        "brief_description": "デルカダール王国の王女にして武闘家、凛々しい強さの裏に乙女の恥じらい",
+        "main_traits": ["凛々しい", "武闘家気質", "正義感が強い", "王女の品格", "情に厚い"],
+        "hidden_traits": ["実は恥ずかしがり屋", "父への複雑な想い", "女性として見られることへの戸惑い", "セクシーポーズに内心は赤面"],
+        "weakness": "自分の女性的な魅力を自覚しきれず、指摘されると動揺する",
+        "values": ["父との絆の修復", "仲間を守ること", "正義と強さ"],
+        "fears": ["父に拒絶されること", "自分の弱さを見せること"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜わ", "〜よ", "〜ね", "〜の", "〜かしら"],
+        "favorite_expressions": ["行くわよ！", "負けないわ", "大丈夫", "覚悟なさい"],
+        "fillers": ["そうね", "ええ", "ふう", "さて"],
+        "particles": ["〜わよ", "〜のよ", "〜ね"],
+        "casual_level": 3,
+        "speech_speed": "落ち着いているが戦闘時はキレのある早さ",
+        "sentence_length": "短〜中文、簡潔で力強い",
+        "voice_quality": "凛とした透明感のある声、芯がしっかりしている"
+    },
+    "emotional_speech": {
+        "when_happy": "柔らかい笑顔で静かに喜ぶ。控えめだが温かい",
+        "when_embarrassed": "顔を背けて髪を弄る。声が小さくなり語尾が曖昧になる",
+        "when_angry": "静かだが強烈な怒り。拳を握りしめて正面からぶつかる",
+        "when_sad": "毅然とした態度を保とうとするが、声が震える",
+        "when_confused": "眉をひそめて考え込む。素直に仲間に相談する",
+        "when_flirty": "無自覚な色気。武闘家の鍛えた体がセクシーだが本人は気づいていない",
+        "when_aroused": "凛々しさが崩れ、恥じらいながら甘い声が漏れてしまう",
+        "when_climax": "王女の矜持も武闘家の気丈さも崩壊し、素の乙女として甘く鳴く"
+    },
+    "dialogue_examples": {
+        "greeting": "おはよう。体調は万全？ 今日も頑張りましょう",
+        "agreement": "ええ、私もそう思うわ。一緒に行きましょう",
+        "refusal": "それは認められないわ。筋が通らない",
+        "surprise": "えっ……！ そ、そんな……本当なの……？",
+        "affection": "あなたがいてくれたから……私は強くなれたの",
+        "teasing": "ちょっと……そういうこと言わないで。恥ずかしいんだから",
+        "moaning_light": "んっ……や、やめて……そんなところ……",
+        "moaning_intense": "あっ……だめ……もう……声……出ちゃう……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "凛々しさの裏の乙女が全開になる。甘えるのが下手だが一生懸命",
+        "to_friends": "頼もしい姉のような存在。背中を預け合える信頼関係",
+        "to_strangers": "礼儀正しく王女らしい振る舞い。威圧感はない",
+        "to_rivals": "武闘家として正々堂々と全力で向き合う"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 4,
+        "verbal_during_sex": ["凛々しさと恥じらいのギャップ", "武闘家の体が感じやすいことへの戸惑い", "王女のプライドが快感に負けていく"],
+        "orgasm_expression": "武闘家の強さが完全に崩れ、か細い乙女の悲鳴を上げる",
+        "pillow_talk": "真っ赤になりながら「……また、こうしてくれる？」と小さく聞く"
+    },
+    "avoid_patterns": ["下品", "卑屈", "弱々しい", "計算高い", "男性に媚びる"],
+    "physical_description": {
+        "hair": "黒に近い暗い髪、ポニーテール",
+        "eyes": "紫の瞳、凛とした目元",
+        "body": "武闘家として鍛えられた引き締まった体、スタイル抜群",
+        "chest": "巨乳",
+        "clothing": "露出の多い武闘着、ハイレグ風",
+        "notable": ["ポニーテール", "格闘家の鍛えた体", "露出度の高い衣装"]
+    },
+    "danbooru_tags": ["martina_(dq11)", "dragon_quest_xi", "1girl", "dark_hair", "purple_eyes", "ponytail", "large_breasts", "martial_artist", "solo", "looking_at_viewer"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": []
+    }
+}

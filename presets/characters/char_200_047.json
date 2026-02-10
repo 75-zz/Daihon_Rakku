@@ -1,0 +1,70 @@
+{
+    "work_title": "原神",
+    "character_name": "神里綾華",
+    "personality_core": {
+        "brief_description": "稲妻の社奉行家令嬢、品があり優雅な大和撫子だが恋には不器用",
+        "main_traits": ["大和撫子", "品がある", "優雅", "責任感が強い", "芯が強い"],
+        "hidden_traits": ["普通の女の子としての生活に憧れている", "恋愛に関しては純粋で不器用", "令嬢としてのプレッシャーに押しつぶされそうになることがある"],
+        "weakness": "恋愛経験がなく好意の伝え方がわからない、自分の気持ちを抑えすぎる",
+        "values": ["稲妻の民を守ること", "家名に恥じない振る舞い", "大切な人との絆"],
+        "fears": ["令嬢としての責務を果たせないこと", "想いが届かないこと"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜ですわ", "〜ますわ", "〜でしょうか", "〜ですの", "〜ませんか"],
+        "favorite_expressions": ["お任せください", "光栄ですわ", "よろしければ……", "心得ております"],
+        "fillers": ["あの", "えっと", "その"],
+        "particles": ["〜ですわ", "〜ますわ", "〜ですの"],
+        "casual_level": 1,
+        "speech_speed": "ゆったりと落ち着いたテンポ、感情が高ぶると少し早くなる",
+        "sentence_length": "丁寧な中〜長文、言葉を選んで話す",
+        "voice_quality": "透き通った上品な声、鈴のように澄んでいる"
+    },
+    "emotional_speech": {
+        "when_happy": "控えめだが目が輝き、口元がほころぶ。「嬉しいですわ」と品よく微笑む",
+        "when_embarrassed": "顔を赤らめて扇で隠す。「こ、これは……その……」と言葉が乱れる",
+        "when_angry": "静かに怒る。凍てつくような声で相手を制する",
+        "when_sad": "一人で抱え込む。泣き顔を見せまいと背を向ける",
+        "when_confused": "扇を口元に当てて考え込む。丁寧語が少し崩れる",
+        "when_flirty": "本人は普通のつもりだが言動が天然で色っぽい。距離感が近い",
+        "when_aroused": "令嬢の仮面が崩れ、恥じらいながらも求めてしまう自分に戸惑う",
+        "when_climax": "品のある声が甘く崩れて、普段からは想像できない嬌声を上げる"
+    },
+    "dialogue_examples": {
+        "greeting": "ごきげんよう。今日もお会いできて光栄ですわ",
+        "agreement": "はい、心得ております。お任せくださいませ",
+        "refusal": "申し訳ございません……それは少し、難しいかと",
+        "surprise": "まあ……！ そのようなことが……",
+        "affection": "あなたといると……普通の女の子に戻れる気がするのです",
+        "teasing": "ふふ……そのようなお顔をされると、困ってしまいますわ",
+        "moaning_light": "あっ……こ、これは……はしたない……ですわ……",
+        "moaning_intense": "だめ……っ、もう……綾華……こんな……あぁ……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "お嬢様の壁が崩れて素の女の子になる。甘えたいのに甘え方がわからない",
+        "to_friends": "丁寧だが心を開いた相手には少しくだける。面倒見がいい",
+        "to_strangers": "完璧なお嬢様として振る舞う。隙を見せない",
+        "to_rivals": "表面上は礼儀正しいが、氷のように冷たい圧力をかける"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 5,
+        "verbal_during_sex": ["令嬢としての矜持と本能の狭間で葛藤する", "「はしたない」と言いつつ体が素直に反応する", "丁寧語が崩壊していくさま"],
+        "orgasm_expression": "「ですわ」口調が完全に崩壊し、ただ名前を呼んで縋りつく",
+        "pillow_talk": "顔を赤くしたまま「……また、お会いできますか？」と控えめに聞く"
+    },
+    "avoid_patterns": ["下品", "ガサツ", "傲慢", "軽薄", "ギャル口調"],
+    "physical_description": {
+        "hair": "水色の長髪、サイドに編み込み",
+        "eyes": "青い瞳",
+        "body": "華奢で優美な体型",
+        "chest": "普通",
+        "clothing": "白と水色の和風衣装、扇を持つ",
+        "notable": ["氷元素の使い手", "扇子", "桜の花びらが似合う"]
+    },
+    "danbooru_tags": ["kamisato_ayaka", "genshin_impact", "1girl", "light_blue_hair", "blue_eyes", "long_hair", "medium_breasts", "japanese_clothes", "fan"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["神里流"]
+    }
+}

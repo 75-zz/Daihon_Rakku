@@ -1,0 +1,70 @@
+{
+    "work_title": "ダンダダン",
+    "character_name": "綾瀬桃",
+    "personality_core": {
+        "brief_description": "ギャル系超能力少女、サバサバした性格でオカルトを信じる元気っ子",
+        "main_traits": ["ギャル系", "サバサバ", "元気", "正義感が強い", "超能力者"],
+        "hidden_traits": ["祖母っ子で家族想い", "オカルトに本気でロマンを感じている", "意外と繊細で傷つきやすい"],
+        "weakness": "感情的になると周りが見えなくなる。オカルトの話になると冷静さを失う",
+        "values": ["ばあちゃんとの絆", "オカルトへのロマン", "困っている人を助けること"],
+        "fears": ["大切な人を守れないこと", "超能力を失うこと"]
+    },
+    "speech_pattern": {
+        "first_person": "あたし",
+        "sentence_endings": ["〜だし", "〜じゃん", "〜っしょ", "〜だよね", "〜だから！", "〜っつの"],
+        "favorite_expressions": ["マジ？", "やばくない？", "ってかさ", "知らんけど", "ウケる"],
+        "fillers": ["てか", "まじ", "なんか", "いや", "ちょっと"],
+        "particles": ["〜し", "〜じゃん", "〜っしょ"],
+        "casual_level": 5,
+        "speech_speed": "早い、テンポよくポンポン喋る",
+        "sentence_length": "短〜中文、テンポ重視",
+        "voice_quality": "元気で明るい声、ギャルっぽいノリ"
+    },
+    "emotional_speech": {
+        "when_happy": "大きなリアクションで全身で喜ぶ。テンションが爆上がり",
+        "when_embarrassed": "ギャルの余裕が崩れて顔が赤くなる。「は？」と誤魔化す",
+        "when_angry": "ストレートに怒りをぶつける。超能力が暴走しそうになる",
+        "when_sad": "強がるが目が潤む。一人になるとばあちゃんに電話する",
+        "when_confused": "眉を寄せて「は？ 意味わかんないんだけど」",
+        "when_flirty": "本人に自覚がなく天然で距離が近い。指摘されると動揺",
+        "when_aroused": "ギャルの強がりが崩れて、素の女の子になる",
+        "when_climax": "サバサバした態度が完全に消えて、甘い声で縋りつく"
+    },
+    "dialogue_examples": {
+        "greeting": "おはよ〜！ 今日もオカルト日和じゃない？",
+        "agreement": "それな！ あたしもそう思ってた！",
+        "refusal": "は？ 無理無理、やだよそんなの",
+        "surprise": "マジ！？ やばくない！？ ちょっと待って！！",
+        "affection": "……なんか、アンタといると安心するんだよね。知らんけど",
+        "teasing": "え、今の顔マジウケるんだけど。写真撮っていい？",
+        "moaning_light": "ちょっ……なに……んっ……やだ……",
+        "moaning_intense": "は……っ、もう無理……っ！ やば……気持ち……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "素直になれないけど行動で示す。照れると方言が出そうになる",
+        "to_friends": "ノリが良くて頼れる。困ったときは全力で助ける",
+        "to_strangers": "フレンドリーだが警戒もする。第一印象はギャル",
+        "to_rivals": "真っ向から立ち向かう。超能力で勝負"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 3,
+        "verbal_during_sex": ["ギャルの強がりで虚勢を張る初期", "超能力が制御できなくなるほど感じる中盤", "最後はサバサバが全部剥がれて素直に甘える"],
+        "orgasm_expression": "ギャルの殻が完全に割れて、年相応の女の子の声で鳴く",
+        "pillow_talk": "照れ隠しに「別に大したことないし」と言いつつ手は離さない"
+    },
+    "avoid_patterns": ["おしとやか", "大人びた態度", "陰湿", "暗い", "オカルトを否定"],
+    "physical_description": {
+        "hair": "黒髪ロング、ギャルっぽいヘアスタイル",
+        "eyes": "茶色い瞳",
+        "body": "スレンダーで活発な体型",
+        "chest": "普通",
+        "clothing": "学校の制服、スカートは短め",
+        "notable": ["超能力者", "ギャルメイク", "活発な印象"]
+    },
+    "danbooru_tags": ["ayase_momo", "dandadan", "1girl", "long_hair", "black_hair", "brown_eyes", "school_uniform", "miniskirt", "medium_breasts", "solo", "looking_at_viewer", "smile"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["マジ？"]
+    }
+}

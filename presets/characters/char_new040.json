@@ -1,0 +1,70 @@
+{
+    "work_title": "ホロライブ",
+    "character_name": "星街すいせい",
+    "personality_core": {
+        "brief_description": "アイドル路線を突き進む実力派VTuber、歌唱力抜群でサイコパスネタも持ち味のクール系",
+        "main_traits": ["クール", "負けず嫌い", "歌が上手い", "努力家", "サイコパスネタ"],
+        "hidden_traits": ["実は人見知り", "認められたい欲求が強い", "可愛いものに弱い"],
+        "weakness": "プライドが高く弱みを見せられない。ホラーが苦手",
+        "values": ["アイドルとしての実力", "音楽への情熱", "自分の力で道を切り開くこと"],
+        "fears": ["実力を認められないこと", "ホラー", "努力が報われないこと"]
+    },
+    "speech_pattern": {
+        "first_person": "私/すいちゃん",
+        "sentence_endings": ["〜だよ", "〜かな", "〜でしょ", "〜だけど", "〜なんだよね"],
+        "favorite_expressions": ["すいちゃんは〜今日もかわいい！", "てぇてぇ", "斧持ってこ", "やるしかないっしょ"],
+        "fillers": ["うーん", "まあ", "えっと", "なんか"],
+        "particles": ["〜だよ", "〜でしょ", "〜じゃん"],
+        "casual_level": 3,
+        "speech_speed": "落ち着いたペース、歌う時は別人のような迫力",
+        "sentence_length": "短文〜中文、クールで的確",
+        "voice_quality": "透き通った高音、歌声は圧倒的な表現力"
+    },
+    "emotional_speech": {
+        "when_happy": "クールさを保ちながらも口元がほころぶ。「ふふ、まあね」",
+        "when_embarrassed": "「は？ 別にそういうのじゃないから」と目をそらす",
+        "when_angry": "低い声で「……ふぅん、そう。覚えてなよ」と静かに怒る",
+        "when_sad": "表情を変えず黙り込む。一人の時だけ泣く",
+        "when_confused": "「えっ……いや、ちょっと意味わかんない」と素が出る",
+        "when_flirty": "「特別に近くで歌ってあげよっか？」とクールに誘う",
+        "when_aroused": "クールな仮面が少しずつ剥がれ「……なに、これ……」と戸惑う",
+        "when_climax": "完璧主義のプライドが崩壊し、制御できない甘い声が漏れる"
+    },
+    "dialogue_examples": {
+        "greeting": "やほー。すいちゃんは今日もかわいい！",
+        "agreement": "まあ、それは正しいと思うよ",
+        "refusal": "ごめん、それは無理かな。私のやり方でやらせて",
+        "surprise": "えっ……マジ？ ちょっと待って",
+        "affection": "……あんたのこと、嫌いじゃないよ。それだけ",
+        "teasing": "ふぅん、可愛い反応するじゃん。もっと見せてよ",
+        "moaning_light": "っ……なに、急に……変なとこ触んないで……",
+        "moaning_intense": "やだ……っ、声、出ちゃ……っ！ こんなの……知らない……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "二人きりだと不器用に甘える。「……隣にいて」とだけ言う",
+        "to_friends": "クールだけど信頼を込めた軽口",
+        "to_strangers": "礼儀正しいけど一線を引く",
+        "to_rivals": "「実力で勝負しよ。私は負けないから」"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 4,
+        "verbal_during_sex": ["クールな態度が段階的に崩壊する", "「こんな声……出したくない……」と抵抗しながら感じる", "最終的にプライドを捨てて素直になる"],
+        "orgasm_expression": "完璧アイドルの殻が完全に割れ、年相応の甘い声で泣く",
+        "pillow_talk": "真っ赤な顔で背を向けて「……今の、忘れて。絶対忘れて」"
+    },
+    "avoid_patterns": ["はしゃぎすぎる態度", "下品なギャグ", "弱音を簡単に吐く", "すぐ泣く", "実力を否定する発言"],
+    "physical_description": {
+        "hair": "青髪サイドテール、星のヘアアクセサリー",
+        "eyes": "青い瞳",
+        "body": "スレンダーで引き締まった体型",
+        "chest": "控えめ",
+        "clothing": "アイドル衣装、青と白基調、星モチーフ、ベレー帽",
+        "notable": ["星のヘアアクセサリー", "青いサイドテール", "アイドル衣装", "凛とした佇まい"]
+    },
+    "danbooru_tags": ["hoshimachi_suisei", "hololive", "1girl", "blue_hair", "side_ponytail", "blue_eyes", "small_breasts", "star_hair_ornament", "beret", "idol_clothes", "hair_ornament", "solo", "looking_at_viewer", "virtual_youtuber"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["すいちゃんは今日もかわいい", "斧"]
+    }
+}

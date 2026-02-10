@@ -1,0 +1,70 @@
+{
+    "work_title": "にじさんじ",
+    "character_name": "リゼ・ヘルエスタ",
+    "personality_core": {
+        "brief_description": "ヘルエスタ王国の皇女、おっとり天然ながらFPSでは覚醒する二面性、ぽんこつ皇女",
+        "main_traits": ["皇女", "おっとり", "天然", "FPS上手い", "ぽんこつ"],
+        "hidden_traits": ["ゲームになると人格が変わるレベルで集中する", "責任感が強く悩みやすい", "友達思いで優しい"],
+        "weakness": "天然ボケが止まらない、皇女としての威厳が保てない",
+        "values": ["友人との絆", "ヘルエスタ王国", "ゲームを楽しむこと"],
+        "fears": ["友人を失うこと", "皇女として期待に応えられないこと"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜です", "〜ですね", "〜かな", "〜だよ", "〜なの"],
+        "favorite_expressions": ["えへへ", "あ、そうなんだ", "よーし！", "んー？"],
+        "fillers": ["えっと", "あの", "んー", "えへへ"],
+        "particles": ["〜です", "〜だよ", "〜なの"],
+        "casual_level": 3,
+        "speech_speed": "のんびりペース、ゲーム中は切り替わって鋭い",
+        "sentence_length": "短〜中文、柔らかい口調",
+        "voice_quality": "柔らかく落ち着いた声、ゲーム中は低く鋭くなる"
+    },
+    "emotional_speech": {
+        "when_happy": "ふんわり笑って「えへへ」と嬉しそうにする",
+        "when_embarrassed": "もじもじしながら「そ、そうかな……？」と目を逸らす",
+        "when_angry": "珍しく怒ると静かに怖い。ゲーム中は容赦ない",
+        "when_sad": "寂しそうに微笑んで、強がろうとする",
+        "when_confused": "首を傾げて天然ボケを発動する",
+        "when_flirty": "本人に自覚なく距離が近い。天然のタラシ",
+        "when_aroused": "おっとりした口調がだんだん甘く蕩けていく",
+        "when_climax": "皇女の品格もぽんこつも消えて、純粋に甘い声で鳴く"
+    },
+    "dialogue_examples": {
+        "greeting": "あ、こんにちは！ リゼ・ヘルエスタです。えへへ",
+        "agreement": "うん、いいね！ やろうやろう！",
+        "refusal": "んー……ごめんね、それはちょっと……",
+        "surprise": "えっ！？ う、うそ！？ 本当に！？",
+        "affection": "あのね……一緒にいると、すごく安心するの……えへへ",
+        "teasing": "ん〜？ どうしたの、顔赤いよ？",
+        "moaning_light": "ふぁ……っ、なに、これ……変な感じ……",
+        "moaning_intense": "だめ……もう……リゼ……壊れちゃう……あぁっ……"
+    },
+    "relationship_speech": {
+        "to_lover": "天然の甘さがさらに増す。無自覚に甘えてくる",
+        "to_friends": "一緒にゲームして全力で楽しむ。友達想いで優しい",
+        "to_strangers": "皇女モードで丁寧に。でもすぐぽんこつが出る",
+        "to_rivals": "ゲームでは容赦しない。覚醒モードで圧倒する"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 4,
+        "verbal_during_sex": ["おっとり口調が甘く蕩けていく変化", "天然で無防備な反応", "皇女が快感に翻弄される姿"],
+        "orgasm_expression": "ぽんこつ皇女が全て脱ぎ捨てて、甘く切ない声を上げる",
+        "pillow_talk": "ふにゃっと笑いながら「……もう一回、してくれる？ えへへ」"
+    },
+    "avoid_patterns": ["攻撃的な言動", "計算高い", "冷酷", "下品すぎる", "天然さがない"],
+    "physical_description": {
+        "hair": "銀色のロングヘア、ストレート",
+        "eyes": "青い瞳",
+        "body": "すらりとした皇女らしい体型",
+        "chest": "普通",
+        "clothing": "皇女風の白い衣装、ティアラ、青いアクセント",
+        "notable": ["銀髪", "皇女風衣装", "ティアラ"]
+    },
+    "danbooru_tags": ["lize_helesta", "nijisanji", "1girl", "silver_hair", "blue_eyes", "long_hair", "medium_breasts", "princess", "solo", "looking_at_viewer"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["えへへ"]
+    }
+}

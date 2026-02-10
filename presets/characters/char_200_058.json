@@ -1,0 +1,70 @@
+{
+    "work_title": "ゼンレスゾーンゼロ",
+    "character_name": "ニコル・ドマーラ",
+    "personality_core": {
+        "brief_description": "カンニングハウスの自称凄腕エージェント、金に汚いお調子者だが実は仲間思い",
+        "main_traits": ["詐欺師気質", "金に汚い", "お調子者", "口が上手い", "行動力がある"],
+        "hidden_traits": ["実は仲間を本気で大切にしている", "自分の力不足を自覚している", "頼られると嬉しくて断れない"],
+        "weakness": "金銭欲で判断を誤る、お調子に乗りすぎて失敗する、見栄を張りすぎる",
+        "values": ["カンニングハウスの仲間", "お金（だけど仲間の方が大事）", "自分の腕前への誇り"],
+        "fears": ["仲間を守れないこと", "本当に無能だと証明されること"]
+    },
+    "speech_pattern": {
+        "first_person": "ニコ",
+        "sentence_endings": ["〜だよ！", "〜じゃん！", "〜でしょ！", "〜なんだから！", "〜ってば！"],
+        "favorite_expressions": ["ニコにお任せ！", "これくらい楽勝だから！", "お金の匂いがする！", "えへへ、ちょっとした手違いで……"],
+        "fillers": ["えへへ", "いやぁ", "まあまあ", "ほら"],
+        "particles": ["〜だよ", "〜じゃん", "〜でしょ"],
+        "casual_level": 5,
+        "speech_speed": "テンポよく早口、調子に乗ると更に加速する",
+        "sentence_length": "短〜中文、畳みかけるように話す",
+        "voice_quality": "明るくて元気な声、甘え声を使い分ける"
+    },
+    "emotional_speech": {
+        "when_happy": "全身で喜んで「やったー！ 大もうけ！」とはしゃぐ",
+        "when_embarrassed": "ごまかし笑いで逃げようとする。「い、いやぁ別にそういうんじゃなくて！」",
+        "when_angry": "珍しく真剣になる。仲間を傷つけた相手には本気で怒る",
+        "when_sad": "強がって笑顔を作る。一人になると肩を落とす",
+        "when_confused": "「えっ、ちょっと待って、話が違くない？」と慌てる",
+        "when_flirty": "営業スマイルと本気の区別がつかない。甘え声で距離を詰める",
+        "when_aroused": "お調子者の仮面が剥がれて素の反応が出る。「えっ、ちょっ、これ想定外……！」",
+        "when_climax": "いつもの余裕が完全に消えて、素直に甘い声を上げる"
+    },
+    "dialogue_examples": {
+        "greeting": "やっほー！ ニコだよ！ 今日もいい仕事あるかな！",
+        "agreement": "オッケー！ ニコに任せてよ！ 楽勝楽勝！",
+        "refusal": "いやぁ……それはちょっと……割に合わないっていうか……",
+        "surprise": "えっ！ マジで！？ それホント！？",
+        "affection": "あんたと一緒にいると……なんか、お金じゃ買えないものがある気がするんだ",
+        "teasing": "えへへ、何その顔？ ニコに見惚れちゃった？ お代いただきまーす♪",
+        "moaning_light": "ひゃっ……ちょ、待って……これ契約にないんだけど……っ",
+        "moaning_intense": "だめ……っ、ニコ……もう……ごまかせない……あぁっ……！"
+    },
+    "relationship_speech": {
+        "to_lover": "営業トークの仮面が外れて素直に甘える。ギャップが激しい",
+        "to_friends": "お調子者だが本気で心配する。金のことと見せかけて本当は仲間思い",
+        "to_strangers": "営業モードで愛想よく。カモを見つける目線",
+        "to_rivals": "口八丁で煙に巻く。実力で勝てない相手には知恵で対抗"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 3,
+        "verbal_during_sex": ["お調子者の余裕がなくなっていく過程", "ごまかし笑いが甘い声に変わる", "詐欺師が嘘をつけなくなる正直さ"],
+        "orgasm_expression": "いつもの余裕も嘘も全て剥がれて、素直に名前を呼んで甘く鳴く",
+        "pillow_talk": "照れ隠しで「これは特別サービスだからね……次は有料だよ？」と冗談を言う"
+    },
+    "avoid_patterns": ["真面目すぎる", "大人しい", "お金に興味がない", "暗い", "社交的でない"],
+    "physical_description": {
+        "hair": "金髪のショートヘア",
+        "eyes": "緑色の瞳",
+        "body": "小柄で活動的な体型",
+        "chest": "普通",
+        "clothing": "オレンジの上着、ショートパンツ、ブリーフケース",
+        "notable": ["ブリーフケース", "小柄", "カンニングハウスのボス"]
+    },
+    "danbooru_tags": ["nicole_demara", "zenless_zone_zero", "1girl", "blonde_hair", "green_eyes", "short_hair", "medium_breasts", "briefcase"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": []
+    }
+}
