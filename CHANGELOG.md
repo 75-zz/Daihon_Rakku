@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.7.0] - 2026-02-11
+
+### Changed (UI/UXリデザイン + APIコスト節約)
+
+#### UI/UXリデザイン
+- **Font Awesome 6アイコンフォント導入**: 全絵文字(🎬🔑📁🎭📖⚙️💰📋🚀💾⏹✨❌⚠️等)をFont Awesome 6 Solidアイコンに置換
+  - `fonts/fa-solid-900.ttf` 配置、`Icons`クラスで20アイコン定義
+  - `icon_text_label()` ヘルパーでセクションヘッダーをアイコン+テキスト分離構成に
+  - ログ・コールバック文字列は `[OK]`/`[ERROR]`/`[WARN]`/`[SCENE]`等のテキストプレフィックスに統一
+  - Snackbar・ボタンテキストから絵文字除去（type色で意味を伝達）
+- **フォント移行**: Segoe UI → Noto Sans JP（日本語表示品質向上）
+- **フォントサイズ全面拡大**: 全UIフォント+2pt（9→11, 10→12, 11→13, 12→14, 13→15, 14→16, 18→20）
+- **Material Design 3カラーパレット微調整**: PRIMARY `#5B3FA0`→`#6750A4` / ON_SURFACE_VARIANT→`#49454F` / OUTLINE→`#79747E`
+- **余白・スペーシング全面拡大**: M3の4dp倍数グリッドに準拠
+  - カード間ギャップ: `pady=(0,12)`→`(0,16)` / 内部パディング: `padx=16`→`20`
+  - ヘッダー高さ: 52→56 / ボタン高さ: 46→48 / プリセットタブ余白全般拡大
+- **入力フィールドフォーカス状態**: FocusIn時にborder_color=PRIMARYでハイライト
+
+#### APIコスト節約（品質維持）
+- **Sonnet使用閾値変更**: `intensity >= 4` → `intensity >= 5` のみSonnet使用（Sonnetコスト約半減）
+- **story_so_far短縮**: 直近5シーン → 3シーンに削減（入力トークン約40%削減）
+- **danbooru_tags.md除去**: APIプロンプトから冗長なファイル読込を廃止（シーンあたり約2,500トークン節約）
+
+#### エクスポート改善
+- CSV/Excel列順を重要度順に並び替え（scene_id/title/description/bubbles/SD promptを先頭に）
+
+---
+
 ## [2.6.0] - 2026-02-10
 
 ### Added (タグDB v13.2 NSFW本格拡充 + 設定スタイル自動検出)
