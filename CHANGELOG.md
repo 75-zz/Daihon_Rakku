@@ -1,5 +1,48 @@
 # Changelog
 
+## [2.8.0] - 2026-02-12
+
+### Added (ストーリー構成バー + タグDB v16.0 + 品質強化)
+
+#### ストーリー構成バー（Story Composition Bar）
+- **プロローグ/本編/エピローグ比率をGUIで視覚的に調整可能に**
+  - 3色セグメントバー（Canvas描画）でリアルタイムプレビュー
+  - スライダー2本: プロローグ5-30% / エピローグ5-20%（本編は自動算出）
+  - 5プリセット: 標準バランス(10/80/10) / エロ重視(5/90/5) / ストーリー重視(20/70/10) / じっくり展開(15/75/10) / カスタム
+  - `generate_outline()` / `generate_pipeline()` に透過的に反映
+  - 設定保存・復元対応
+
+#### タグDB v16.0（20,792→34,998エントリー、+14,206タグ、+68%）
+- **全180カテゴリを最低120以上に底上げ**（最小40→120に大幅改善）
+- 9エージェント並列（2波）で全カテゴリ一斉拡充
+- 分布: 100-150帯50cats / 150-200帯81cats / 200-300帯38cats / 300+帯11cats
+- 100未満のカテゴリ: 88→**0**（全カテゴリが実用水準に）
+
+#### エロ表情タグ系統的強化
+- 新カテゴリ: `erotic_expression_intensity`(130) / `sex_scene_body_reactions`(81)
+- `nsfw_expression_sex` 284→362（ahegao×体位コンボ、アーキタイプ別段階、感情遷移）
+- `_INTENSITY_EXPRESSION_MAP`: intensity 3-5で表情タグ自動注入
+- `WEIGHT_EXPRESSION`拡張（head_back/drooling/heart-shaped_pupils等追加）
+
+#### セリフ重複チェック大幅強化
+- `_normalize_bubble_text()`: ♡♥…っー除去 + カタカナ→ひらがな正規化
+- `_is_similar_bubble()`: 完全一致/正規化一致/先頭3文字一致の3段階判定
+- `_deduplicate_across_scenes()`: speech/moan/thought全タイプ対応 + 類似度判定
+- SE重複チェック: 隣接→3シーン窓に拡大
+- ブラックリスト形式改善（明示的ヘッダー + ❌箇条書き）
+
+#### 新スキル2種
+- `danbooru_tag_expander.skill.md`: タグ拡充の命名規則・品質基準・カテゴリ別戦略
+- `sd_tag_effective_use.skill.md`: intensity連動タグ選択・カテゴリ横断組み合わせ・ウェイト付与・多様性確保ルール
+
+### Changed
+- `script_quality_supervisor.skill.md`: 65→160行（重複チェック/body reaction/intensity jump検証追加）
+- `sd_prompt_director.skill.md`: 410→454行（expression×intensity連携/エスカレーション追加）
+- `cg_visual_variety.skill.md`: 89→136行（ショット分布/表情視認性/POV一貫性追加）
+- danbooru_tags.json: version 15.0→16.0
+
+---
+
 ## [2.7.0] - 2026-02-11
 
 ### Changed (UI/UXリデザイン + APIコスト節約)
