@@ -567,6 +567,20 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         if male_speech_count > 1:
             problems.append(f"男性セリフ{male_speech_count}個（推奨1個以下）")
 
+        # 男セリフ内容チェック（♡含有・喘ぎ・甘え語尾）
+        for b in bubbles:
+            speaker = b.get("speaker", "")
+            is_male = speaker and heroine_names and speaker not in heroine_names
+            if is_male:
+                txt = b.get("text", "")
+                btype = b.get("type", "")
+                if "♡" in txt or "♥" in txt:
+                    problems.append(f"男性「{speaker}」のセリフに♡: 「{txt}」")
+                if btype == "moan":
+                    problems.append(f"男性「{speaker}」がmoan(喘ぎ)タイプ: 「{txt}」")
+                if any(k in txt for k in ["ぃ", "ぉ", "きもち", "もっとぉ", "すきぃ"]):
+                    problems.append(f"男性「{speaker}」に甘え語尾: 「{txt}」")
+
         # moan・speech追跡（クロスシーン重複検出用）
         for b in bubbles:
             if b.get("type") == "moan":
@@ -815,72 +829,338 @@ def _normalize_bubble_text(text: str) -> str:
             result.append(ch)
     return "".join(result)
 
-def _is_similar_bubble(text1: str, text2: str) -> bool:
-    """2つのセリフが類似しているか判定（完全一致 or 正規化一致 or 先頭3文字一致）"""
+def _is_similar_bubble(text1: str, text2: str, strict: bool = False) -> bool:
+    """2つのセリフが類似しているか判定。
+    strict=False（デフォルト）: 完全一致 or 正規化一致 or 先頭一致
+    strict=True: 完全一致 or 正規化完全一致のみ（短い喘ぎ声向け）
+    """
     if text1 == text2:
         return True
     n1 = _normalize_bubble_text(text1)
     n2 = _normalize_bubble_text(text2)
     if n1 == n2:
         return True
-    if len(n1) >= 3 and len(n2) >= 3 and n1[:3] == n2[:3]:
+    if strict:
+        return False
+    # 長めのテキスト（4文字以上の正規化結果）のみ先頭一致チェック
+    if len(n1) >= 4 and len(n2) >= 4 and n1[:4] == n2[:4]:
         return True
     return False
 
-def _deduplicate_across_scenes(results: list) -> None:
-    """シーン間の同一・類似セリフ・オノマトペ重複を除去（全type対応+類似マッチ）"""
-    used_moan_texts = []    # list of (text, normalized) for similarity check
-    used_thought_texts = []
-    used_speech_texts = []
+def _analyze_scene_context(scene: dict) -> str:
+    """シーンのdescription/title/moodからコンテキストタイプを判定。
+    Returns: 'non_sexual' | 'foreplay' | 'sexual' | 'climax' | 'aftermath'"""
+    desc = (scene.get("description", "") + " " + scene.get("title", "")
+            + " " + scene.get("mood", "")).lower()
+    intensity = scene.get("intensity", 3)
+
+    # 事後シーン
+    aftermath_kw = ["事後", "余韻", "虚脱", "罪悪感", "後悔", "戻って", "帰る",
+                    "眠り", "崩れ落ち"]
+    if any(k in desc for k in aftermath_kw):
+        return "aftermath"
+
+    # 非エロシーン（歩き・日常・会話のみ）
+    non_sexual_kw = ["歩く", "歩き", "歩いて", "通りを", "散歩", "食事", "食堂",
+                     "休む", "休憩", "眺め", "待つ", "待って", "帰省", "到着",
+                     "村に着", "自室で", "くつろ", "話しかけ", "説明を受",
+                     "呼び止め", "誘われ", "連れ", "囲まれて", "聞き入",
+                     "聞いて", "話を聞", "習慣", "近づき", "語りかけ",
+                     "声をかけ"]
+    # 非エロキーワードに該当し、かつ性行為キーワードが無ければnon_sexual
+    sex_act_kw = ["挿入", "突き", "突かれ", "犯さ", "抱かれ", "愛撫", "舐", "咥",
+                  "胸を", "乳首", "腰を振", "ピストン", "フェラ", "クンニ",
+                  "手マン", "正常位", "騎乗", "バック", "結合", "肉棒"]
+    has_non_sexual = any(k in desc for k in non_sexual_kw)
+    has_sex = any(k in desc for k in sex_act_kw)
+
+    if has_non_sexual and not has_sex:
+        return "non_sexual"
+
+    # 絶頂シーン
+    if intensity >= 5 or any(k in desc for k in ["絶頂", "イク", "果て", "限界",
+                                                   "痙攣", "理性崩壊", "アヘ"]):
+        return "climax"
+
+    # 前戯（触れる・撫でる・キス・服を脱がせる等、性行為未満の接触）
+    foreplay_kw = ["触れ", "触って", "撫で", "キス", "抱きしめ", "脱がせ", "脱がさ",
+                   "裸に"]
+    if intensity <= 2 or (not has_sex and any(k in desc for k in foreplay_kw)):
+        return "foreplay"
+
+    return "sexual"
+
+
+def _deduplicate_across_scenes(results: list, theme: str = "",
+                                heroine_names: list = None) -> None:
+    """シーン間の同一・類似セリフを検出し、プールから代替セリフに置換。
+    - 文脈判定: descriptionを解析し、非エロシーンにエロセリフを入れない
+    - 長文保護: 10文字超のセリフは強制切断せず、プールから短い代替を選ぶ
+    - ヒロイン名リスト以外のspeakerは全て男性と判定
+    - テーマ/intensityに応じてプールカテゴリを絞り込み"""
+    try:
+        from ero_dialogue_pool import (
+            get_moan_pool, get_speech_pool, pick_replacement, SPEECH_MALE_POOL,
+            SPEECH_FEMALE_POOL, THOUGHT_POOL, NEUTRAL_POOL, AFTERMATH_POOL,
+            get_male_speech_pool, get_female_speech_pool
+        )
+        has_pool = True
+    except ImportError:
+        try:
+            from ero_dialogue_pool import (
+                get_moan_pool, get_speech_pool, pick_replacement, SPEECH_MALE_POOL,
+                SPEECH_FEMALE_POOL, THOUGHT_POOL, get_male_speech_pool,
+                get_female_speech_pool
+            )
+            has_pool = True
+            NEUTRAL_POOL = None
+            AFTERMATH_POOL = None
+        except ImportError:
+            has_pool = False
+            NEUTRAL_POOL = None
+            AFTERMATH_POOL = None
+            log_message("ero_dialogue_pool.py未検出、重複は除去のみ（置換なし）")
+
+    # ヒロイン名セット構築（これ以外のspeakerは全て男性扱い）
+    _heroine_set = set()
+    if heroine_names:
+        for n in heroine_names:
+            if n:
+                _heroine_set.add(n)
+                if len(n) >= 2:
+                    _heroine_set.add(n[:2])
+                    if len(n) >= 3:
+                        _heroine_set.add(n[2:])
+
+    def _is_male_speaker(speaker: str) -> bool:
+        if not speaker:
+            return False
+        for h in _heroine_set:
+            if h in speaker:
+                return False
+        return True
+
+    def _get_male_pool_for_theme(theme_str: str, intensity: int) -> list:
+        t = theme_str.lower() if theme_str else ""
+        pool = []
+        if any(k in t for k in ["ntr", "寝取", "夜這", "村", "レイプ", "陵辱", "調教", "奴隷"]):
+            pool.extend(SPEECH_MALE_POOL.get("command", []))
+            pool.extend(SPEECH_MALE_POOL.get("dirty", []))
+        elif any(k in t for k in ["純愛", "ラブ", "恋人", "カップル"]):
+            pool.extend(SPEECH_MALE_POOL.get("gentle", []))
+            pool.extend(SPEECH_MALE_POOL.get("praise", []))
+        else:
+            if intensity >= 4:
+                pool.extend(SPEECH_MALE_POOL.get("command", []))
+                pool.extend(SPEECH_MALE_POOL.get("dirty", []))
+            else:
+                pool.extend(SPEECH_MALE_POOL.get("dirty", []))
+                pool.extend(SPEECH_MALE_POOL.get("praise", []))
+        return pool if pool else [v for sp in SPEECH_MALE_POOL.values() for v in sp]
+
+    def _get_pool_for_context(ctx: str, intensity: int, is_male: bool,
+                              btype: str) -> list:
+        """文脈・intensity・性別・タイプに応じた最適プールを選択"""
+        # 非エロシーン → 中立プールのみ（エロ混入防止の最重要ガード）
+        if ctx == "non_sexual":
+            if NEUTRAL_POOL:
+                return NEUTRAL_POOL.get("male" if is_male else "female", [])
+            # フォールバック: 内蔵の中立セリフ
+            if is_male:
+                return ["ああ", "そうか", "来い", "行くぞ", "どうした"]
+            return ["うん…", "え…", "あ、はい", "そう…", "ん…"]
+
+        # 事後シーン
+        if ctx == "aftermath":
+            if AFTERMATH_POOL:
+                return AFTERMATH_POOL.get("male" if is_male else "female", [])
+            if is_male:
+                return ["もういいぞ", "帰れ", "次もな"]
+            return ["もう…むり", "動けない…", "ごめん…", "ぼーっと…"]
+
+        # エロシーンの通常ロジック
+        if btype == "moan":
+            return get_moan_pool(intensity)
+        elif btype == "thought":
+            return get_speech_pool("thought", theme, intensity)
+        elif is_male:
+            return _get_male_pool_for_theme(theme, intensity)
+        else:
+            # 女性speech: intensity連動
+            pool = []
+            if intensity <= 2:
+                pool.extend(SPEECH_FEMALE_POOL.get("denial", []))
+                pool.extend(SPEECH_FEMALE_POOL.get("embarrassed", []))
+            elif intensity == 3:
+                pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
+                pool.extend(SPEECH_FEMALE_POOL.get("acceptance", []))
+                pool.extend(SPEECH_FEMALE_POOL.get("embarrassed", []))
+            elif intensity == 4:
+                pool.extend(SPEECH_FEMALE_POOL.get("acceptance", []))
+                pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
+                pool.extend(SPEECH_FEMALE_POOL.get("ecstasy", []))
+            else:
+                pool.extend(SPEECH_FEMALE_POOL.get("ecstasy", []))
+                pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
+                pool.extend(SPEECH_FEMALE_POOL.get("submissive", []))
+            return pool if pool else [v for sp in SPEECH_FEMALE_POOL.values() for v in sp]
+
+    # 使用済みテキスト追跡（全シーン横断）
+    used_moan_raw = set()
+    used_moan_texts = set()
+    used_thought_raw = set()
+    used_thought_texts = set()
+    used_speech_raw = set()
+    used_speech_texts = set()
+    # 表現パターン追跡（「初めて」「彼のこと」等の重複防止）
+    used_patterns = {}  # pattern_key -> count
+
+    replace_count = 0
+
+    REPETITION_PATTERNS = {
+        "初めて": ["初めて", "はじめて"],
+        "彼のこと": ["彼のこと", "彼氏のこと", "彼を忘れ"],
+        "感じ": ["こんなに感じ", "なぜ感じ", "なんで感じ"],
+        "おかしく": ["おかしく", "おかしい"],
+    }
+
+    def _check_pattern_limit(text: str) -> bool:
+        """表現パターンが上限（全体で2回）を超えていたらTrue"""
+        for key, phrases in REPETITION_PATTERNS.items():
+            if any(p in text for p in phrases):
+                cnt = used_patterns.get(key, 0)
+                if cnt >= 2:
+                    return True
+        return False
+
+    def _register_patterns(text: str):
+        for key, phrases in REPETITION_PATTERNS.items():
+            if any(p in text for p in phrases):
+                used_patterns[key] = used_patterns.get(key, 0) + 1
 
     for scene in results:
         if "bubbles" not in scene:
             continue
         cleaned_bubbles = []
         sid = scene.get("scene_id", "?")
+        intensity = scene.get("intensity", 3)
+        ctx = _analyze_scene_context(scene)
+
         for b in scene["bubbles"]:
             text = b.get("text", "")
             btype = b.get("type", "")
+            speaker = b.get("speaker", "")
+            is_male = _is_male_speaker(speaker)
 
-            if btype == "moan" and text:
-                if any(_is_similar_bubble(text, prev) for prev, _ in used_moan_texts):
-                    log_message(f"  シーン{sid}: 重複/類似喘ぎ除去「{text}」")
-                    continue
-                used_moan_texts.append((text, _normalize_bubble_text(text)))
+            if not text:
+                cleaned_bubbles.append(b)
+                continue
 
-            elif btype == "thought" and text:
-                if any(_is_similar_bubble(text, prev) for prev, _ in used_thought_texts):
-                    log_message(f"  シーン{sid}: 重複/類似thought除去「{text}」")
-                    continue
-                used_thought_texts.append((text, _normalize_bubble_text(text)))
+            # === 置換判定: 重複 or 長文 or パターン過多 or 文脈不整合 ===
+            need_replace = False
+            reason = ""
 
-            elif btype == "speech" and text:
-                # speechは完全一致のみ除去（類似は許容）
-                if text in {prev for prev, _ in used_speech_texts}:
-                    log_message(f"  シーン{sid}: 重複speech除去「{text}」")
+            if btype == "moan":
+                norm = _normalize_bubble_text(text)
+                if (text in used_moan_raw) or (norm in used_moan_texts):
+                    need_replace = True
+                    reason = "重複"
+                elif any(_is_similar_bubble(text, prev, strict=True) for prev in used_moan_raw):
+                    need_replace = True
+                    reason = "類似"
+                # 非エロシーンで喘ぎは文脈不整合
+                if ctx == "non_sexual":
+                    need_replace = True
+                    reason = "非エロ文脈で喘ぎ"
+
+            elif btype == "thought":
+                norm = _normalize_bubble_text(text)
+                if (text in used_thought_raw) or (norm in used_thought_texts):
+                    need_replace = True
+                    reason = "重複"
+                elif any(_is_similar_bubble(text, prev) for prev in used_thought_raw):
+                    need_replace = True
+                    reason = "類似"
+                elif _check_pattern_limit(text):
+                    need_replace = True
+                    reason = "パターン過多"
+
+            elif btype == "speech":
+                norm = _normalize_bubble_text(text)
+                if (text in used_speech_raw) or (norm in used_speech_texts):
+                    need_replace = True
+                    reason = "重複"
+                elif any(_is_similar_bubble(text, prev) for prev in used_speech_raw):
+                    need_replace = True
+                    reason = "類似"
+                # 非エロシーンで♡付きセリフは文脈不整合
+                if ctx == "non_sexual" and ("♡" in text or "♥" in text):
+                    need_replace = True
+                    reason = "非エロ文脈で♡"
+                # 非エロシーンで明らかなエロセリフは不整合
+                if ctx == "non_sexual":
+                    erotic_kw = ["感じ", "奥", "イく", "イっ", "出る", "入って",
+                                 "締まる", "濡れ", "とろ"]
+                    if any(k in text for k in erotic_kw):
+                        need_replace = True
+                        reason = "非エロ文脈でエロ語"
+
+            # 長文判定（10文字超）→ 強制切断ではなくプール置換
+            if len(text) > 10 and has_pool:
+                need_replace = True
+                reason = f"長文{len(text)}字"
+
+            # === 置換実行 ===
+            if need_replace and has_pool:
+                pool = _get_pool_for_context(ctx, intensity, is_male, btype)
+                used_set = (used_moan_raw if btype == "moan"
+                            else used_thought_raw if btype == "thought"
+                            else used_speech_raw)
+                norm_fn = _normalize_bubble_text
+                replacement = pick_replacement(pool, used_set, norm_fn)
+                if replacement:
+                    log_message(f"  S{sid}: {reason}→置換「{text}」→「{replacement}」")
+                    b["text"] = replacement
+                    replace_count += 1
+            elif need_replace and not has_pool:
+                # プールがない場合は重複除去のみ（バブルをスキップ）
+                if reason in ("重複", "類似"):
                     continue
-                used_speech_texts.append((text, _normalize_bubble_text(text)))
+
+            # 使用済み登録
+            final_text = b.get("text", "")
+            if btype == "moan":
+                used_moan_raw.add(final_text)
+                used_moan_texts.add(_normalize_bubble_text(final_text))
+            elif btype == "thought":
+                used_thought_raw.add(final_text)
+                used_thought_texts.add(_normalize_bubble_text(final_text))
+                _register_patterns(final_text)
+            elif btype == "speech":
+                used_speech_raw.add(final_text)
+                used_speech_texts.add(_normalize_bubble_text(final_text))
 
             cleaned_bubbles.append(b)
 
-        # 最低1つのbubbleは残す
         if cleaned_bubbles:
             scene["bubbles"] = cleaned_bubbles
+
+    if replace_count > 0:
+        log_message(f"  重複セリフ計{replace_count}件を置換完了")
 
     # オノマトペ: 3シーン以内に同じ組み合わせがあれば除去
     for i in range(1, len(results)):
         curr_se = set(results[i].get("onomatopoeia", []))
         if not curr_se:
             continue
-        # 直前3シーンまでチェック
         for j in range(max(0, i - 3), i):
             prev_se = set(results[j].get("onomatopoeia", []))
             if prev_se and curr_se == prev_se:
                 results[i]["onomatopoeia"] = []
-                log_message(f"  シーン{results[i].get('scene_id', '?')}: シーン{results[j].get('scene_id', '?')}と同一SE除去")
+                log_message(f"  S{results[i].get('scene_id', '?')}: S{results[j].get('scene_id', '?')}と同一SE除去")
                 break
 
-def auto_fix_script(results: list, char_profiles: list = None) -> list:
+def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") -> list:
     """生成結果の自動修正（APIコスト不要のローカル後処理）"""
     import re
 
@@ -956,8 +1236,78 @@ def auto_fix_script(results: list, char_profiles: list = None) -> list:
     for i, scene in enumerate(results):
         scene["scene_id"] = i + 1
 
-    # 5. シーン間の同一セリフ・SE重複除去
-    _deduplicate_across_scenes(results)
+    # 4.5. 男性セリフ自動修正（♡除去、moan→speech変換）
+    heroine_name_set = set(correct_names) if correct_names else set()
+    for scene in results:
+        if "bubbles" in scene:
+            for bubble in scene["bubbles"]:
+                speaker = bubble.get("speaker", "")
+                is_male = speaker and heroine_name_set and speaker not in heroine_name_set
+                if is_male:
+                    # ♡♥を除去
+                    txt = bubble.get("text", "")
+                    if "♡" in txt or "♥" in txt:
+                        bubble["text"] = txt.replace("♡", "").replace("♥", "").strip()
+                    # moan→speech変換
+                    if bubble.get("type") == "moan":
+                        bubble["type"] = "speech"
+
+    # 4.7. 不自然表現の自動修正（書き言葉→話し言葉、句点除去、ひらがな化）
+    _UNNATURAL_REPLACEMENTS = {
+        "信じられない": "うそ…",
+        "現実じゃない": "え…うそ…",
+        "考えられない": "なんで…",
+        "受け入れてしまう": "あ…っ",
+        "感じてしまう": "あ…やば…",
+        "声が出てしまう": "あ…声…っ",
+        "何も考えられない": "まっしろ…",
+        "離れたくない": "いかないで…",
+        "体温が上がる": "あつい…",
+        "ずっと震えてる": "ふるえ…てる",
+        "抗えない": "やだ…のに…",
+        "嬉しい気持ちです": "うれしい…♡",
+        "気持ちいいです": "きもちぃ…♡",
+        "本当にいいの？": "いいの…？",
+        "お願いします": "おねがい…♡",
+    }
+    _HIRAGANA_MAP = {
+        "気持ちいい": "きもちぃ",
+        "気持ちいぃ": "きもちぃ",
+        "大好き": "だいすき",
+        "好き": "すき",
+        "欲しい": "ほしい",
+        "可愛い": "かわいい",
+    }
+    for scene in results:
+        if "bubbles" not in scene:
+            continue
+        for bubble in scene["bubbles"]:
+            txt = bubble.get("text", "")
+            if not txt:
+                continue
+            # 句点「。」除去
+            if "。" in txt:
+                txt = txt.replace("。", "…")
+            # 不自然表現を話し言葉に変換
+            for ng, ok in _UNNATURAL_REPLACEMENTS.items():
+                if ng in txt:
+                    txt = ok
+                    break
+            # ひらがな化（エロシーン向け）
+            for kanji, hira in _HIRAGANA_MAP.items():
+                if kanji in txt:
+                    txt = txt.replace(kanji, hira)
+            bubble["text"] = txt
+
+    # 5. シーン間の同一セリフ・SE重複除去（プールから代替置換）
+    #    ※長文セリフ（10文字超）もここでプール置換する（強制切断は禁止）
+    heroine_names = []
+    if char_profiles:
+        for cp in char_profiles:
+            n = cp.get("character_name", "")
+            if n:
+                heroine_names.append(n)
+    _deduplicate_across_scenes(results, theme=theme, heroine_names=heroine_names)
 
     return results
 
@@ -1869,6 +2219,7 @@ def generate_scene_batch(
     scene_composer = load_skill("nsfw_scene_composer")
     serihu_skill_name = _select_serihu_skill(theme, char_profiles)
     serihu_skill = load_skill(serihu_skill_name)
+    bubble_writer_skill = load_skill("cg_bubble_writer")
     visual_skill = load_skill("cg_visual_variety")
 
     theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
@@ -1919,6 +2270,8 @@ def generate_scene_batch(
 {danbooru_nsfw if danbooru_nsfw else ""}
 
 {scene_composer if scene_composer else ""}
+
+{bubble_writer_skill if bubble_writer_skill else ""}
 
 {char_guide if char_guide else "（キャラ設定なし）"}
 
@@ -2167,6 +2520,41 @@ def generate_outline(
 
     elements_str = chr(10).join(f'・{e}' for e in story_elements) if story_elements else "・特になし"
 
+    # シーン数に応じた出力形式（大量シーン時はコンパクト化でトークン節約）
+    if num_scenes > 12:
+        output_format_section = (
+            f"## 出力形式（JSON配列・簡潔版）\n"
+            f"※ {num_scenes}シーン全て出力必須。トークン節約のため各シーン5フィールドのみ。\n"
+            "各シーンは以下の形式：\n"
+            "{\n"
+            '    "scene_id": シーン番号,\n'
+            '    "title": "5字以内",\n'
+            '    "intensity": 1-5,\n'
+            '    "location": "場所",\n'
+            '    "situation": "30字以内で具体的状況"\n'
+            "}\n\n"
+            f"⚠️ 必ず{num_scenes}シーン全てを出力すること。途中で打ち切り禁止。"
+        )
+    else:
+        output_format_section = (
+            "## 出力形式（JSON配列）\n"
+            "各シーンは以下の形式：\n"
+            "{\n"
+            '    "scene_id": シーン番号,\n'
+            '    "title": "シーンタイトル",\n'
+            '    "goal": "このシーンの目的",\n'
+            '    "location": "場所",\n'
+            '    "time": "時間帯",\n'
+            '    "situation": "このシーンで何が起きるか（具体的な状況）",\n'
+            '    "story_flow": "前シーンからの繋がりと次シーンへの橋渡し",\n'
+            '    "emotional_arc": {"start": "シーン冒頭の感情", "end": "シーン終わりの感情"},\n'
+            '    "beats": ["展開ビート1", "展開ビート2", "展開ビート3"],\n'
+            '    "intensity": 1から5の数値,\n'
+            '    "erotic_level": "none/light/medium/heavy/climax",\n'
+            '    "viewer_hook": "視聴者を引き付けるポイント"\n'
+            "}"
+        )
+
     prompt = f"""以下のストーリーあらすじを{num_scenes}シーンに分割し、各シーンの詳細をJSON配列で出力してください。
 
 ## ストーリーあらすじ（これに忠実に分割すること）
@@ -2188,22 +2576,7 @@ def generate_outline(
 - 第4幕・余韻: {act4}シーン → intensity 3-4（事後・余韻。エロの余韻を残す）
 ※ FANZA CG集は読者がエロを求めて購入する。導入は短く、エロシーンを手厚く。
 
-## 出力形式（JSON配列）
-各シーンは以下の形式：
-{{
-    "scene_id": シーン番号,
-    "title": "シーンタイトル",
-    "goal": "このシーンの目的",
-    "location": "場所",
-    "time": "時間帯",
-    "situation": "このシーンで何が起きるか（具体的な状況）",
-    "story_flow": "前シーンからの繋がりと次シーンへの橋渡し",
-    "emotional_arc": {{"start": "シーン冒頭の感情", "end": "シーン終わりの感情"}},
-    "beats": ["展開ビート1", "展開ビート2", "展開ビート3"],
-    "intensity": 1から5の数値,
-    "erotic_level": "none/light/medium/heavy/climax",
-    "viewer_hook": "視聴者を引き付けるポイント"
-}}
+{output_format_section}
 
 ## 絶対ルール
 1. あらすじの内容を全シーンに漏れなく割り当てること
@@ -2246,11 +2619,14 @@ def generate_outline(
 
 JSON配列のみ出力。"""
 
+    # max_tokensをシーン数に応じて動的設定（Haiku 3の上限4096を考慮）
+    outline_max_tokens = min(4096, max(2048, num_scenes * 280))
+
     try:
         response = _call_api(
             client, MODELS["haiku"],
             f"FANZA同人CG集の脚本プランナーです。ストーリーあらすじを忠実に{num_scenes}シーンに分割し、各シーンの詳細設計をJSON配列で出力します。",
-            prompt, cost_tracker, 4096, callback
+            prompt, cost_tracker, outline_max_tokens, callback
         )
 
         outline = parse_json_response(response)
@@ -2305,6 +2681,51 @@ JSON配列のみ出力。"""
         erotic_map = {1: "none", 2: "light", 3: "medium", 4: "heavy", 5: "climax"}
         for scene in outline:
             scene["erotic_level"] = erotic_map.get(scene.get("intensity", 3), "medium")
+
+        # アウトライン数がnum_scenesに不足する場合、自動補完
+        if len(outline) < num_scenes:
+            missing = num_scenes - len(outline)
+            log_message(f"⚠️ アウトラインが{missing}シーン不足（{len(outline)}/{num_scenes}）、自動補完")
+            if callback:
+                callback(f"[WARN]AI出力{len(outline)}シーン（{num_scenes}要求）、{missing}シーン自動補完中...")
+
+            for _pad_i in range(missing):
+                new_id = len(outline) + 1
+                ratio = new_id / num_scenes
+
+                # 位置に基づくintensity決定
+                if ratio >= (1.0 - epilogue_pct):
+                    pad_intensity = 3  # エピローグ
+                elif ratio >= (1.0 - epilogue_pct - 0.1):
+                    pad_intensity = 5  # クライマックス付近
+                else:
+                    pad_intensity = 4  # 本番
+
+                # 前シーンとのintensity飛躍を防止
+                if outline:
+                    prev_int = outline[-1].get("intensity", 3)
+                    if pad_intensity - prev_int >= 2:
+                        pad_intensity = prev_int + 1
+
+                outline.append({
+                    "scene_id": new_id,
+                    "title": f"シーン{new_id}",
+                    "goal": "",
+                    "location": outline[-1].get("location", "室内") if outline else "室内",
+                    "time": "",
+                    "situation": "",
+                    "story_flow": "",
+                    "emotional_arc": {"start": "", "end": ""},
+                    "beats": [],
+                    "intensity": min(pad_intensity, 5),
+                    "erotic_level": erotic_map.get(min(pad_intensity, 5), "medium"),
+                    "viewer_hook": ""
+                })
+
+            # 補完後のerotic_level再整合
+            for scene in outline:
+                scene["erotic_level"] = erotic_map.get(scene.get("intensity", 3), "medium")
+            log_message(f"アウトライン補完完了: {len(outline)}シーン")
 
         log_message(f"アウトライン生成完了（API）: {len(outline)}シーン, テーマ: {theme_name}")
         if callback:
@@ -2426,6 +2847,9 @@ def generate_scene_draft(
     # エロ漫画セリフスキルを性格・テーマ別に選択
     serihu_skill_name = _select_serihu_skill(theme, char_profiles)
     serihu_skill = load_skill(serihu_skill_name)
+
+    # CG集吹き出し専門スキル（自然な日本語セリフガイド）
+    bubble_writer_skill = load_skill("cg_bubble_writer")
 
     # CG集ビジュアル多様性スキル
     visual_skill = load_skill("cg_visual_variety")
@@ -2645,6 +3069,7 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 【吹き出し指針】
 ・自然な短い会話（1-2個）
 ・例: 「ねえ…」「え…？」
+・**喘ぎ声・絶頂セリフは絶対NG**。まだ本番前。ドキドキや戸惑いのみ
 
 【オノマトペ指針】
 ・なし or 1個: ドキッ
@@ -2661,6 +3086,7 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 【吹き出し指針】
 ・自然な一言（1-2個）。状況説明はdescriptionで行い、吹き出しは最小限
 ・例: 「ただいま〜」「久しぶり…」
+・**絶対に喘ぎ声・♡・エロ系セリフを入れるな**。歩いてるだけ、座ってるだけの場面で喘ぐな
 
 【オノマトペ指針】
 ・なし
@@ -2685,6 +3111,8 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 {danbooru_nsfw if danbooru_nsfw else ""}
 
 {scene_composer if scene_composer else ""}
+
+{bubble_writer_skill if bubble_writer_skill else ""}
 
 {char_guide if char_guide else "（キャラ設定なし）"}
 
@@ -2711,17 +3139,27 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 ・事実描写系（最も効果的）: 「すげえ締まる」「全部出すぞ」「奥まで入ったな」
 ・挑発系: 「感じてんだろ？」「もう濡れてる」「弱いとこわかってるよ」
 ・優しめ責め: 「気持ちいい？」「もっと聞かせて」「我慢しなくていいよ」
-※男のセリフは短く粗野に。丁寧語禁止。1ページ最大1個。
+※男のセリフは短く粗野に。丁寧語禁止。1ページ最大1個。最大8文字。
+※男に♡を絶対使わない。「きもちぃ」「もっとぉ」等の甘え語尾も禁止。
+※男のmoan(喘ぎ)タイプは禁止。男は喘がない。
+※NTR/陵辱の攻め側に「好きだよ」「大丈夫？」等の優しいセリフは禁止。
 
 【鉄則】
 - 1吹き出し = 1〜10文字（最大でも12文字）
-- 句読点不要。「...」「…」「っ」「〜」で繋ぐ
+- 「。」禁止。「…」「っ」「♡」「〜」で閉じる
 - 状況説明は吹き出しに入れない（descriptionに書く）
 - 吹き出しの中に主語や目的語を入れない
 - 「私は〜」「あなたが〜」のような文章はNG
 - 会話のキャッチボールではなく、画像の補強テキスト
 - **bubblesの内容はdescriptionのシーン内容と一致させる**こと
 - **画像+吹き出し+オノマトペだけで視聴者にシーンが伝わる**ようにする
+- ひらがな優先（「気持ちいい」→「きもちぃ」、「欲しい」→「ほしい」）
+
+【⚠️NG表現→正しい変換（書き言葉は全て話し言葉の断片に変換せよ）】
+❌信じられない→✅うそ… ❌現実じゃない→✅え…うそ… ❌体温が上がる→✅あつい…
+❌考えられない→✅なんで… ❌ずっと震えてる→✅ふるえ…てる ❌離れたくない→✅やだ…いかないで
+❌感じてしまう→✅あ…やば… ❌何も考えられない→✅あたま…まっしろ ❌声が出てしまう→✅あ…声…っ
+❌こんなことしてる→✅なにしてるの… ❌受け入れてしまう→✅あ…っ ❌抗えない→✅やだ…のに…
 
 【thoughtの書き方（重要）】
 thoughtは感情の断片。説明や反省はNG。
@@ -3005,7 +3443,14 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 - bubblesのtextに前シーンと同じ文言がある → 辞書から別パターンを選び直せ
 - onomatopoeiaが前シーンと同じ組み合わせ → 別の効果音に変えろ
 - descriptionが前シーンと類似している → 具体的な行為を変えろ
-- キャラ名が「{', '.join(char_names) if char_names else 'ヒロイン'}」以外の表記になっている → 修正しろ"""
+- キャラ名が「{', '.join(char_names) if char_names else 'ヒロイン'}」以外の表記になっている → 修正しろ
+- 男性キャラのセリフに♡が含まれている → 即座に削除しろ
+- 男性キャラが喘いでいる(moanタイプ) → speechに変更し男性的な短い台詞に書き換えろ
+- ヒロインの一人称・語尾がキャラ設定と食い違っている → 修正しろ
+- bubblesのtextが10文字を超えている → 意味が通る別の短い表現に書き換えろ。途中で切るな
+- 男性セリフに「私たち」「いいよ」「ね」等の女性的表現がある → 「俺たち」「いいぞ」「な」に直せ
+- descriptionが歩行・食事・帰宅等の非エロ場面なのにbubblesに喘ぎ・♡がある → 場面に合った普通のセリフに直せ
+- 「初めて」「彼のこと忘れ」等の同じフレーズを全体で3回以上使っている → 別の表現にしろ"""
 
     prompt = prompt + dedup_warning + "\n\nJSONのみ出力。"
 
@@ -3522,11 +3967,18 @@ def generate_pipeline(
     if callback:
         callback("[OK]SDプロンプト最適化完了")
 
-    # 5-3: 自動修正（文字数マーカー除去、キャラ名統一、SDタグ整理）
-    results = auto_fix_script(results, char_profiles)
+    # 5-3: 自動修正（文字数マーカー除去、キャラ名統一、SDタグ整理、セリフ重複置換）
+    results = auto_fix_script(results, char_profiles, theme=theme)
     log_message("自動修正完了")
     if callback:
         callback("🔧 自動修正完了")
+
+    # 5-4: dedup後の再検証（文字数超過・男性セリフ数の最終チェック）
+    post_validation = validate_script(results, theme, char_profiles)
+    if post_validation.get("issues"):
+        log_message(f"再検証: {len(post_validation['issues'])}件の警告")
+        for issue in post_validation["issues"][:5]:
+            log_message(f"  {issue}")
 
     # 完了サマリー
     success_count = sum(1 for r in results if r.get("mood") != "エラー")
