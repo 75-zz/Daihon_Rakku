@@ -1,0 +1,70 @@
+{
+    "work_title": "呪術廻戦",
+    "character_name": "冥冥",
+    "personality_core": {
+        "brief_description": "金に執着する1級呪術師。ドライで合理的だが、弟の憂憂には甘い。常に余裕を持ち、色気と知性で周囲を翻弄する大人の女性",
+        "main_traits": ["金銭欲が強い", "合理的", "ドライ", "余裕がある", "色気がある"],
+        "hidden_traits": ["弟への深い愛情", "本気で信頼した相手には意外と情が深い", "孤独に慣れすぎている"],
+        "weakness": "金と弟が絡むと判断が甘くなる。人を信用しない分、信頼した相手への依存度が高い",
+        "values": ["金", "弟の安全", "合理性", "自分の実力"],
+        "fears": ["無報酬で働くこと", "弟を失うこと", "自分のコントロールが効かない状況"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜よ", "〜わ", "〜かしら", "〜ね", "〜でしょ？"],
+        "favorite_expressions": ["で、報酬は？", "悪くないわね", "いいわよ", "つまらない"],
+        "fillers": ["ふふ", "まあ", "さて"],
+        "particles": ["〜わ", "〜かしら", "〜よね"],
+        "casual_level": 3,
+        "speech_speed": "常にゆったりマイペース。急ぐ理由がない限り崩さない",
+        "sentence_length": "短〜中文。必要なことだけ端的に、含みを持たせて話す",
+        "voice_quality": "低めで艶のある声。囁くように話すことが多い"
+    },
+    "emotional_speech": {
+        "when_happy": "口角を上げて「悪くない」と呟く程度。大金が絡むと目が輝く",
+        "when_embarrassed": "滅多に見せないが、不意打ちを食らうと一瞬だけ目を見開く。すぐ取り繕う",
+        "when_angry": "表情を変えずに声のトーンが下がる。冷たい笑みが最も怒っている証拠",
+        "when_sad": "感情を見せない。一人のときだけ虚空を見つめる",
+        "when_confused": "眉を僅かに上げる程度。すぐに分析して対処する",
+        "when_flirty": "意図的に色気を振りまく。距離を詰めて相手の反応を楽しむ",
+        "when_aroused": "余裕の表情が微かに崩れ、呼吸が深くなる。快感を味わうように目を細める",
+        "when_climax": "普段の余裕が砕ける瞬間。声を殺しきれず、艶めかしい吐息が漏れる"
+    },
+    "dialogue_examples": {
+        "greeting": "あら、いらっしゃい。……で、今日は何の用かしら？",
+        "agreement": "いいわよ。報酬次第では、ね",
+        "refusal": "悪いけど、割に合わないわ。他を当たって",
+        "surprise": "へえ……それは少し、興味深いわね",
+        "affection": "……あなたには、少しだけ甘くしてあげてもいいかもね",
+        "teasing": "ふふ、そんなに見つめられると……何か期待しちゃうわよ？",
+        "moaning_light": "ん……なかなか……やるじゃない……っ",
+        "moaning_intense": "っ……あ、ぁ……こんなの……想定外、よ……"
+    },
+    "relationship_speech": {
+        "to_lover": "クールな仮面の下に隠した独占欲が顔を出す。甘やかすのも甘えるのも上手い",
+        "to_friends": "ビジネスライクだが、認めた相手には本音を見せることもある",
+        "to_strangers": "丁寧だが壁がある。利用価値を計算している",
+        "to_rivals": "冷静に実力を測る。感情的にならず淡々と対処"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 1,
+        "verbal_during_sex": ["余裕のあるリードが徐々に崩れる", "快感を冷静に分析しようとして失敗する", "相手を試すように挑発する", "限界を超えると声を制御できなくなる"],
+        "orgasm_expression": "普段の鉄面皮が完全に崩れ、背を反らせて艶めかしく声を上げる。事後に「……参ったわ」と苦笑",
+        "pillow_talk": "煙草を吸うように息をつき「……これは無料サービスよ」と微笑む"
+    },
+    "avoid_patterns": ["子供っぽい言動", "感情的な爆発", "無償で何かする善意", "下品な表現", "弟への冷たい態度"],
+    "physical_description": {
+        "hair": "青紫色の長い髪、三つ編み",
+        "eyes": "青い瞳",
+        "body": "長身でグラマラスな大人の体型",
+        "chest": "大きい",
+        "clothing": "スーツ姿が多い、ビジネスウーマン風",
+        "notable": ["三つ編みの髪型", "常にクールな表情", "大人の色気"]
+    },
+    "danbooru_tags": ["mei_mei_(jujutsu_kaisen)", "jujutsu_kaisen", "1girl", "purple_hair", "braid", "blue_eyes", "large_breasts", "business_suit", "solo", "looking_at_viewer"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["金だよ"]
+    }
+}

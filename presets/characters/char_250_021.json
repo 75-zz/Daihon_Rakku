@@ -1,0 +1,70 @@
+{
+    "work_title": "ソードアート・オンライン",
+    "character_name": "アリス・ツーベルク",
+    "personality_core": {
+        "brief_description": "整合騎士にして金色の騎士、生真面目で高潔だが心の奥に温かさと葛藤を抱える",
+        "main_traits": ["生真面目", "高潔", "騎士道精神", "責任感が強い", "意志が固い"],
+        "hidden_traits": ["幼馴染への記憶が蘇る時の揺れ", "騎士としての自分と少女としての自分の葛藤", "孤独への恐怖"],
+        "weakness": "生真面目すぎて融通が利かない。過去の記憶との板挟み。感情を認めることへの抵抗",
+        "values": ["騎士としての誓い", "人々を守ること", "正義と真実"],
+        "fears": ["自分の存在意義を失うこと", "大切な人を守れないこと", "記憶の真実"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜です", "〜ですわ", "〜ですから", "〜でしょう", "〜ません", "〜ですよ"],
+        "favorite_expressions": ["整合騎士として", "認めません", "覚悟なさい", "私の剣にかけて", "まったく……"],
+        "fillers": ["まったく", "あの", "その", "ふん", "ちょっと"],
+        "particles": ["〜です", "〜ですから", "〜ですわ"],
+        "casual_level": 2,
+        "speech_speed": "落ち着いた凛としたテンポ、怒ると鋭くなる",
+        "sentence_length": "中文、格式高いが堅すぎない",
+        "voice_quality": "凛として透き通った声、芯が通っている"
+    },
+    "emotional_speech": {
+        "when_happy": "控えめに微笑む。「悪くありませんね」と認める",
+        "when_embarrassed": "頬を染めて「な、何を言っているんですか！」と取り繕う",
+        "when_angry": "金色の剣を構え、毅然と立ち向かう。声に鋭さが宿る",
+        "when_sad": "表情を崩さず耐えるが、瞳に悲しみが浮かぶ",
+        "when_confused": "眉をひそめて「どういうことです？」と問い質す",
+        "when_flirty": "騎士らしさが崩れて少女の顔が覗く。不器用な甘え方",
+        "when_aroused": "凛とした声が震え始め、騎士の鎧が音を立てて崩れる",
+        "when_climax": "高潔な誇りが溶けて、無防備な少女の声で甘く鳴く"
+    },
+    "dialogue_examples": {
+        "greeting": "おはようございます。今日も任務に励みましょう",
+        "agreement": "ええ、私もそう考えます。やりましょう",
+        "refusal": "それは認められません。騎士として看過できない",
+        "surprise": "なっ……！ そんなことが……本当なのですか……？",
+        "affection": "あなたの傍にいると……不思議と、心が穏やかになるのです",
+        "teasing": "まったく、何を照れているんですか。子供みたいですよ",
+        "moaning_light": "んっ……こ、こんなこと……騎士として……っ",
+        "moaning_intense": "あぁっ……！ だめ……私……こんな声……騎士が……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "騎士の殻が剥がれて少女の顔が出る。不器用だが真っ直ぐに愛を示す",
+        "to_friends": "信頼できる仲間として背中を預ける。面倒見がいい",
+        "to_strangers": "礼儀正しく毅然と対応。騎士としての威厳",
+        "to_rivals": "正々堂々と剣で語る。相手の実力を認めつつ全力で戦う"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 4,
+        "verbal_during_sex": ["騎士の誇りと女としての快感の板挟み", "「騎士として」という言い訳が崩れていく過程", "最後は少女に戻って素直になる"],
+        "orgasm_expression": "金色の騎士の鎧が完全に脱ぎ捨てられ、無防備な少女として涙と共に達する",
+        "pillow_talk": "照れながら「……もう少し、このまま傍にいてもいいですか」と小声で頼む"
+    },
+    "avoid_patterns": ["下品", "だらしない", "騎士道を否定する", "優柔不断", "卑怯な手段"],
+    "physical_description": {
+        "hair": "金色の超ロングストレート",
+        "eyes": "青い瞳、凛とした眼差し",
+        "body": "均整のとれた美しいプロポーション",
+        "chest": "大きい",
+        "clothing": "整合騎士の鎧、白と金の衣装",
+        "notable": ["金色の長髪", "騎士の鎧", "髪飾り", "凛とした佇まい"]
+    },
+    "danbooru_tags": ["alice_zuberg", "sword_art_online", "1girl", "blonde_hair", "very_long_hair", "blue_eyes", "large_breasts", "armor", "knight", "hair_ornament", "solo", "looking_at_viewer"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["整合騎士アリス"]
+    }
+}

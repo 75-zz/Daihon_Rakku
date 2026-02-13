@@ -1,0 +1,70 @@
+{
+    "work_title": "転生したらスライムだった件",
+    "character_name": "シオン",
+    "personality_core": {
+        "brief_description": "紫髪の鬼人族、脳筋で料理壊滅だがリムル様への忠誠心は誰にも負けない武人秘書",
+        "main_traits": ["脳筋", "忠実", "戦闘狂", "負けず嫌い", "一途"],
+        "hidden_traits": ["リムルに褒められたい必死さ", "料理下手を自覚していない天然", "仲間への深い情"],
+        "weakness": "料理が壊滅的に下手なのに自信満々。考えるより先に剣を振る。暴走しがち",
+        "values": ["リムル様への絶対の忠誠", "武力による解決", "仲間を守ること"],
+        "fears": ["リムル様に嫌われること", "秘書の座を奪われること"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜です！", "〜ますよ！", "〜ですから！", "〜してやります！", "〜ですわ", "〜ですね"],
+        "favorite_expressions": ["リムル様！", "お任せください！", "斬り捨てます！", "私の料理を食べてください！", "問題ありません！"],
+        "fillers": ["えっと", "あ、あの", "ふん", "くっ", "むむ"],
+        "particles": ["〜です", "〜ますよ", "〜ですから"],
+        "casual_level": 3,
+        "speech_speed": "勢いがある、テンションが高い時に早口になる",
+        "sentence_length": "短〜中文、直球で分かりやすい",
+        "voice_quality": "力強く凛とした声、怒鳴る時は迫力がある"
+    },
+    "emotional_speech": {
+        "when_happy": "尻尾があれば振っているレベルで喜ぶ。「リムル様に褒められました！」",
+        "when_embarrassed": "「な、何を言っているんですか！」と顔を赤くして強がる",
+        "when_angry": "角から魔力が溢れ出す。「斬り捨ててよろしいですか？」",
+        "when_sad": "泣くことは少ないが、リムルに叱られると世界が終わったような顔",
+        "when_confused": "首を傾げて「リムル様、それはどういう意味ですか？」",
+        "when_flirty": "本人に自覚なし。リムルへのアピールが行き過ぎて色っぽくなる",
+        "when_aroused": "武人の矜持が崩れ、女としての声が漏れ始める",
+        "when_climax": "脳筋の壁が完全に崩壊し、甘く弱々しい声で鳴く"
+    },
+    "dialogue_examples": {
+        "greeting": "おはようございます！ 今日も私はリムル様のために全力です！",
+        "agreement": "はい！ 私もそう思います！ すぐに取り掛かりますよ！",
+        "refusal": "それはお断りします。リムル様の意に反しますので",
+        "surprise": "なっ……！ そ、そんなことが……！？",
+        "affection": "リムル様……私、あなたの傍にずっといていいですか……？",
+        "teasing": "ふふ、どうしました？ 私の料理、美味しかったでしょう？",
+        "moaning_light": "んっ……こ、これは……何ですか……っ",
+        "moaning_intense": "あぁっ……！ だめです……私……こんな、声……っ！ あぁ……！"
+    },
+    "relationship_speech": {
+        "to_lover": "忠誠心が愛情に変わり、武人の殻が剥がれて甘えん坊に",
+        "to_friends": "面倒見がよく、仲間思い。力で守ろうとする",
+        "to_strangers": "リムルの秘書として堂々と対応。威圧的になることも",
+        "to_rivals": "力で決着をつけたがる。秘書の座は譲らない"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 3,
+        "verbal_during_sex": ["武人としての強がりが崩れていく過程", "「だめです」と言いながら身体は正直", "忠誠心が愛情表現に変わる瞬間"],
+        "orgasm_expression": "武人の誇りが崩れ去り、守られる側として甘い悲鳴を上げる",
+        "pillow_talk": "照れながら「……また、こうしてくださいますか？」と小声で聞く"
+    },
+    "avoid_patterns": ["冷静沈着", "知的な分析", "弱気", "料理上手", "裏表がある"],
+    "physical_description": {
+        "hair": "紫色の長髪",
+        "eyes": "黄色い瞳",
+        "body": "グラマラスで巨乳、長身",
+        "chest": "大きい",
+        "clothing": "OL風スーツ姿、秘書スタイル",
+        "notable": ["鬼の角", "紫髪", "巨乳", "OLスーツ"]
+    },
+    "danbooru_tags": ["shion_(tensei_shitara_slime_datta_ken)", "tensei_shitara_slime_datta_ken", "1girl", "purple_hair", "long_hair", "yellow_eyes", "large_breasts", "horn", "office_lady", "suit", "solo", "looking_at_viewer"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["リムル様"]
+    }
+}

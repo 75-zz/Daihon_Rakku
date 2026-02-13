@@ -1080,11 +1080,14 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
 
     # intensity別 表情・身体反応タグ自動注入マップ
     _INTENSITY_EXPRESSION_MAP = {
-        3: ["blush", "parted_lips", "panting", "nervous", "heavy_breathing"],
+        3: ["blush", "parted_lips", "panting", "nervous", "heavy_breathing",
+            "light_sweat"],
         4: ["open_mouth", "moaning", "tears", "sweating", "head_back",
-            "arched_back", "clenched_fists", "trembling"],
+            "arched_back", "clenched_fists", "trembling",
+            "sweat_drops", "sweaty_body", "flushed_skin"],
         5: ["ahegao", "rolling_eyes", "tongue_out", "drooling", "head_back",
-            "arched_back", "toes_curling", "full_body_arch", "tears"],
+            "arched_back", "toes_curling", "full_body_arch", "tears",
+            "sweat_drops", "sweaty_body", "sweat_glistening", "skin_glistening"],
     }
 
     for scene in results:
@@ -1175,6 +1178,14 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 if male_tag not in existing_lower:
                     tags.append(male_tag)
                     existing_lower.add(male_tag)
+
+        # 4.55. intensity≥3のシーンに男性体型タグ自動注入（1boyがある場合）
+        if intensity >= 3 and "1boy" in existing_lower:
+            _male_body_defaults = ["muscular_male", "veiny_arms"]
+            for mt in _male_body_defaults:
+                if mt not in existing_lower:
+                    tags.append(mt)
+                    existing_lower.add(mt)
 
         # 4.6. intensity別 表情・身体反応タグ自動注入
         if intensity >= 3:
@@ -6707,7 +6718,7 @@ class App(ctk.CTk):
             return dd
 
         # === Template Quick Start (20種) ===
-        tmpl_label = ctk.CTkLabel(custom_scroll, text="テンプレート（ワンクリック雛形）— FANZA売れ筋20種",
+        tmpl_label = ctk.CTkLabel(custom_scroll, text="テンプレート（ワンクリック雛形）— FANZA売れ筋32種",
                     font=ctk.CTkFont(family=FONT_JP, size=14, weight="bold"),
                     text_color=MaterialColors.PRIMARY)
         tmpl_label.pack(anchor="w", pady=(8, 8))
@@ -6778,16 +6789,58 @@ class App(ctk.CTk):
             "メスガキ": {"age": "ロリ", "archetype": "小悪魔", "first_person": "あたし",
                         "speech": "タメ口", "hair_color": "ピンク髪", "hair_style": "ツインテール",
                         "body": "小柄・華奢", "chest": "控えめ（A-B）", "clothing": "私服（ギャル系）", "shyness": 1},
+            # 異種族系
+            "サキュバス": {"age": "エルフ・長命種", "archetype": "サキュバス系", "first_person": "私",
+                         "speech": "タメ口", "hair_color": "紫髪", "hair_style": "ロングウェーブ",
+                         "body": "グラマー", "chest": "巨乳（F以上）", "clothing": "私服（ギャル系）", "shyness": 1},
+            "獣耳メイド": {"age": "JD（女子大生）", "archetype": "妹系・甘えん坊", "first_person": "私",
+                          "speech": "丁寧語", "hair_color": "白髪", "hair_style": "ロングストレート",
+                          "body": "小柄・華奢", "chest": "普通（C）", "clothing": "メイド服", "shyness": 4},
+            "ダークエルフ": {"age": "エルフ・長命種", "archetype": "クーデレ", "first_person": "私",
+                           "speech": "古風・時代劇調", "hair_color": "白髪", "hair_style": "ロングストレート",
+                           "body": "スレンダー", "chest": "大きめ（D-E）", "clothing": "鎧・アーマー", "shyness": 2},
+            "天使堕ち": {"age": "エルフ・長命種", "archetype": "天然・ドジっ子", "first_person": "わたくし",
+                        "speech": "丁寧語", "hair_color": "金髪", "hair_style": "ロングストレート",
+                        "body": "スレンダー", "chest": "普通（C）", "clothing": "ドレス", "shyness": 5},
+            # シチュ特化
+            "催眠JK": {"age": "JK（女子高生）", "archetype": "真面目・優等生", "first_person": "私",
+                      "speech": "丁寧語", "hair_color": "黒髪", "hair_style": "ロングストレート",
+                      "body": "普通", "chest": "大きめ（D-E）", "clothing": "制服（セーラー服）", "shyness": 5},
+            "女騎士": {"age": "OL（20代）", "archetype": "真面目・優等生", "first_person": "私",
+                      "speech": "古風・時代劇調", "hair_color": "金髪", "hair_style": "ポニーテール",
+                      "body": "筋肉質", "chest": "大きめ（D-E）", "clothing": "鎧・アーマー", "shyness": 4},
+            "陰キャ同級生": {"age": "JK（女子高生）", "archetype": "陰キャ・オタク", "first_person": "私",
+                           "speech": "タメ口", "hair_color": "黒髪", "hair_style": "三つ編み",
+                           "body": "小柄・華奢", "chest": "控えめ（A-B）", "clothing": "制服（ブレザー）", "shyness": 5},
+            "配信者": {"age": "JD（女子大生）", "archetype": "陰キャ・オタク", "first_person": "私",
+                      "speech": "タメ口", "hair_color": "ピンク髪", "hair_style": "ツインテール",
+                      "body": "普通", "chest": "普通（C）", "clothing": "パジャマ・部屋着", "shyness": 3},
+            # 年齢差系
+            "女上司": {"age": "OL（20代）", "archetype": "お姉さん系", "first_person": "私",
+                      "speech": "敬語（ビジネス）", "hair_color": "黒髪", "hair_style": "ボブカット",
+                      "body": "スレンダー", "chest": "大きめ（D-E）", "clothing": "スーツ", "shyness": 2},
+            "ママ友": {"age": "人妻", "archetype": "天然・ドジっ子", "first_person": "私",
+                      "speech": "丁寧語", "hair_color": "茶髪", "hair_style": "セミロング",
+                      "body": "グラマー", "chest": "巨乳（F以上）", "clothing": "私服（清楚系）", "shyness": 3},
+            "若妻先生": {"age": "OL（20代）", "archetype": "大和撫子", "first_person": "私",
+                        "speech": "丁寧語", "hair_color": "茶髪", "hair_style": "ポニーテール",
+                        "body": "普通", "chest": "大きめ（D-E）", "clothing": "スーツ", "shyness": 4},
+            "寮母さん": {"age": "お姉さん（30代）", "archetype": "お姉さん系", "first_person": "私",
+                        "speech": "丁寧語", "hair_color": "黒髪", "hair_style": "ロングストレート",
+                        "body": "グラマー", "chest": "巨乳（F以上）", "clothing": "エプロン", "shyness": 3},
         }
         self._custom_templates = templates
 
-        # カテゴリ別テンプレートグリッド (5行×4列)
+        # カテゴリ別テンプレートグリッド (8行×4列)
         tmpl_categories = [
             ("学園系", ["JKツンデレ", "ギャルJK", "地味子", "委員長"]),
             ("純情系", ["甘え妹", "後輩マネ", "メイドさん", "巫女さん"]),
             ("年上系", ["大人クール", "女教師", "ナース", "未亡人"]),
             ("個性派", ["お嬢様", "エルフ姫", "褐色スポーツ", "バニーガール"]),
             ("NTR/人妻", ["NTR彼女", "人妻さん", "義母さん", "メスガキ"]),
+            ("異種族系", ["サキュバス", "獣耳メイド", "ダークエルフ", "天使堕ち"]),
+            ("シチュ特化", ["催眠JK", "女騎士", "陰キャ同級生", "配信者"]),
+            ("年齢差系", ["女上司", "ママ友", "若妻先生", "寮母さん"]),
         ]
 
         tmpl_grid = ctk.CTkFrame(custom_scroll, fg_color="transparent")
@@ -6842,7 +6895,7 @@ class App(ctk.CTk):
         ctk.CTkLabel(pc, text="性格タイプ", font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
                     text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w", pady=(0, 4))
 
-        # Archetype chip grid (4 cols x 3 rows)
+        # Archetype chip grid (4 cols x 4 rows)
         archetype_grid = ctk.CTkFrame(pc, fg_color="transparent")
         archetype_grid.pack(fill="x", pady=(0, 6))
 

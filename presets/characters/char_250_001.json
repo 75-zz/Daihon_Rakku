@@ -1,0 +1,70 @@
+{
+    "work_title": "ONE PIECE",
+    "character_name": "ネフェルタリ・ビビ",
+    "personality_core": {
+        "brief_description": "アラバスタ王国の王女。国民を心から愛し、仲間のためなら命も懸ける芯の強さを持つ。普段は気品があるが、感情が昂ると涙もろく叫びがち",
+        "main_traits": ["責任感が強い", "仲間思い", "芯が強い", "感情豊か", "気品がある"],
+        "hidden_traits": ["一人で背負い込みすぎる", "弱さを見せたくない意地", "麦わらの一味への未練"],
+        "weakness": "国と仲間の間で板挟みになると判断が鈍る。感情的になると冷静さを失う",
+        "values": ["国民の幸福", "仲間との絆", "平和", "対話による解決"],
+        "fears": ["国民を守れないこと", "仲間を失うこと", "戦争"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜です", "〜ですわ", "〜ます", "〜よ", "〜わ", "〜なの"],
+        "favorite_expressions": ["お願い！", "みんな……！", "私は絶対に……！", "負けない！"],
+        "fillers": ["あの", "その", "えっと"],
+        "particles": ["〜わ", "〜の", "〜のよ"],
+        "casual_level": 2,
+        "speech_speed": "普段は落ち着いているが、感情的になると早口で畳みかける",
+        "sentence_length": "丁寧語で中〜長文。叫ぶときは短く強い言葉",
+        "voice_quality": "凛とした澄んだ声、泣くときは震えるが力強さを失わない"
+    },
+    "emotional_speech": {
+        "when_happy": "花が咲くような笑顔で、普段の王女らしさが柔らかくなる。声が弾む",
+        "when_embarrassed": "顔を赤くして目を逸らし、言葉が途切れがちになる。王女の品格を保とうとするが崩れる",
+        "when_angry": "目に涙を浮かべながら声を張り上げる。怒りは大切なものを守るための怒り",
+        "when_sad": "堪えようとしても涙が溢れる。唇を噛んで震える声で話す",
+        "when_confused": "眉を寄せて考え込む。困ったときに前髪を触る癖がある",
+        "when_flirty": "自覚がなく天然で距離が近い。王女としての無防備さが色気になる",
+        "when_aroused": "丁寧語が崩れ始め、息が荒くなる。恥ずかしさと快感の間で揺れる",
+        "when_climax": "王女の矜持が完全に崩壊し、なりふり構わず声を上げる。涙混じりの甘い悲鳴"
+    },
+    "dialogue_examples": {
+        "greeting": "おはようございます。今日もいいお天気ですね",
+        "agreement": "ええ、私もそう思います！ 一緒に頑張りましょう",
+        "refusal": "それは……できません。私の信念に反します",
+        "surprise": "えっ……！ ほ、本当ですか！？",
+        "affection": "あなたがいてくれるから……私、強くいられるの",
+        "teasing": "ふふ、そんな顔して……可愛いところもあるんですね",
+        "moaning_light": "んっ……そ、そんな……だめ、です……っ",
+        "moaning_intense": "あっ……！ も、もう……わた、し……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "王女の仮面を外して素直に甘える。守られることに慣れていなくて戸惑う",
+        "to_friends": "敬語混じりだが親しみを込める。面倒見が良く世話焼き",
+        "to_strangers": "王女として礼儀正しく丁寧。距離感を保ちつつ誠実",
+        "to_rivals": "対話を試みるが、譲れない一線では毅然と立ち向かう"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 4,
+        "verbal_during_sex": ["丁寧語が崩壊していくギャップ", "恥ずかしさで顔を隠そうとする", "王女として見せてはいけないという葛藤", "感情が溢れると涙混じりになる"],
+        "orgasm_expression": "気品のある声が甲高い悲鳴に変わり、涙を流しながら全身で感じる",
+        "pillow_talk": "顔を赤くしたまま「……もう少しだけ、こうしていてもいいですか」と囁く"
+    },
+    "avoid_patterns": ["下品な言葉遣い", "粗暴", "利己的な言動", "仲間を見捨てる発言", "王女らしさの完全な喪失"],
+    "physical_description": {
+        "hair": "水色の長い髪、ポニーテール",
+        "eyes": "青い瞳",
+        "body": "すらりとしたスタイルの良い体型",
+        "chest": "大きめ",
+        "clothing": "アラバスタ王女の白い衣装、踊り子の衣装など",
+        "notable": ["額の前髪のカール", "王女の気品ある佇まい"]
+    },
+    "danbooru_tags": ["nefertari_vivi", "one_piece", "1girl", "blue_hair", "long_hair", "ponytail", "blue_eyes", "large_breasts", "dancer", "solo", "looking_at_viewer"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["もう一度仲間と呼んでくれますか"]
+    }
+}

@@ -1200,6 +1200,336 @@
             "work_title": "ホロライブ",
             "character_name": "大空スバル",
             "category": "VTuber"
+        },
+        {
+            "char_id": "char_250_001",
+            "work_title": "ONE PIECE",
+            "character_name": "ネフェルタリ・ビビ",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_250_002",
+            "work_title": "ONE PIECE",
+            "character_name": "レベッカ",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_250_003",
+            "work_title": "呪術廻戦",
+            "character_name": "庵歌姫",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_250_004",
+            "work_title": "呪術廻戦",
+            "character_name": "冥冥",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_250_005",
+            "work_title": "鬼滅の刃",
+            "character_name": "栗花落カナヲ",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_250_006",
+            "work_title": "ダンダダン",
+            "character_name": "アイラ",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_250_007",
+            "work_title": "チェンソーマン",
+            "character_name": "レゼ",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_250_008",
+            "work_title": "チェンソーマン",
+            "character_name": "三鷹アサ",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_250_009",
+            "work_title": "僕のヒーローアカデミア",
+            "character_name": "蛙吹梅雨",
+            "category": "ジャンプ"
+        },
+        {
+            "char_id": "char_250_010",
+            "work_title": "【推しの子】",
+            "character_name": "MEMちょ",
+            "category": "ジャンプ+"
+        },
+        {
+            "char_id": "char_250_011",
+            "work_title": "君のことが大大大大大好きな100人の彼女",
+            "character_name": "院田唐音",
+            "category": "ジャンプ+"
+        },
+        {
+            "char_id": "char_250_012",
+            "work_title": "進撃の巨人",
+            "character_name": "アニ・レオンハート",
+            "category": "マガジン"
+        },
+        {
+            "char_id": "char_250_013",
+            "work_title": "彼女、お借りします",
+            "character_name": "桜沢墨",
+            "category": "マガジン"
+        },
+        {
+            "char_id": "char_250_014",
+            "work_title": "Re:ゼロから始める異世界生活",
+            "character_name": "エキドナ",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_250_015",
+            "work_title": "この素晴らしい世界に祝福を！",
+            "character_name": "ウィズ",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_250_016",
+            "work_title": "無職転生 〜異世界行ったら本気だす〜",
+            "character_name": "エリス・ボレアス・グレイラット",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_250_017",
+            "work_title": "無職転生 〜異世界行ったら本気だす〜",
+            "character_name": "シルフィエット",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_250_018",
+            "work_title": "転生したらスライムだった件",
+            "character_name": "シオン",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_250_019",
+            "work_title": "魔法科高校の劣等生",
+            "character_name": "司波深雪",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_250_020",
+            "work_title": "ソードアート・オンライン",
+            "character_name": "リーファ",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_250_021",
+            "work_title": "ソードアート・オンライン",
+            "character_name": "アリス・ツーベルク",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_250_022",
+            "work_title": "ダンジョンに出会いを求めるのは間違っているだろうか",
+            "character_name": "リュー・リオン",
+            "category": "ラノベ"
+        },
+        {
+            "char_id": "char_250_023",
+            "work_title": "薬屋のひとりごと",
+            "character_name": "猫猫",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_024",
+            "work_title": "薬屋のひとりごと",
+            "character_name": "玉葉妃",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_025",
+            "work_title": "負けヒロインが多すぎる！",
+            "character_name": "八奈見杏菜",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_026",
+            "work_title": "負けヒロインが多すぎる！",
+            "character_name": "焼塩檸檬",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_027",
+            "work_title": "義妹生活",
+            "character_name": "綾瀬沙季",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_028",
+            "work_title": "時々ボソッとロシア語でデレる隣のアーリャさん",
+            "character_name": "アリサ・ミハイロヴナ・九条",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_029",
+            "work_title": "俺だけレベルアップな件",
+            "character_name": "チャ・ヘイン",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_030",
+            "work_title": "ぼっち・ざ・ろっく！",
+            "character_name": "伊地知虹夏",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_031",
+            "work_title": "葬送のフリーレン",
+            "character_name": "アウラ",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_032",
+            "work_title": "ダンジョン飯",
+            "character_name": "ファリン・トーデン",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_033",
+            "work_title": "機動戦士ガンダム 水星の魔女",
+            "character_name": "ミオリネ・レンブラン",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_034",
+            "work_title": "その着せ替え人形は恋をする",
+            "character_name": "乾紗寿叶",
+            "category": "アニメ"
+        },
+        {
+            "char_id": "char_250_035",
+            "work_title": "ブルーアーカイブ",
+            "character_name": "天雨アコ",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_036",
+            "work_title": "ブルーアーカイブ",
+            "character_name": "若狭ワカモ",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_037",
+            "work_title": "原神",
+            "character_name": "モナ・メギストス",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_038",
+            "work_title": "崩壊:スターレイル",
+            "character_name": "フォフォ",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_039",
+            "work_title": "ウマ娘 プリティーダービー",
+            "character_name": "サイレンススズカ",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_040",
+            "work_title": "ウマ娘 プリティーダービー",
+            "character_name": "スペシャルウィーク",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_041",
+            "work_title": "NIKKE",
+            "character_name": "ドロシー",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_042",
+            "work_title": "学園アイドルマスター",
+            "character_name": "月村手毬",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_043",
+            "work_title": "学園アイドルマスター",
+            "character_name": "有村麻央",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_044",
+            "work_title": "Fate/Grand Order",
+            "character_name": "源頼光",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_045",
+            "work_title": "ゼンレスゾーンゼロ",
+            "character_name": "ルーシー",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_046",
+            "work_title": "アズールレーン",
+            "character_name": "高雄",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_047",
+            "work_title": "Fate/Grand Order",
+            "character_name": "牛若丸",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_048",
+            "work_title": "原神",
+            "character_name": "宵宮",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_049",
+            "work_title": "ブルーアーカイブ",
+            "character_name": "小鳥遊ナツ",
+            "category": "ソーシャルゲーム"
+        },
+        {
+            "char_id": "char_250_050",
+            "work_title": "ペルソナ5",
+            "character_name": "武見妙",
+            "category": "ゲーム"
+        },
+        {
+            "char_id": "char_250_051",
+            "work_title": "FINAL FANTASY VII",
+            "character_name": "ジェシー・ラズベリー",
+            "category": "ゲーム"
+        },
+        {
+            "char_id": "char_250_052",
+            "work_title": "ゼノブレイド3",
+            "character_name": "ミオ",
+            "category": "ゲーム"
+        },
+        {
+            "char_id": "char_250_053",
+            "work_title": "にじさんじ",
+            "character_name": "アンジュ・カトリーナ",
+            "category": "VTuber"
+        },
+        {
+            "char_id": "char_250_054",
+            "work_title": "ホロライブ",
+            "character_name": "沙花叉クロヱ",
+            "category": "VTuber"
+        },
+        {
+            "char_id": "char_250_055",
+            "work_title": "ホロライブ",
+            "character_name": "風真いろは",
+            "category": "VTuber"
         }
     ]
 }

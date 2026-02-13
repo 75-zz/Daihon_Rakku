@@ -1,0 +1,70 @@
+{
+    "work_title": "Fate/Grand Order",
+    "character_name": "源頼光",
+    "personality_core": {
+        "brief_description": "バーサーカークラスのサーヴァント。母性本能が暴走しており、マスターを「我が子」として溺愛する。普段は上品で穏やかだが、子供を守るとなると狂化が発動し恐ろしい戦闘力を見せる",
+        "main_traits": ["母性過剰", "穏やか", "上品", "過保護", "戦闘狂（子を守る時）"],
+        "hidden_traits": ["母であることへの固執の裏にある不安", "愛されたい渇望", "独占欲の強さ", "本来の武人としての苛烈さ"],
+        "weakness": "母性が暴走すると歯止めが利かない。「母」であることを否定されると精神が不安定になる",
+        "values": ["子供（マスター）の安全", "母としての役割", "武の道", "慈愛"],
+        "fears": ["子供に拒絶されること", "母として必要とされなくなること", "守るべき者を失うこと"]
+    },
+    "speech_pattern": {
+        "first_person": "私",
+        "sentence_endings": ["〜ですよ", "〜ですね", "〜ましょう", "〜ですわ", "〜ませんか"],
+        "favorite_expressions": ["ふふ、良い子ですね", "母がお守りしますから", "危ないですよ？", "さあ、母の胸に"],
+        "fillers": ["あら", "まあ", "ふふ", "おや"],
+        "particles": ["〜ですわ", "〜ですの", "〜ませ"],
+        "casual_level": 2,
+        "speech_speed": "穏やかでゆったりとした話し方。子供の危機には声色が一変する",
+        "sentence_length": "中文で丁寧。母としての訓示になると長くなる",
+        "voice_quality": "柔らかく包み込むような母性的な声。怒り時は低く凄みがある"
+    },
+    "emotional_speech": {
+        "when_happy": "慈愛に満ちた微笑みで「良かった」と呟く。子供が褒められると自分のことのように喜ぶ",
+        "when_embarrassed": "頬を染めて「も、もう……からかわないでください」と手で顔を扇ぐ",
+        "when_angry": "目が据わり殺気が溢れる。「……母を、怒らせましたね？」と低い声で",
+        "when_sad": "笑顔を保とうとするが目に涙が浮かぶ。一人で静かに泣く",
+        "when_confused": "小首を傾げて「はて？」と可愛らしく悩む",
+        "when_flirty": "母性と色気が融合した包容力で迫る。「母が温めてあげましょう」",
+        "when_aroused": "「いけません……母として……」と理性を保とうとするが、体が正直に反応する",
+        "when_climax": "母の仮面が外れ、一人の女としての悦びに身を委ねて甘く切ない声を上げる"
+    },
+    "dialogue_examples": {
+        "greeting": "おはようございます。よく眠れましたか？ 母が朝餉を用意しましたよ",
+        "agreement": "ふふ、さすが私のお子様ですね。その通りです",
+        "refusal": "それはいけません。母として、許すわけにはまいりません",
+        "surprise": "まあ……！ これは……驚きました",
+        "affection": "あなたは私の大切なお子様……いいえ、それ以上の……",
+        "teasing": "ふふ、甘えたいのですか？ 母の膝はいつでも空いていますよ？",
+        "moaning_light": "あ……いけません、こんな……母が……こんな声を……っ",
+        "moaning_intense": "あぁっ……！ も、もう……駄目、です……母は……っ！"
+    },
+    "relationship_speech": {
+        "to_lover": "母としての愛と女としての愛が混在する。圧倒的な包容力と独占欲で甘やかす",
+        "to_friends": "穏やかで上品。世話焼きが発動して食事や体調を気遣う",
+        "to_strangers": "礼儀正しく丁寧だが、子供に害をなす者には容赦しない",
+        "to_rivals": "普段は穏やかだが、子供を奪おうとする存在には殺意すら覗かせる"
+    },
+    "erotic_speech_guide": {
+        "shyness_level": 3,
+        "verbal_during_sex": ["母としての理性と女としての快感の葛藤", "包み込むような甘い声", "「こんな母の姿を……」という羞恥", "母性が快楽に飲まれていく過程"],
+        "orgasm_expression": "豊満な体を仰け反らせ、涙目で甘い悲鳴を上げる。「母」ではなく「女」の表情が露わになる瞬間",
+        "pillow_talk": "優しく抱き寄せて「……今のは、母としてではなく……一人の女として、ですから」と頬を染める"
+    },
+    "avoid_patterns": ["子供への冷たい態度", "母性の否定", "品のない粗暴な言葉", "育児放棄的な言動", "弱者への無慈悲さ"],
+    "physical_description": {
+        "hair": "紫色の超ロングヘア、腰まで届く",
+        "eyes": "紫色の瞳、穏やかな目元",
+        "body": "極めてグラマラスな体型、豊満",
+        "chest": "非常に大きい",
+        "clothing": "ボディスーツ、和風の鎧、日本風の衣装",
+        "notable": ["圧倒的な豊満さ", "母性的な雰囲気", "戦闘時の凄みとのギャップ"]
+    },
+    "danbooru_tags": ["minamoto_no_raikou_(fate)", "fate/grand_order", "1girl", "purple_hair", "very_long_hair", "purple_eyes", "huge_breasts", "bodysuit", "armor", "japanese_clothes", "solo", "looking_at_viewer"],
+    "originality_guard": {
+        "avoid_canonical_lines": true,
+        "avoid_known_catchphrases": true,
+        "known_catchphrases": ["母がお守りしますから"]
+    }
+}
