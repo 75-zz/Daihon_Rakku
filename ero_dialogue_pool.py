@@ -1,4 +1,4 @@
-"""エロセリフプール v3.0: 重複置換用の大量セリフ辞書（CG集吹き出し用・1-10文字）
+"""エロセリフプール v3.0: 重複置換用の大量セリフ辞書（CG集吹き出し用）
 
 合計1265+エントリー:
   MOAN_POOL: 5 intensity × 80 = 400
@@ -498,7 +498,7 @@ SPEECH_FEMALE_POOL = {
     # embarrassed: 恥ずかしい
     "embarrassed": [
         "見ないで…",
-        "恥ずかしい…",
+        "はずかし…",
         "そこ…だめ…",
         "見ちゃだめ…",
         "やだ…見える",
@@ -856,11 +856,11 @@ THOUGHT_POOL = {
         "おかしい…",
         "頭…真っ白…",
         "嘘でしょ…",
-        "信じられない",
+        "うそ…でしょ…",
         "からだが…",
         "止まらない…",
         "変になる…",
-        "どうしよう…",
+        "どしよ…",
         "感じすぎ…",
         "こんなの初めて",
         "声…出ちゃう",
@@ -874,7 +874,7 @@ THOUGHT_POOL = {
         "知らない…",
         "嫌なのに…",
         "体が勝手に…",
-        "考えられない",
+        "なにも…わかんない",
         "ぐちゃぐちゃ",
         "溶ける…",
         "力が…抜ける",
@@ -889,16 +889,16 @@ THOUGHT_POOL = {
         "聞こえてる…",
         "目が…回る…",
         "熱い…中が…",
-        "ずっと震えてる",
+        "ふるえ…てる",
         "思考が…飛ぶ",
         "深い…奥まで",
         "指先が痺れて",
         "心臓…早い…",
         "声が…勝手に",
-        "体温が…上がる",
+        "あつい…からだ",
         "頭がくらくら",
         "背中がぞくっ",
-        "現実じゃない",
+        "うそ…これ…",
         "呼吸が…乱れ",
         "限界…近い…",
     ],
@@ -966,7 +966,7 @@ THOUGHT_POOL = {
         "嬉しい…",
         "あったかい…",
         "繋がってる…",
-        "離れたくない",
+        "いかないで…",
         "愛してる…",
         "もっと近くに",
         "夢みたい…",
@@ -1018,7 +1018,7 @@ THOUGHT_POOL = {
         "もっと欲しい",
         "堕ちてく…",
         "快楽に…負けた",
-        "もう抗えない",
+        "もう…だめ…",
         "頭おかしく…",
         "体が…求めてる",
         "欲しくて…",
@@ -1316,7 +1316,7 @@ AFTERMATH_POOL = {
     "female": [
         "もう…むり", "動けない…", "ぼーっと…", "からだ重い…", "震えてる…",
         "夢みたい…", "ごめん…", "なにこれ…", "頭まっしろ", "力入んない",
-        "息できない", "涙が…", "どうしよう", "戻れない…", "ふわふわ…",
+        "息できない", "涙が…", "どしよ…", "戻れない…", "ふわふわ…",
         "全身痺れて", "立てない…", "声出ない…", "意識が…", "熱い…",
         "汗すごい…", "まだ震えて", "ぐったり…", "目が回る", "指先痺れ",
     ],
@@ -1369,20 +1369,31 @@ def get_moan_pool(intensity: int) -> list:
 
 def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3) -> list:
     """タイプとテーマに応じたセリフプールを返す"""
+    theme_lower = theme.lower() if theme else ""
+    is_forced = any(k in theme_lower for k in ["forced", "陵辱", "レイプ", "reluctant", "暴行", "強制"])
+
     if bubble_type == "thought":
-        theme_lower = theme.lower() if theme else ""
         if "ntr" in theme_lower or "寝取" in theme:
             return THOUGHT_POOL["ntr"]
+        elif is_forced:
+            return THOUGHT_POOL["reluctant"]
         elif "純愛" in theme or "vanilla" in theme_lower:
             return THOUGHT_POOL["vanilla"]
-        elif "堕落" in theme or "催眠" in theme or "調教" in theme:
+        elif "堕落" in theme or "催眠" in theme or "調教" in theme or "corruption" in theme_lower:
             return THOUGHT_POOL["corruption"]
         elif "嫌" in theme or "無理" in theme or "抵抗" in theme:
             return THOUGHT_POOL["reluctant"]
         return THOUGHT_POOL["general"]
     elif bubble_type == "speech":
-        # intensity連動で適切なカテゴリを選択
         pool = []
+        if is_forced:
+            # 暴行/強制テーマ: 合意セリフ(acceptance/ecstasy)は使わない
+            pool.extend(SPEECH_FEMALE_POOL.get("denial", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("embarrassed", []))
+            if intensity >= 4:
+                pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
+            return pool if pool else [v for sp in SPEECH_FEMALE_POOL.values() for v in sp]
+        # 通常テーマ: intensity連動で適切なカテゴリを選択
         if intensity <= 2:
             pool.extend(SPEECH_FEMALE_POOL.get("denial", []))
             pool.extend(SPEECH_FEMALE_POOL.get("embarrassed", []))

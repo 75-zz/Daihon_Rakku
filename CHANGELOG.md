@@ -1,5 +1,135 @@
 # Changelog
 
+## [3.4.0] - 2026-02-14
+
+### Added (コスト最適化 + 529耐障害性 + 品質自動修正強化)
+
+#### 529 Overloadedエラー耐障害性
+- **Sonnet自動フォールバック**: Haiku 4.5が529エラー3回連続→自動でSonnetに切替（シーン欠落防止）
+- **段階的リトライ**: MAX_RETRIES_OVERLOADED=6、待機時間15→30→45→60秒の段階的増加
+- **グローバルクールダウン**: シーンループレベルで529検出時60秒待機→再リトライ1回
+- 旧動作: 529×3回→シーン欠落（12分浪費）→ 新動作: 529×3回→Sonnet即座切替（5秒）
+
+#### 入力トークン削減
+- **story_so_far 3層スライディングウィンドウ**: 直近3シーン=フル / 4-8前=圧縮 / 9+前=1行概要
+  - S30時点: 4,750→2,095トークン（-56%）
+- **outline_roadmap近傍圧縮**: 全N行→現在シーン±5行のみ送信（-63%）
+  - 30シーン合計: 100,050→54,630トークン（-45.4%）
+
+#### 品質自動修正強化
+- **体位分布リバランス** (`enhance_sd_prompts` Step 8): spread_legs等40%超過→30%以下に自動削減
+- **description具体化修正** (`auto_fix_script` Step 16): intensity≥4で抽象description→具体表現自動追加（8パターン/intensity）
+- **story_flow重複修正** (`auto_fix_script` Step 14): 先頭20字一致→接続詞変換（10パターン）
+- **speech重複修正** (`auto_fix_script` Step 15): 同一セリフ→末尾バリエーション付加（4パターン）
+- **description重複修正** (`auto_fix_script` Step 12): 先頭30字一致→intensity別挿入文（8パターン×5段階+4段階フォールバック）
+
+### Changed
+
+#### モデルルーティング最適化（2-tier化）
+- **シーン生成**: 全intensity→Haiku 4.5（Haiku 3はキャラ名化け "ボアため" 等のため除外）
+- **アウトライン≤12シーン**: haiku_fast→Haiku 4.5（品質確保）、max_tokens 4096→8192
+- **haiku_fast残留**: compact_context / synopsis のみ（テキスト要約専用）
+- **Haikuモデル更新**: claude-3-haiku-20240307 → claude-haiku-4-5-20251001
+
+#### コスト表示修正
+- model_typeラベル: "fast"→"Haiku(4.5)"に修正（実際のモデルと一致）
+- estimate_cost: 2-tier計算に簡略化（haiku_fast=圧縮/あらすじ、haiku=その他全て）
+- コスト表示: "fast×N + Haiku4.5×M + Sonnet×K"→"Haiku4.5×M + Sonnet×K"
+
+#### テーマ検出拡張（5テーマ対応）
+- NTRのみ→ ntr / forced / corruption / reluctant / vanilla の5テーマ自動検出
+- forced/reluctantテーマ: 合意セリフ（"もっと♡"等）を抑制、denial/embarrassedプールから選択
+
+### Performance
+- 品質スコア: 平均91.3/100（90点以上 24/35件）
+- description抽象的: 69件→12件（-83%）
+- 体位分布偏り: 9件→0件（完全解消）
+- 30シーン推定コスト: ~$0.66→~$0.61（-7.5%）
+
+---
+
+## [3.3.0] - 2026-02-14
+
+### Added (台本精度100点改善)
+
+#### 体位重複防止システム
+- **POSITION_TAGS**(34個): SD体位タグの完全リスト
+- **POSITION_FALLBACKS**(18体位): 各体位の代替候補3つ
+- **intensity別優先度**: 高intensityでは激しい体位を優先選択
+- `validate_script`: 連続同一体位検出
+- `enhance_sd_prompts`: 前シーンと同一体位→自動代替置換
+
+#### セリフ自動修正拡張
+- **_UNNATURAL_REPLACEMENTS**(53パターン): 不自然表現→自然な話し言葉変換
+- **_MALE_SPEECH_REPLACEMENTS**(6パターン): 男性セリフの♡除去・moan→speech変換
+- **_HIRAGANA_MAP**(16パターン): 漢字表現→ひらがな変換
+- `validate_script`: 不自然表現/医学用語/過剰敬語チェック3種追加
+
+#### 複合テーマ・性格対応
+- **_detect_personality_type**: 9タイプ（ツンデレ/ヤンデレ/クーデレ等）自動判定
+- **_select_serihu_skill**: 性格優先→テーマフォールバック、複合テーマ(+区切り)対応
+- 混合比率による段階的スキル選択
+
+#### 設定スタイル拡張
+- **SETTING_STYLES** 3→9スタイル: school/urban/hot_spring/beach/sci_fi追加
+- **_loc_map** 25→108エントリー（場所名→背景タグ変換）
+- **bg_tags+_bg_kw** 86エントリー同期
+
+#### その他
+- 濁点喘ぎ正規化: ゛゜結合濁点を除去して類似判定精度向上
+- description具体性チェック: _CONCRETE_DESC_KW(40+キーワード)
+- 3連続同一location自動修正: _fix_consecutive_locations(8種variation)
+- dialogue→bubbles自動変換: validate_script+auto_fix_scriptで旧フォーマット完全対応
+- 吹き出し数上限トリミング: 4個超→moan>thought>speech優先で4個に削減
+
+### Changed
+- ero_dialogue_pool.py: 不自然表現プール矛盾7エントリー修正
+- story_so_farスライディングウィンドウ: 直近2=フル/3-5=圧縮/6+=1行概要
+
+---
+
+## [3.2.0] - 2026-02-14
+
+### Added (スキーマバリデーション + エクスポート拡充)
+
+#### スキーマバリデーション (`schema_validator.py`)
+- パイプライン全フェーズの構造検証（純Python/外部依存なし）
+- validate_context / validate_outline / validate_scene / validate_results / validate_pipeline_output
+- gui.pyの7箇所に統合（parse直後+フェーズ完了時）、警告のみ・処理ブロックなし
+
+#### エクスポート3新形式
+- **SDプロンプト一括TXT**: 全シーンのsd_promptを1ファイルに出力
+- **セリフ一覧TXT**: 全吹き出しテキストを話者/種類別に出力
+- **マークダウン脚本**: 読みやすいMarkdown形式で脚本全体を出力
+
+#### ExportDialogクラス
+- M3デザイン、6形式複数選択+JSONインポート機能
+- export_json メタデータ拡充: version/concept/theme/characters/cost/quality_score/synopsis
+- 生成完了時にCSV/JSON/Excel/SDプロンプト/セリフ一覧の5形式を自動同時出力
+
+### Changed
+- generate_pipeline()戻り値拡張: results, cost_tracker, pipeline_metadata
+- 「再エクスポート」ボタン追加（生成完了後に有効化）
+
+#### チャンク分割リッチアウトライン生成
+- **_generate_outline_chunk()新関数**: 13シーン以上を10シーンずつチャンク生成
+- 常にフル12フィールド形式（scene_id/title/intensity/location/situation/goal/emotional_arc/beats/story_flow/erotic_level/viewer_hook/time）
+- 前チャンク結果を次チャンクに伝搬して一貫性確保
+- 旧: >12シーンで5フィールドのみ→物語崩壊 → 新: 常にフル形式
+
+#### ストーリーロードマップ注入
+- outline_roadmap: 全シーンの概要を★マーク付きで各シーン生成に渡す
+- LLMが「シーンNが全体のどこに位置するか」を把握可能に
+
+#### アウトラインフィールド明示抽出
+- JSON dump→構造化フォーマット（goal/situation/emotional_arc/beats/story_flow等を明示的に展開）
+- LLMの指示追従率向上
+
+#### キャラ名切り詰め修正
+- 11文字超のキャラ名が途中で切れる問題→auto_fixでフルネーム自動復元
+
+---
+
 ## [3.1.0] - 2026-02-13
 
 ### Added (セリフ自然さ大幅強化 + エロセリフプール + 文脈認識重複除去)
