@@ -266,7 +266,11 @@ THEME_GUIDES = {
         "dialogue_tone": "罪悪感と快感の葛藤、比較表現、堕ちていく過程",
         "use_heart": False,  # ♡は使わない
         "sd_tags": "netorare, cheating, corruption, guilt, unfaithful, stolen",
-        "sd_expressions": "conflicted, guilty_pleasure, ahegao, mindbreak"
+        "sd_expressions": "conflicted, guilty_pleasure, ahegao, mindbreak",
+        # NTR谷あり型: 一度落ちてから再上昇。中盤で罪悪感の谷を作る
+        "intensity_curve": "valley",  # 1→3→2→4→5→4
+        "foreplay_ratio": 0.25,  # 前戯25%（心理描写重視）
+        "intro_ratio": 0.08,  # 導入8%（日常→接近）
     },
     "humiliation": {
         "name": "凌辱・屈辱",
@@ -281,7 +285,10 @@ THEME_GUIDES = {
         "dialogue_tone": "抵抗、懇願、屈辱感、やがて快感を認める",
         "use_heart": False,
         "sd_tags": "humiliation, forced, reluctant, crying, tears",
-        "sd_expressions": "crying, fearful, reluctant, trembling, broken"
+        "sd_expressions": "crying, fearful, reluctant, trembling, broken",
+        "intensity_curve": "ascending",  # 1→2→3→4→5（右肩上がり）
+        "foreplay_ratio": 0.15,
+        "intro_ratio": 0.05,  # 導入最小（即行為開始）
     },
     "forced": {
         "name": "強制・無理やり",
@@ -296,7 +303,10 @@ THEME_GUIDES = {
         "dialogue_tone": "懇願、抵抗、絶望、諦め",
         "use_heart": False,
         "sd_tags": "forced, rape, struggling, restrained, pinned_down",
-        "sd_expressions": "crying, screaming, fearful, defeated"
+        "sd_expressions": "crying, screaming, fearful, defeated",
+        "intensity_curve": "ascending",
+        "foreplay_ratio": 0.10,  # 前戯短め（強制的に進行）
+        "intro_ratio": 0.05,
     },
     "love": {
         "name": "純愛・ラブラブ",
@@ -311,7 +321,10 @@ THEME_GUIDES = {
         "dialogue_tone": "甘い、恥ずかしがり、愛情たっぷり",
         "use_heart": True,  # ♡OK
         "sd_tags": "romantic, loving, gentle, passionate, consensual",
-        "sd_expressions": "blushing, happy, loving, content, peaceful"
+        "sd_expressions": "blushing, happy, loving, content, peaceful",
+        "intensity_curve": "wave",  # 焦らし+感情描写の波型
+        "foreplay_ratio": 0.30,  # 前戯30%（丁寧に描写）
+        "intro_ratio": 0.10,
     },
     "vanilla": {
         "name": "和姦・合意",
@@ -325,7 +338,10 @@ THEME_GUIDES = {
         "dialogue_tone": "自然、楽しそう、気持ちいい",
         "use_heart": True,
         "sd_tags": "consensual, enjoying, willing, happy_sex",
-        "sd_expressions": "happy, enjoying, moaning, satisfied"
+        "sd_expressions": "happy, enjoying, moaning, satisfied",
+        "intensity_curve": "ascending",
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.08,
     },
     "corruption": {
         "name": "堕ち・調教",
@@ -340,7 +356,11 @@ THEME_GUIDES = {
         "dialogue_tone": "戸惑いから快楽への変化、堕ちていく過程",
         "use_heart": False,
         "sd_tags": "corruption, training, breaking, mindbreak",
-        "sd_expressions": "confused, awakening, addicted, broken, ahegao"
+        "sd_expressions": "confused, awakening, addicted, broken, ahegao",
+        # 調教型: 段階的にエスカレート、最後に完堕ち
+        "intensity_curve": "staircase",  # 1→2→3→3→4→4→5
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.08,
     },
     "chikan": {
         "name": "痴漢・公共",
@@ -355,7 +375,10 @@ THEME_GUIDES = {
         "dialogue_tone": "小声、我慢、羞恥",
         "use_heart": False,
         "sd_tags": "chikan, groping, public, train, crowded, molested",
-        "sd_expressions": "embarrassed, trying_not_to_moan, biting_lip, conflicted"
+        "sd_expressions": "embarrassed, trying_not_to_moan, biting_lip, conflicted",
+        "intensity_curve": "ascending",
+        "foreplay_ratio": 0.10,  # 前戯短め（触られて即感じる）
+        "intro_ratio": 0.05,
     },
     "office": {
         "name": "上司・OL",
@@ -370,7 +393,10 @@ THEME_GUIDES = {
         "dialogue_tone": "敬語混じり、緊張、背徳感",
         "use_heart": False,
         "sd_tags": "office, office_lady, suit, desk, workplace, secret",
-        "sd_expressions": "nervous, secretive, professional_facade"
+        "sd_expressions": "nervous, secretive, professional_facade",
+        "intensity_curve": "valley",  # 緊張→行為→中断リスク→再開
+        "foreplay_ratio": 0.25,
+        "intro_ratio": 0.10,
     },
     "teacher_student": {
         "name": "先生・生徒",
@@ -385,7 +411,10 @@ THEME_GUIDES = {
         "dialogue_tone": "敬語と砕けた表現の混在、禁断感",
         "use_heart": False,
         "sd_tags": "teacher, student, classroom, forbidden, taboo",
-        "sd_expressions": "nervous, forbidden_pleasure, secretive"
+        "sd_expressions": "nervous, forbidden_pleasure, secretive",
+        "intensity_curve": "valley",  # 禁断→一線→罪悪感→再犯
+        "foreplay_ratio": 0.25,
+        "intro_ratio": 0.10,
     },
     "maid": {
         "name": "メイド・ご主人様",
@@ -400,7 +429,10 @@ THEME_GUIDES = {
         "dialogue_tone": "丁寧語、奉仕精神、従順",
         "use_heart": True,
         "sd_tags": "maid, maid_uniform, master, servant, obedient",
-        "sd_expressions": "devoted, obedient, eager_to_please"
+        "sd_expressions": "devoted, obedient, eager_to_please",
+        "intensity_curve": "staircase",  # 奉仕→命令→特別奉仕の段階
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.08,
     },
     "hypnosis": {
         "name": "催眠・洗脳",
@@ -416,7 +448,11 @@ THEME_GUIDES = {
         "dialogue_tone": "ぼんやりした口調、命令への無抵抗、覚醒時の混乱と羞恥",
         "use_heart": False,
         "sd_tags": "hypnosis, mind_control, blank_eyes, spiral_eyes, trance",
-        "sd_expressions": "empty_eyes, dazed, vacant, drooling, mindless, confused"
+        "sd_expressions": "empty_eyes, dazed, vacant, drooling, mindless, confused",
+        # 催眠型: 段階的に深化、覚醒で一時ダウン→再度堕ちる
+        "intensity_curve": "valley",
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.08,
     },
     "monster": {
         "name": "異種姦・モンスター",
@@ -432,7 +468,10 @@ THEME_GUIDES = {
         "dialogue_tone": "恐怖と驚き、徐々に快感に変わる声、人間離れした行為への反応",
         "use_heart": False,
         "sd_tags": "monster, tentacles, interspecies, creature, non-human",
-        "sd_expressions": "scared, disgusted, surprised, overwhelmed, ahegao"
+        "sd_expressions": "scared, disgusted, surprised, overwhelmed, ahegao",
+        "intensity_curve": "two_stage",  # 1体目→2体目/形態変化の2段階
+        "foreplay_ratio": 0.10,
+        "intro_ratio": 0.05,
     },
     "time_stop": {
         "name": "時間停止",
@@ -448,7 +487,10 @@ THEME_GUIDES = {
         "dialogue_tone": "停止中は無言（ナレーション中心）、解除後は混乱と気づきの描写",
         "use_heart": False,
         "sd_tags": "time_stop, frozen, mannequin_pose, unconscious, sleeping",
-        "sd_expressions": "frozen, blank_expression, sleeping, confused, shocked"
+        "sd_expressions": "frozen, blank_expression, sleeping, confused, shocked",
+        "intensity_curve": "plateau",  # 停止中は一定intensity→解除で急変
+        "foreplay_ratio": 0.15,
+        "intro_ratio": 0.08,
     },
     "harem": {
         "name": "ハーレム",
@@ -464,7 +506,10 @@ THEME_GUIDES = {
         "dialogue_tone": "各キャラが個性的に競い合う、嫉妬と甘え、協力と競争",
         "use_heart": True,
         "sd_tags": "harem, multiple_girls, group, jealous, competitive",
-        "sd_expressions": "jealous, competitive, eager, cooperative, blush"
+        "sd_expressions": "jealous, competitive, eager, cooperative, blush",
+        "intensity_curve": "wave",  # キャラ交代時にintensity下がる波型
+        "foreplay_ratio": 0.15,
+        "intro_ratio": 0.08,
     },
     "femdom": {
         "name": "女性優位・痴女",
@@ -480,7 +525,10 @@ THEME_GUIDES = {
         "dialogue_tone": "上から目線、からかい、余裕のある態度、小悪魔的",
         "use_heart": True,
         "sd_tags": "femdom, dominatrix, female_domination, sitting_on_face, riding",
-        "sd_expressions": "smirk, confident, teasing, dominant, looking_down"
+        "sd_expressions": "smirk, confident, teasing, dominant, looking_down",
+        "intensity_curve": "staircase",  # 焦らし→ご褒美のリズム
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.08,
     },
     "incest": {
         "name": "近親相姦",
@@ -496,7 +544,10 @@ THEME_GUIDES = {
         "dialogue_tone": "普段の呼び方（お兄ちゃん、お姉ちゃん等）と背徳感、家族の呼称が興奮を増す",
         "use_heart": False,
         "sd_tags": "incest, siblings, family, forbidden_love, taboo, secret",
-        "sd_expressions": "guilty, conflicted, forbidden_pleasure, secretive"
+        "sd_expressions": "guilty, conflicted, forbidden_pleasure, secretive",
+        "intensity_curve": "valley",  # 日常→禁断→罪悪感で一旦引く→再び
+        "foreplay_ratio": 0.25,
+        "intro_ratio": 0.10,
     }
 }
 
@@ -2908,6 +2959,28 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             "sweat_drops", "sweaty_body", "sweat_glistening", "skin_glistening"],
     }
 
+    # intensity別 衣装状態エスカレーション
+    CLOTHING_ESCALATION = {
+        1: [],  # 通常衣装（変更なし）
+        2: ["clothes_pull", "skirt_lift"],
+        3: ["partially_undressed", "shirt_lift", "bra_visible",
+            "one_shoulder_exposed", "disheveled_clothes"],
+        4: ["topless", "panties_only", "torn_clothes", "clothes_around_ankles",
+            "open_shirt", "naked_shirt"],
+        5: ["completely_nude", "nude", "naked", "clothes_scattered"],
+    }
+
+    # intensity別 体液進行タグ
+    FLUID_PROGRESSION = {
+        1: [],
+        2: [],
+        3: ["light_blush", "pussy_juice", "wet"],
+        4: ["pussy_juice", "wet", "saliva", "saliva_trail",
+            "wet_skin", "sweat_stain"],
+        5: ["cum", "cum_on_body", "cum_drip", "overflow",
+            "dripping", "saliva_trail", "wet_skin"],
+    }
+
     _prev_scene_positions = set()  # 前シーンの体位タグ（重複防止用）
 
     for scene in results:
@@ -3097,6 +3170,31 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 if et not in existing_lower:
                     tags.append(et)
                     existing_lower.add(et)
+
+        # 4.7. intensity別 衣装状態タグ自動注入
+        _clothing_tags = CLOTHING_ESCALATION.get(min(intensity, 5), [])
+        if _clothing_tags:
+            existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
+            # intensity 5で既にnudeタグがあれば衣装タグ不要
+            _has_nude = existing_lower & {"nude", "naked", "completely_nude"}
+            if not (intensity >= 5 and _has_nude):
+                # 1タグだけ注入（過剰にならないよう）
+                for ct in _clothing_tags:
+                    if ct not in existing_lower:
+                        tags.append(ct)
+                        existing_lower.add(ct)
+                        break
+
+        # 4.8. intensity別 体液進行タグ自動注入
+        _fluid_tags = FLUID_PROGRESSION.get(min(intensity, 5), [])
+        if _fluid_tags:
+            existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
+            _injected_fluid = 0
+            for ft in _fluid_tags:
+                if ft not in existing_lower and _injected_fluid < 2:
+                    tags.append(ft)
+                    existing_lower.add(ft)
+                    _injected_fluid += 1
 
         # 5. 設定スタイル適用（タグ置換・禁止・追加）
         if setting_style:
@@ -4541,6 +4639,48 @@ JSON配列のみ出力。"""
     return chunk
 
 
+def _get_intensity_curve_instruction(theme_guide: dict) -> str:
+    """テーマのintensity curveに応じたプロンプト指示を生成"""
+    curve = theme_guide.get("intensity_curve", "ascending")
+    if curve == "valley":
+        return (
+            "\n## intensity展開パターン: 谷あり型（このテーマ特有）\n"
+            "このテーマでは中盤に「intensity が一時低下する谷」を作ること。\n"
+            "例: 1→2→3→4→**3**→4→5→5→4（中盤で心理的葛藤・罪悪感・中断リスクにより一旦引く）\n"
+            "谷の部分では心理描写を重視し、再上昇時により激しいエスカレーションにすること。"
+        )
+    elif curve == "staircase":
+        return (
+            "\n## intensity展開パターン: 階段型（段階的深化）\n"
+            "このテーマでは同じintensityを2シーン連続で使ってから次の段階に上げること。\n"
+            "例: 1→2→3→3→4→4→5→5→4（各段階を定着させてから次へ）\n"
+            "調教/堕落の「慣れ→次のステップ」を表現する。"
+        )
+    elif curve == "wave":
+        return (
+            "\n## intensity展開パターン: 波型（緩急リズム）\n"
+            "このテーマでは「上がって少し下がる」を繰り返し、波のようにエスカレートさせること。\n"
+            "例: 1→3→2→4→3→4→3→5→5→4（焦らしを入れながら段階的に上げる）\n"
+            "「Slow,slow,quick,slow」のダンスリズムで、焦らしの後は必ず前より強いintensityにすること。"
+        )
+    elif curve == "two_stage":
+        return (
+            "\n## intensity展開パターン: 2段ロケット型（クライマックス2回）\n"
+            "このテーマでは1回目のクライマックスの後にintensityを落とし、2回目の山を作ること。\n"
+            "例: 1→2→3→4→5→3→4→4→5→4（1回目絶頂→リセット→2回目はより激しく）\n"
+            "2回目は1回目を超える激しさで、新しい体位・行為を導入すること。"
+        )
+    elif curve == "plateau":
+        return (
+            "\n## intensity展開パターン: 高原型（intensity 4を長く維持）\n"
+            "このテーマではintensity 4の状態を長く維持し、最後に一気にクライマックスへ。\n"
+            "例: 1→2→3→4→4→4→4→4→5→4（じわじわ快感を蓄積し最後に爆発）\n"
+            "高原部分では体位・アングルの変化で単調さを防ぐこと。"
+        )
+    # ascending（デフォルト）
+    return ""
+
+
 def generate_outline(
     client: anthropic.Anthropic,
     context: dict,
@@ -4564,10 +4704,13 @@ def generate_outline(
     chars = context.get("chars", [])
     char_names = [c["name"] for c in chars] if chars else ["ヒロイン"]
 
-    # シーン配分計算（ユーザー設定 or デフォルト）
+    # シーン配分計算（テーマ別ratio → ユーザー設定 → デフォルト）
+    # テーマ別ratioがある場合はそれを優先
+    theme_intro = theme_guide.get("intro_ratio", 0.08)
+    theme_foreplay = theme_guide.get("foreplay_ratio", 0.20)
     if story_structure is None:
-        story_structure = {"prologue": 10, "main": 80, "epilogue": 10}
-    prologue_pct = story_structure.get("prologue", 10) / 100
+        story_structure = {"prologue": round(theme_intro * 100), "main": 80, "epilogue": 10}
+    prologue_pct = story_structure.get("prologue", round(theme_intro * 100)) / 100
     epilogue_pct = story_structure.get("epilogue", 10) / 100
 
     act1 = max(1, round(num_scenes * prologue_pct))       # プロローグ
@@ -4577,8 +4720,8 @@ def generate_outline(
         main_scenes = 2
         act1 = max(1, num_scenes - main_scenes - 1)
         act4 = num_scenes - act1 - main_scenes
-    act2 = max(1, round(main_scenes * 0.25))               # 前戯（本編の25%）
-    act3 = main_scenes - act2                              # 本番（本編の75%）
+    act2 = max(1, round(main_scenes * theme_foreplay))     # 前戯（テーマ別比率）
+    act3 = main_scenes - act2                              # 本番（残り）
 
     elements_str = chr(10).join(f'・{e}' for e in story_elements) if story_elements else "・特になし"
 
@@ -4622,6 +4765,7 @@ def generate_outline(
 - 第3幕・本番: {act3}シーン → intensity 4（基本）と5（クライマックスのみ最大2シーン）。必ず4→4→5→5→4のように段階をつけること
 - 第4幕・余韻: {act4}シーン → intensity 3-4（事後・余韻。エロの余韻を残す）
 ※ FANZA CG集は読者がエロを求めて購入する。導入は短く、エロシーンを手厚く。
+{_get_intensity_curve_instruction(theme_guide)}
 
 {output_format_section}
 

@@ -1,10 +1,11 @@
-"""エロセリフプール v3.5: 重複置換用の大量セリフ辞書（CG集吹き出し用）
+"""エロセリフプール v3.7: 重複置換用の大量セリフ辞書（CG集吹き出し用）
 
-合計1415+エントリー:
-  MOAN_POOL: 5 intensity × 80 = 400
-  SPEECH_FEMALE_POOL: 8 categories = 370
-  THOUGHT_POOL: 5 categories + forced = 340
-  SPEECH_MALE_POOL: 4 categories = 155
+合計1840+エントリー:
+  MOAN_POOL: 5 intensity × 80 = 400（んほぉ/おほぉ/あへぇ系強化）
+  SPEECH_FEMALE_POOL: 10 categories = 455（+insertion 30 +beg 25）
+  THOUGHT_POOL: 9 categories = 455（+body_awareness 20 +contradiction 15 +self_surprise 20）
+  SPEECH_MALE_POOL: 5 categories = 185（+climax 30）
+  ONOMATOPOEIA_POOL: 9 categories = 200+（行為別×intensity連動）
   NEUTRAL_POOL: 2 categories = 50 (非エロシーン用)
   AFTERMATH_POOL: 2 categories = 50 (事後シーン用)
   MALE_SHORT_REPLACEMENTS: 男性セリフ短縮辞書 = 50+
@@ -61,9 +62,9 @@ MOAN_POOL = {
         "はひっ…",
         "ひくっ…",
         "んんっ…",
-        "ふひっ…",
-        "くぅん…",
-        "うくっ…",
+        "すぅ…",
+        "ん…っ",
+        "はっ…っ",
         "はふっ…",
         "ひはっ…",
         "んくぅ…",
@@ -80,12 +81,12 @@ MOAN_POOL = {
         "んぅっ…",
         "はぁっ…",
         "ふぁっ…",
-        "くひっ…",
-        "うぁ…",
-        "ひはぁ…",
+        "ふぅ…っ",
+        "あ…っ",
+        "んっ…っ",
         "んふぅ…",
         "はんぅ…",
-        "ふひぁ…",
+        "はぁ…っ",
         "くぁ…",
         "うひっ…",
         "ぅくっ…",
@@ -145,16 +146,16 @@ MOAN_POOL = {
         "んくあっ…",
         "あんぅ…♡",
         "はふあ…",
-        "くんあっ♡",
+        "あぁ…♡",
         "ふやぁ…♡",
-        "ひふっ…",
+        "んぅっ…♡",
         "やあぁ…♡",
         "あはぁ…♡",
         "んひゃっ♡",
         "はやぁ…",
-        "ふんあっ…",
+        "はぅ…♡",
         "あぅっ♡",
-        "くひゃ…",
+        "ひぁ…♡",
         "ひあんっ♡",
         "やくっ…♡",
         "んあんっ…",
@@ -162,7 +163,7 @@ MOAN_POOL = {
         "あやぁ…♡",
         "ふくあっ…",
         "ひやぁ…",
-        "やんあっ♡",
+        "やぁ…っ♡",
         "あんはっ♡",
         "くふあっ♡",
         "んやぁ…♡",
@@ -173,7 +174,7 @@ MOAN_POOL = {
         "やはっ…",
         "んあはっ…",
         "くやぁ…♡",
-        "はんあ…♡",
+        "んぁっ…♡",
         "あひゃ…♡",
         "ふやんっ♡",
         "ひくっ…♡",
@@ -218,11 +219,11 @@ MOAN_POOL = {
         "はあんっ♡♡",
         "あぁんっ♡♡",
         "ふひぁっ♡♡",
-        "ひんあっ♡♡",
+        "あへぅっ♡♡",
         "やあんっ♡♡",
         "んやぁっ♡♡",
         "あはぁっ♡♡",
-        "くんあっ♡♡",
+        "んほぅ…♡♡",
         "はふぁっ♡♡",
         "ふやぁっ♡♡",
         "ひあぁっ♡♡",
@@ -246,21 +247,21 @@ MOAN_POOL = {
         "あふぅっ♡♡",
         "はひゃっ♡♡",
         "くふあっ♡♡",
-        "ふんはっ♡♡",
+        "おほっ…♡♡",
         "ひやんっ♡♡",
-        "あんくっ♡♡",
+        "あへっ…♡♡",
         "やひゃっ♡♡",
         "んくあっ♡♡",
         "はあひっ♡♡",
         "あひゃっ♡♡",
-        "くんはっ♡♡",
+        "んほぅっ♡♡",
         "ふあひっ♡♡",
-        "ひくあっ♡♡",
+        "おほぅっ♡♡",
         "やんはっ♡♡",
         "んあやっ♡♡",
         "はんあっ♡♡",
         "あぁふっ♡♡",
-        "くひあっ♡♡",
+        "んほっ…♡♡",
         "ふやんっ♡♡",
         "ひあんっ♡♡",
         "やぁふっ♡♡",
@@ -275,17 +276,17 @@ MOAN_POOL = {
         "ひぎぃっ♡♡",
         "ん゛っ♡♡",
         "あ゛っ♡♡",
-        "ぐぅっ♡♡",
+        "んほぉっ♡♡",
         "お゛ぉっ♡♡",
         "ひぎっ♡♡",
         "あ゛ぁっ♡♡",
         "ん゛んっ♡♡",
-        "ぐっ♡♡",
+        "んほっ♡♡",
         "お゛ほっ♡♡",
         "ひぎぃ♡♡",
         "あ゛はっ♡♡",
         "ん゛ぁっ♡♡",
-        "ぐぅぅっ♡♡",
+        "んほぉぉ♡♡",
         "お゛あっ♡♡",
         "ひぎぃん♡♡",
         "あ゛んっ♡♡",
@@ -300,12 +301,12 @@ MOAN_POOL = {
         "ひぎあっ♡♡",
         "あ゛あぁっ♡♡",
         "ん゛くっ♡♡",
-        "ぐうっ♡♡",
+        "おほぉっ♡♡",
         "お゛ひぃ♡♡",
         "ひぎぃぃ♡♡",
         "あ゛ひっ♡♡",
         "ん゛あっ♡♡",
-        "ぐぅんっ♡♡",
+        "おほっ♡♡",
         "お゛ぉぉ♡♡",
         "ひぎゅっ♡♡",
         "あ゛ふっ♡♡",
@@ -315,22 +316,22 @@ MOAN_POOL = {
         "ひぎんっ♡♡",
         "あ゛あんっ♡♡",
         "ん゛ひっ♡♡",
-        "ぐぅあっ♡♡",
+        "あへぇっ♡♡",
         "お゛はっ♡♡",
         "ひぎはっ♡♡",
         "あ゛ぁぁ♡♡",
         "ん゛ぅんっ♡♡",
-        "ぐふっ♡♡",
+        "あへっ♡♡",
         "お゛んっ♡♡",
         "ひぎふっ♡♡",
         "あ゛おっ♡♡",
         "ん゛やっ♡♡",
-        "ぐはっ♡♡",
+        "あへぇぇ♡♡",
         "お゛ぁっ♡♡",
         "ひぎぁっ♡♡",
         "あ゛やっ♡♡",
         "ん゛ぁぁっ♡♡",
-        "ぐんっ♡♡",
+        "んほぉんっ♡♡",
         "お゛ふっ♡♡",
         "ひぎくっ♡♡",
         "あ゛くっ♡♡",
@@ -349,79 +350,79 @@ MOAN_POOL = {
         "あ゛あ゛あ゛っ♡♡",
         "お゛ほぉっ♡♡♡",
         "ひぎぃぃっ♡♡♡",
-        "ぐぅ゛っ♡♡♡",
+        "んほぉっ♡♡♡",
         "い゛っ♡♡♡",
         "あ゛あ゛っ♡♡♡",
         "お゛ほっ♡♡♡",
         "いぐっ♡♡♡",
         "ひぎぃぁっ♡♡♡",
-        "ぐぅ゛ぅっ♡♡♡",
+        "んほぉぉっ♡♡♡",
         "い゛ぐっ♡♡♡",
         "あ゛あ゛ぁっ♡♡♡",
         "お゛ほぉぉ♡♡♡",
         "ひぎぃんっ♡♡♡",
         "いぐぅぅっ♡♡♡",
-        "ぐぅ゛あっ♡♡♡",
+        "おほぉぉっ♡♡♡",
         "い゛い゛っ♡♡♡",
         "あ゛あ゛んっ♡♡♡",
         "お゛ほぅっ♡♡♡",
         "ひぎゃあっ♡♡♡",
         "いぐんっ♡♡♡",
-        "ぐぅ゛ぅぅ♡♡♡",
+        "あへぇっ♡♡♡",
         "い゛くっ♡♡♡",
         "あ゛あ゛はっ♡♡♡",
         "お゛ほぉんっ♡♡♡",
         "ひぎぃぃぃ♡♡♡",
         "いぐぅんっ♡♡♡",
-        "ぐぅ゛んっ♡♡♡",
+        "あへぇぇっ♡♡♡",
         "い゛ぃっ♡♡♡",
         "あ゛あ゛ふっ♡♡♡",
         "お゛ほぁっ♡♡♡",
         "ひぎゅぅっ♡♡♡",
         "いぐあっ♡♡♡",
-        "ぐぅ゛はっ♡♡♡",
+        "んほぉぉぉ♡♡♡",
         "い゛あっ♡♡♡",
         "あ゛あ゛ぅっ♡♡♡",
         "お゛ほひっ♡♡♡",
         "ひぎあぁっ♡♡♡",
         "いぐひっ♡♡♡",
-        "ぐぅ゛ひっ♡♡♡",
+        "おほぉんっ♡♡♡",
         "い゛ぁっ♡♡♡",
         "あ゛あ゛くっ♡♡♡",
         "お゛ほぉぁ♡♡♡",
         "ひぎふぅっ♡♡♡",
         "いぐふっ♡♡♡",
-        "ぐぅ゛ふっ♡♡♡",
+        "あへぇんっ♡♡♡",
         "い゛んっ♡♡♡",
         "あ゛あ゛おっ♡♡♡",
         "お゛ほぉっん♡♡♡",
         "ひぎぃはっ♡♡♡",
         "いぐぅはっ♡♡♡",
-        "ぐぅ゛おっ♡♡♡",
+        "んほっ♡♡♡",
         "い゛ひっ♡♡♡",
         "あ゛あ゛ひっ♡♡♡",
         "お゛ほぅぅ♡♡♡",
         "ひぎぃくっ♡♡♡",
         "いぐぅぁっ♡♡♡",
-        "ぐぅ゛ぁっ♡♡♡",
+        "おほっ♡♡♡",
         "い゛ふっ♡♡♡",
         "あ゛あ゛やっ♡♡♡",
         "お゛ほくっ♡♡♡",
         "ひぎぃおっ♡♡♡",
         "いぐやっ♡♡♡",
-        "ぐぅ゛やっ♡♡♡",
+        "あへっ♡♡♡",
         "い゛くぅっ♡♡♡",
         "あ゛あ゛ぁぁ♡♡♡",
         "お゛ほぉはっ♡♡♡",
         "ひぎぃふっ♡♡♡",
         "いぐぅおっ♡♡♡",
-        "ぐぅ゛くっ♡♡♡",
+        "んほぉはっ♡♡♡",
         "い゛ぐぅっ♡♡♡",
         "あ゛あ゛ぐっ♡♡♡",
         "お゛ほんっ♡♡♡",
         "ひぎぃやっ♡♡♡",
         "いぐくっ♡♡♡",
-        "ぐぅ゛ぅんっ♡♡♡",
+        "おほぉはっ♡♡♡",
         "い゛はっ♡♡♡",
         "あ゛あ゛あ゛ぁ♡♡♡",
         "お゛ほぉぅっ♡♡♡",
@@ -791,6 +792,69 @@ SPEECH_FEMALE_POOL = {
         "ざーこ♡",
     ],
 
+    # insertion: 挿入リアクション（挿入の瞬間〜直後）
+    "insertion": [
+        "あ…入って…♡",
+        "おっきい…♡",
+        "きつい…♡",
+        "入った…♡♡",
+        "奥まで…♡",
+        "うそ…全部…♡",
+        "ひっ…♡",
+        "あつい…♡",
+        "広がってる…♡",
+        "いたっ…♡",
+        "んっ…♡♡",
+        "すごい…中…♡",
+        "いっぱい…♡",
+        "深い…♡♡",
+        "当たってる…♡",
+        "え…もう…♡",
+        "ゆっくり…♡",
+        "はいってく…♡",
+        "ぎゅって…♡",
+        "動かないで…♡",
+        "感じる…中…♡",
+        "きもちぃ…♡",
+        "もっと奥…♡",
+        "ぴったり…♡",
+        "あ…あ…♡♡",
+        "つながった…♡",
+        "ぬるっと…♡",
+        "ずるい…一気に",
+        "まって…大きい",
+        "中あったかい♡",
+    ],
+
+    # beg: おねだり・催促
+    "beg": [
+        "ほしい…♡",
+        "入れて…♡",
+        "もっと…♡",
+        "はやく…♡",
+        "ちょうだい♡",
+        "おねがい…♡",
+        "動いて…♡",
+        "じらさないで",
+        "中に…ほしい♡",
+        "奥まで…して♡",
+        "もっと激しく♡",
+        "止めないで…♡",
+        "はやくして…♡",
+        "触って…♡",
+        "キスして…♡",
+        "抱いて…♡",
+        "離さないで♡",
+        "ここ…して♡",
+        "もう一回…♡",
+        "ずっとして…♡",
+        "深くして…♡",
+        "強くして♡♡",
+        "お願い…もっと",
+        "中に出して♡",
+        "全部ちょうだい",
+    ],
+
     # submissive: 従順・奉仕
     "submissive": [
         "なんでもします",
@@ -915,6 +979,107 @@ THOUGHT_POOL = {
         "膝…がくがく…",
         "お腹…きゅって…",
         "つま先まで…",
+    ],
+
+    # awakening: 快感覚醒・目覚め（初体験/初感覚の新鮮な反応）
+    "awakening": [
+        "なにこれ…",
+        "知らない…感覚",
+        "こんなの初めて",
+        "体が…変…",
+        "怖い…きもちいい",
+        "なんか…へん…",
+        "もっと…欲しい…",
+        "止められない…",
+        "初めて…こんな",
+        "どうなってるの",
+        "体が勝手に…",
+        "熱い…中から…",
+        "目覚めちゃう…",
+        "スイッチ入った",
+        "もう戻れない…",
+        "知っちゃった…",
+        "こんな気持ち…",
+        "体が…震えて…",
+        "火がついた…",
+        "もっと知りたい",
+        "新しい感覚…",
+        "ぞくぞく…する",
+        "覚えちゃう…",
+        "奥が…疼く…",
+        "全身が…敏感…",
+        "理性が…溶ける",
+        "抑えられない…",
+        "体が…求めてる",
+        "頭が…ぼうっと",
+        "壊れちゃう…",
+    ],
+
+    # body_awareness: 身体感覚実況型（エロ漫画のリアルタイム体感描写）
+    "body_awareness": [
+        "奥に…当たって…",
+        "お腹の中…熱い…",
+        "中…ぎゅってなる…",
+        "腰が…勝手に…",
+        "奥が…開いてく…",
+        "全身…敏感になって…",
+        "指先まで…ビリビリ…",
+        "背骨…ゾクって…",
+        "太もも…ピクピク…",
+        "つま先…丸まって…",
+        "頭の中…ぐちゃぐちゃ…",
+        "体の奥…疼いて…",
+        "中…広がってく…",
+        "ここ…弱い…ダメ…",
+        "体温…上がって…",
+        "お腹…きゅって…",
+        "膝…がくがく…",
+        "耳…きこえない…",
+        "視界…ぼやけて…",
+        "脳みそ…とけて…",
+    ],
+
+    # contradiction: 矛盾型（口と心の乖離）
+    "contradiction": [
+        "嫌なのに…体が…",
+        "なんで気持ちいいの",
+        "こんなの嫌…でも…",
+        "ダメって言いたいのに",
+        "嫌いなのに体は…",
+        "抵抗したいのに…",
+        "頭は拒否してるのに",
+        "泣いてるのに感じて",
+        "怒ってるはずなのに",
+        "許せないのに…体が",
+        "最低…なのに止まらん",
+        "認めたくない…けど",
+        "こんな奴に…なのに",
+        "拒否してるのに腰が",
+        "声が…勝手に…嘘…",
+    ],
+
+    # self_surprise: 感じてしまう自分への驚き
+    "self_surprise": [
+        "嘘…感じてる…",
+        "なんで…こんなので",
+        "ありえない…反応して",
+        "こんなの…初めて…",
+        "自分の声…信じれない",
+        "え…なに…この感じ",
+        "嘘でしょ…体が…",
+        "おかしい…こんなはず",
+        "なんでこんなに…",
+        "私の体…どうなって",
+        "止められない…なんで",
+        "敏感すぎる…なんで",
+        "信じたくない…でも",
+        "こんなので…イきそう",
+        "体が正直すぎて…",
+        "わからない…この感覚",
+        "知らなかった…こんな",
+        "声が…出ちゃう…嘘",
+        "反応してる…嫌なのに",
+        "認めたくないけど…",
     ],
 
     # forced: 強制・暴行テーマ専用
@@ -1295,6 +1460,40 @@ SPEECH_MALE_POOL = {
         "ぎゅっとしろ",
     ],
 
+    # climax: 射精宣言・絶頂
+    "climax": [
+        "出すぞ",
+        "イケ",
+        "中に出す",
+        "もらえ",
+        "受け取れ",
+        "一緒にイケ",
+        "限界だ",
+        "出る…っ",
+        "全部出すぞ",
+        "イくぞ",
+        "奥に出す",
+        "中で出すぞ",
+        "止まんねぇ",
+        "もう出る",
+        "搾り取れ",
+        "食らえ",
+        "飲み込め",
+        "ほら出すぞ",
+        "全部受け取れ",
+        "最後まで出す",
+        "一滴も残すな",
+        "離すなよ",
+        "抜かねぇぞ",
+        "このまま出す",
+        "そのまま受けろ",
+        "奥で受け止めろ",
+        "出してやる",
+        "ほら…出るぞ",
+        "もう止められん",
+        "一緒にいくぞ",
+    ],
+
     # praise: 褒め・称賛
     "praise": [
         "最高だよ",
@@ -1379,6 +1578,92 @@ AFTERMATH_POOL = {
 
 
 # ============================================================================
+# オノマトペプール（行為別・intensity連動）
+# ============================================================================
+ONOMATOPOEIA_POOL = {
+    "insertion": {
+        "gentle": ["ずるっ", "ぬるっ", "にゅ…", "ずぷ…", "にゅるっ"],
+        "normal": ["ずぷっ", "ぬぷっ", "にゅぷ", "ずるん", "ぐぷっ"],
+        "hard":   ["ずぶっ", "ずぼっ", "ぐぷぅ", "ずぶぶ", "ぐちゅっ"],
+    },
+    "piston": {
+        "slow":    ["ずちゅ…", "ぬちゅ…", "ぐちゅ…", "にゅちゅ", "ずる…ずる…"],
+        "normal":  ["ぱんっ", "ぱちゅ", "ずちゅずちゅ", "ぬぷぬぷ", "ぐちゅぐちゅ"],
+        "fast":    ["ぱんぱんぱん", "ずちゅずちゅずちゅ", "ぱんっぱんっ", "ぐちゅんぐちゅん"],
+        "violent": ["ぱぁんぱぁん", "ずっぱんずっぱん", "ばちんばちん", "ぱんぱんぱんっ"],
+    },
+    "wet": {
+        "light":  ["くちゅ…", "ちゅ…", "とろ…", "じゅわ…"],
+        "normal": ["くちゅくちゅ", "ぐちゅ", "ぬちゃ", "とろとろ", "ぴちゃ"],
+        "heavy":  ["ぐちょぐちょ", "ぬちゃぬちゃ", "じゅぷじゅぷ", "びちゃびちゃ"],
+    },
+    "ejaculation": {
+        "normal":   ["どぷっ", "びゅるっ", "どくん", "びゅっ", "どぷん"],
+        "heavy":    ["どぴゅっ", "びゅるるっ", "どっぷどっぷ", "びゅるびゅる"],
+        "overflow": ["どぷぷぷ", "びゅるるるっ", "たぷ…たぷ…", "どばっ"],
+    },
+    "oral": {
+        "lick": ["ちゅ…", "ぺろ", "れろ…", "ちろ…", "ぺろん"],
+        "suck": ["ちゅぱっ", "じゅるる", "ちゅる…", "じゅぷっ"],
+        "deep": ["んぐっ", "ごくっ", "じゅるるる", "ぐぷっ"],
+    },
+    "body": {
+        "breast":    ["ぷるん", "たぷん", "むにゅ", "ぽよん", "もみゅ"],
+        "skin_slap": ["ぱちん", "ぱしっ", "ぺちん", "ぴしゃ"],
+        "tremble":   ["びくっ", "ぴくぴく", "ぶるっ", "がくがく", "ビクンビクン"],
+        "squeeze":   ["きゅっ", "ぎゅっ", "きゅうっ", "むぎゅ"],
+    },
+    "kiss": {
+        "light": ["ちゅっ", "ちゅ…", "んちゅ…"],
+        "deep":  ["ちゅぷ…", "じゅるっ", "んちゅるる", "れろ…ちゅ…"],
+    },
+    "heartbeat": ["どきどき", "どくんどくん", "ばくばく", "どくっ…どくっ…"],
+    "ambient": {
+        "bed":   ["きしっ", "ぎしぎし", "きしみ…", "がたん"],
+        "water": ["ちゃぷ", "ぱしゃ", "じゃぶ", "ちゃぽん"],
+        "cloth": ["するっ", "ぱさっ", "しゅるる", "ぽとっ"],
+    },
+}
+
+# intensity別オノマトペ推奨マップ
+ONOMATOPOEIA_INTENSITY_MAP = {
+    1: {"categories": ["heartbeat", "kiss"], "sub": "light", "count": (0, 1)},
+    2: {"categories": ["wet", "kiss", "body"], "sub": "light", "count": (1, 1)},
+    3: {"categories": ["insertion", "wet", "piston", "oral"], "sub": "normal", "count": (1, 2)},
+    4: {"categories": ["piston", "wet", "body"], "sub": "normal", "count": (2, 3)},
+    5: {"categories": ["piston", "ejaculation", "body", "wet"], "sub": "heavy", "count": (2, 4)},
+}
+
+
+def get_onomatopoeia_pool(intensity: int, action: str = "") -> list:
+    """intensity と行為に応じたオノマトペプールを返す"""
+    i = max(1, min(5, intensity))
+    guide = ONOMATOPOEIA_INTENSITY_MAP.get(i, ONOMATOPOEIA_INTENSITY_MAP[3])
+    pool = []
+    for cat in guide["categories"]:
+        cat_data = ONOMATOPOEIA_POOL.get(cat, {})
+        if isinstance(cat_data, dict):
+            # sub-intensityで選択、なければ全subをマージ
+            sub = guide.get("sub", "normal")
+            if sub in cat_data:
+                pool.extend(cat_data[sub])
+            else:
+                for v in cat_data.values():
+                    pool.extend(v)
+        elif isinstance(cat_data, list):
+            pool.extend(cat_data)
+    # action指定がある場合はそのカテゴリも追加
+    if action and action in ONOMATOPOEIA_POOL:
+        act_data = ONOMATOPOEIA_POOL[action]
+        if isinstance(act_data, dict):
+            for v in act_data.values():
+                pool.extend(v)
+        elif isinstance(act_data, list):
+            pool.extend(act_data)
+    return pool
+
+
+# ============================================================================
 # ユーティリティ関数
 # ============================================================================
 
@@ -1439,19 +1724,37 @@ def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3) -> li
 
     if bubble_type == "thought":
         if "ntr" in theme_lower or "寝取" in theme:
-            return THOUGHT_POOL["ntr"]
+            pool = list(THOUGHT_POOL["ntr"])
+            if intensity >= 3:
+                pool.extend(THOUGHT_POOL.get("contradiction", []))
+            return pool
         elif is_forced:
-            # forced: 専用プール + reluctantの混合で幅を持たせる
+            # forced: 専用プール + reluctant + 矛盾型の混合
             pool = list(THOUGHT_POOL.get("forced", []))
             pool.extend(THOUGHT_POOL["reluctant"])
+            pool.extend(THOUGHT_POOL.get("contradiction", []))
             return pool
         elif "純愛" in theme or "vanilla" in theme_lower:
-            return THOUGHT_POOL["vanilla"]
+            pool = list(THOUGHT_POOL["vanilla"])
+            if intensity >= 3:
+                pool.extend(THOUGHT_POOL.get("body_awareness", []))
+            return pool
         elif "堕落" in theme or "催眠" in theme or "調教" in theme or "corruption" in theme_lower:
-            return THOUGHT_POOL["corruption"]
+            pool = list(THOUGHT_POOL["corruption"])
+            if intensity >= 3:
+                pool.extend(THOUGHT_POOL.get("self_surprise", []))
+            return pool
         elif "嫌" in theme or "無理" in theme or "抵抗" in theme:
-            return THOUGHT_POOL["reluctant"]
-        return THOUGHT_POOL["general"]
+            pool = list(THOUGHT_POOL["reluctant"])
+            pool.extend(THOUGHT_POOL.get("contradiction", []))
+            return pool
+        # 一般テーマ: intensity連動で覚醒+身体感覚+驚き系を混合
+        pool = list(THOUGHT_POOL["general"])
+        if intensity >= 3:
+            pool.extend(THOUGHT_POOL.get("awakening", []))
+            pool.extend(THOUGHT_POOL.get("body_awareness", []))
+            pool.extend(THOUGHT_POOL.get("self_surprise", []))
+        return pool
     elif bubble_type == "speech":
         pool = []
         if is_forced:
@@ -1469,14 +1772,17 @@ def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3) -> li
             pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
             pool.extend(SPEECH_FEMALE_POOL.get("acceptance", []))
             pool.extend(SPEECH_FEMALE_POOL.get("embarrassed", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("insertion", []))  # 挿入リアクション
         elif intensity == 4:
             pool.extend(SPEECH_FEMALE_POOL.get("acceptance", []))
             pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
             pool.extend(SPEECH_FEMALE_POOL.get("ecstasy", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("beg", []))  # おねだり
         else:
             pool.extend(SPEECH_FEMALE_POOL.get("ecstasy", []))
             pool.extend(SPEECH_FEMALE_POOL.get("submissive", []))
             pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("beg", []))  # おねだり
         return pool if pool else [v for sp in SPEECH_FEMALE_POOL.values() for v in sp]
     return []
 
@@ -1498,6 +1804,9 @@ def get_male_speech_pool_for_theme(theme: str = "", intensity: int = 3) -> list:
         else:
             pool.extend(SPEECH_MALE_POOL.get("dirty", []))
             pool.extend(SPEECH_MALE_POOL.get("praise", []))
+    # intensity 5で射精宣言プール追加（全テーマ共通）
+    if intensity >= 5:
+        pool.extend(SPEECH_MALE_POOL.get("climax", []))
     return pool if pool else [v for sp in SPEECH_MALE_POOL.values() for v in sp]
 
 
