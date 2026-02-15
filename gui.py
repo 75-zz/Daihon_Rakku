@@ -186,7 +186,6 @@ OUTPUT_DIR = Path(__file__).parent
 SKILLS_DIR = OUTPUT_DIR / "skills"
 JAILBREAK_FILE = OUTPUT_DIR / "jailbreak.md"
 DANBOORU_TAGS_JSON = OUTPUT_DIR / "danbooru_tags.json"
-SD_PROMPT_GUIDE_FILE = OUTPUT_DIR / "sd_prompt_guide.md"
 CONFIG_FILE = OUTPUT_DIR / "config.json"
 LOG_FILE = OUTPUT_DIR / "log.txt"
 CONTEXT_DIR = OUTPUT_DIR / "context"
@@ -586,6 +585,7 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
     scene_issues = {}
     all_moan_texts = []   # [(scene_id, text)]
     all_speech_texts = [] # [(scene_id, text)]
+    all_thought_texts = [] # [(scene_id, text)]
     all_onom_sets = []    # [(scene_id, frozenset)]
     prev_angle_tags = set()
     prev_position_tags = set()
@@ -719,12 +719,14 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         if len(bubble_texts_in_scene) != len(set(bubble_texts_in_scene)):
             problems.append(f"同一シーン内にテキスト重複あり")
 
-        # moan・speech追跡（クロスシーン重複検出用）
+        # moan・speech・thought追跡（クロスシーン重複検出用）
         for b in bubbles:
             if b.get("type") == "moan":
                 all_moan_texts.append((scene_id, b.get("text", "")))
             elif b.get("type") == "speech":
                 all_speech_texts.append((scene_id, b.get("text", "")))
+            elif b.get("type") == "thought":
+                all_thought_texts.append((scene_id, b.get("text", "")))
 
         # --- onomatopoeia ---
         onom = scene.get("onomatopoeia", [])
@@ -902,6 +904,49 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         else:
             seen_descs[desc_prefix] = scene_id
 
+    # --- クロスシーン: title重複チェック ---
+    seen_titles = {}  # title -> scene_id
+    for i, scene in enumerate(results):
+        title = scene.get("title", "")
+        if not title:
+            continue
+        scene_id = scene.get("scene_id", i + 1)
+        if title in seen_titles:
+            scene_issues.setdefault(scene_id, []).append(
+                f"title重複「{title}」（シーン{seen_titles[title]}と同一）")
+        else:
+            seen_titles[title] = scene_id
+
+    # --- クロスシーン: titleキーワード過剰使用チェック ---
+    _title_kw_count = {}
+    _TITLE_CHECK_KW = ["膣奥", "理性", "崩壊", "限界", "快感", "堕ち", "抵抗",
+                        "連続", "激突", "責め", "声", "最後"]
+    for scene in results:
+        title = scene.get("title", "")
+        for kw in _TITLE_CHECK_KW:
+            if kw in title:
+                _title_kw_count[kw] = _title_kw_count.get(kw, 0) + 1
+    for kw, cnt in _title_kw_count.items():
+        if cnt >= 3:
+            scene_issues.setdefault("global", []).append(
+                f"titleキーワード過剰: 「{kw}」が{cnt}回使用（推奨2回以下）")
+
+    # --- クロスシーン: description連続類似チェック（3連続で同一行為キーワード） ---
+    _DESC_ACT_KW = ["膣奥", "突かれ", "責められ", "腰を振", "ピストン",
+                     "挿入", "フェラ", "パイズリ", "騎乗", "バック",
+                     "正常位", "四つん這い"]
+    _desc_kw_per_scene = []
+    for scene in results:
+        desc = scene.get("description", "")
+        kws = frozenset(kw for kw in _DESC_ACT_KW if kw in desc)
+        _desc_kw_per_scene.append(kws)
+    for k in range(2, len(_desc_kw_per_scene)):
+        if (_desc_kw_per_scene[k] and
+            _desc_kw_per_scene[k] == _desc_kw_per_scene[k-1] == _desc_kw_per_scene[k-2]):
+            sid = results[k].get("scene_id", k + 1)
+            scene_issues.setdefault(sid, []).append(
+                f"description3連続類似（行為キーワード同一: {_desc_kw_per_scene[k]}）")
+
     # --- クロスシーン: character_feelings類似チェック ---
     seen_feelings = {}  # feelings_str -> scene_id
     for i, scene in enumerate(results):
@@ -959,6 +1004,40 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
     for text, sids in repeated_speech.items():
         for sid in sids[1:]:
             scene_issues.setdefault(sid, []).append(f"speech重複「{text}」（シーン{sids[0]}と同一）")
+
+    # --- クロスシーン: thought先頭パターン反復チェック ---
+    # 先頭パターンが同じthoughtが4回以上出現した場合に警告（「だめ…」パターン等）
+    thought_prefix_counter = {}  # prefix -> [(scene_id, full_text)]
+    for sid, text in all_thought_texts:
+        if text and len(text) >= 2:
+            # 最初の「…」より前を取得（「だめ…声が…」→「だめ」）
+            first_part = text.split("\u2026")[0].replace("\u2665", "").replace("\u3063", "").strip()
+            if len(first_part) >= 2:
+                prefix = first_part[:3]
+            else:
+                clean = text.replace("\u2026", "").replace("\u2665", "").replace("\u3063", "").strip()
+                prefix = clean[:2] if len(clean) >= 2 else ""
+            if prefix:
+                thought_prefix_counter.setdefault(prefix, []).append((sid, text))
+    for prefix, entries in thought_prefix_counter.items():
+        if len(entries) >= 4:
+            scene_ids_str = ",".join(str(e[0]) for e in entries[:6])
+            scene_issues.setdefault("global", []).append(
+                f"thought先頭「{prefix}」が{len(entries)}回反復（シーン{scene_ids_str}）")
+
+    # --- クロスシーン: 男性セリフ長文チェック（8文字超え） ---
+    for i, scene in enumerate(results):
+        scene_id = scene.get("scene_id", i + 1)
+        for b in scene.get("bubbles", []):
+            speaker = b.get("speaker", "")
+            is_male = speaker and heroine_names and speaker not in heroine_names
+            if is_male and b.get("type") == "speech":
+                txt = b.get("text", "")
+                # ♡…っ等の装飾を除いた実質文字数
+                core = txt.replace("…", "").replace("♡", "").replace("っ", "").replace("♥", "").strip()
+                if len(core) > 8:
+                    scene_issues.setdefault(scene_id, []).append(
+                        f"男性セリフ長文({len(core)}字): 「{txt}」")
 
     # --- クロスシーン: オノマトペ近接重複（3シーン以内） ---
     repeated_onom = []
@@ -1311,6 +1390,9 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
     used_speech_texts = set()
     # 表現パターン追跡（「初めて」「彼のこと」等の重複防止）
     used_patterns = {}  # pattern_key -> count
+    # thought先頭パターン追跡（「だめ…」「やだ…」等の同一先頭3文字反復防止）
+    thought_prefix_counter = {}  # prefix3 -> count
+    _THOUGHT_PREFIX_LIMIT = 3  # 同一先頭パターンの上限
 
     replace_count = 0
 
@@ -1320,6 +1402,30 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
         "感じ": ["こんなに感じ", "なぜ感じ", "なんで感じ"],
         "おかしく": ["おかしく", "おかしい"],
     }
+
+    def _get_thought_prefix(text: str) -> str:
+        """thought先頭パターンを抽出（最初の「…」より前、なければ先頭2文字）。
+        例: 「だめ…声が…」→「だめ」, 「やば…」→「やば」, 「変になる…」→「変に」
+        """
+        # 最初の「…」で分割して前半を取得
+        first_part = text.split("…")[0].replace("♡", "").replace("っ", "").strip()
+        if len(first_part) >= 2:
+            return first_part[:3]  # 最大3文字
+        # 「…」がない場合は先頭2文字
+        clean = text.replace("…", "").replace("♡", "").replace("っ", "").strip()
+        return clean[:2] if len(clean) >= 2 else ""
+
+    def _check_thought_prefix_limit(text: str) -> bool:
+        """thought先頭パターンが上限を超えていたらTrue"""
+        prefix = _get_thought_prefix(text)
+        if not prefix:
+            return False
+        return thought_prefix_counter.get(prefix, 0) >= _THOUGHT_PREFIX_LIMIT
+
+    def _register_thought_prefix(text: str):
+        prefix = _get_thought_prefix(text)
+        if prefix:
+            thought_prefix_counter[prefix] = thought_prefix_counter.get(prefix, 0) + 1
 
     def _check_pattern_limit(text: str) -> bool:
         """表現パターンが上限（全体で2回）を超えていたらTrue"""
@@ -1393,6 +1499,9 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 elif _check_pattern_limit(text):
                     need_replace = True
                     reason = "パターン過多"
+                elif _check_thought_prefix_limit(text):
+                    need_replace = True
+                    reason = f"先頭反復({_get_thought_prefix(text)})"
 
             elif btype == "speech":
                 norm = _normalize_bubble_text(text)
@@ -1442,6 +1551,7 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 used_thought_raw.add(final_text)
                 used_thought_texts.add(_normalize_bubble_text(final_text))
                 _register_patterns(final_text)
+                _register_thought_prefix(final_text)
             elif btype == "speech":
                 used_speech_raw.add(final_text)
                 used_speech_texts.add(_normalize_bubble_text(final_text))
@@ -1577,8 +1687,14 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     for i, scene in enumerate(results):
         scene["scene_id"] = i + 1
 
-    # 4.5. 男性セリフ自動修正（♡除去、moan→speech変換）
+    # 4.5. 男性セリフ自動修正（♡除去、moan→speech変換、長文短縮）
     heroine_name_set = set(correct_names) if correct_names else set()
+    try:
+        from ero_dialogue_pool import shorten_male_speech, SPEECH_MALE_POOL as _MALE_POOL
+        _has_male_shorten = True
+    except ImportError:
+        _has_male_shorten = False
+    _male_shorten_count = 0
     for scene in results:
         if "bubbles" in scene:
             for bubble in scene["bubbles"]:
@@ -1588,10 +1704,20 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                     # ♡♥を除去
                     txt = bubble.get("text", "")
                     if "♡" in txt or "♥" in txt:
-                        bubble["text"] = txt.replace("♡", "").replace("♥", "").strip()
+                        txt = txt.replace("♡", "").replace("♥", "").strip()
+                        bubble["text"] = txt
                     # moan→speech変換
                     if bubble.get("type") == "moan":
                         bubble["type"] = "speech"
+                    # 長文短縮（8文字超え→短縮）
+                    if _has_male_shorten and len(txt) > 8:
+                        shortened = shorten_male_speech(txt, max_len=8)
+                        if shortened != txt:
+                            log_message(f"  男性セリフ短縮: 「{txt}」→「{shortened}」")
+                            bubble["text"] = shortened
+                            _male_shorten_count += 1
+    if _male_shorten_count > 0:
+        log_message(f"  男性セリフ短縮: {_male_shorten_count}件")
 
     # 4.7. 不自然表現の自動修正（書き言葉→話し言葉、句点除去、ひらがな化）
     _UNNATURAL_REPLACEMENTS = {
@@ -2298,6 +2424,47 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         _desc_fix_count += 1
     if _desc_fix_count > 0:
         log_message(f"  description具体化修正: {_desc_fix_count}件")
+
+    # 17. title重複修正（同一titleの2回目以降を場所+状況で差し替え）
+    _seen_titles_af = set()
+    _title_fix_af = 0
+    for scene in results:
+        t = scene.get("title", "")
+        if t in _seen_titles_af:
+            sid = scene.get("scene_id", "?")
+            desc = scene.get("description", "")[:20]
+            loc = scene.get("location_detail", scene.get("location", ""))
+            mood = scene.get("mood", "")[:10]
+            new_title = f"{mood}の{desc}" if mood and desc else f"シーン{sid}"
+            # 重複しないようにする
+            if new_title in _seen_titles_af:
+                new_title = f"{new_title}({sid})"
+            scene["title"] = new_title
+            _title_fix_af += 1
+            log_message(f"  S{sid}: title重複修正「{t}」→「{new_title}」")
+        _seen_titles_af.add(scene.get("title", ""))
+    if _title_fix_af > 0:
+        log_message(f"  title重複修正: {_title_fix_af}件")
+
+    # 18. titleキーワード過剰使用修正（同じキーワードが3回以上→場所/mood/行為ベースに差し替え）
+    _TITLE_KW_FIX = ["膣奥", "理性", "崩壊", "限界", "快感", "堕ち"]
+    for kw in _TITLE_KW_FIX:
+        kw_scenes = [(i, s) for i, s in enumerate(results) if kw in s.get("title", "")]
+        if len(kw_scenes) >= 3:
+            # 3回目以降の出現を差し替え
+            for idx, (i, scene) in enumerate(kw_scenes):
+                if idx < 2:
+                    continue  # 最初の2回は許容
+                sid = scene.get("scene_id", "?")
+                old_title = scene["title"]
+                loc = scene.get("location_detail", scene.get("location", ""))[:10]
+                mood = scene.get("mood", "")[:10]
+                intensity = scene.get("intensity", 3)
+                _alt_kw = ["衝動", "背徳", "交わり", "激情", "陶酔", "震え", "熱", "嵐"]
+                alt = _alt_kw[i % len(_alt_kw)]
+                new_title = f"{alt}の{loc}" if loc else f"{alt}のシーン{sid}"
+                scene["title"] = new_title
+                log_message(f"  S{sid}: titleキーワード過剰修正「{old_title}」→「{new_title}」")
 
     return results
 
@@ -3124,6 +3291,13 @@ class CostTracker:
     sonnet_output: int = 0
     cache_creation: int = 0
     cache_read: int = 0
+    # モデル別キャッシュ追跡（正確なコスト計算用）
+    haiku_cache_creation: int = 0
+    haiku_cache_read: int = 0
+    haiku_fast_cache_creation: int = 0
+    haiku_fast_cache_read: int = 0
+    sonnet_cache_creation: int = 0
+    sonnet_cache_read: int = 0
     api_calls: int = 0
 
     def add(self, model: str, input_tokens: int, output_tokens: int,
@@ -3134,24 +3308,53 @@ class CostTracker:
         if "sonnet" in model:
             self.sonnet_input += input_tokens
             self.sonnet_output += output_tokens
+            self.sonnet_cache_creation += cache_creation_tokens
+            self.sonnet_cache_read += cache_read_tokens
         elif model == MODELS.get("haiku_fast", "claude-3-haiku-20240307"):
             self.haiku_fast_input += input_tokens
             self.haiku_fast_output += output_tokens
+            self.haiku_fast_cache_creation += cache_creation_tokens
+            self.haiku_fast_cache_read += cache_read_tokens
         else:
             self.haiku_input += input_tokens
             self.haiku_output += output_tokens
+            self.haiku_cache_creation += cache_creation_tokens
+            self.haiku_cache_read += cache_read_tokens
 
     def total_cost_usd(self) -> float:
+        """キャッシュ料金を正確に反映したコスト計算。
+        Anthropic API: cache_read=入力単価x0.1, cache_creation=入力単価x1.25"""
         hf_cost = COSTS.get(MODELS["haiku_fast"], {"input": 0.25, "output": 1.25})
         h_cost = COSTS.get(MODELS["haiku"], {"input": 1.00, "output": 5.00})
         s_cost = COSTS.get(MODELS["sonnet"], {"input": 3.00, "output": 15.00})
         return (
+            # Haiku fast（非キャッシュ入力 + 出力 + キャッシュ作成 + キャッシュ読取）
             (self.haiku_fast_input / 1_000_000) * hf_cost["input"] +
             (self.haiku_fast_output / 1_000_000) * hf_cost["output"] +
+            (self.haiku_fast_cache_creation / 1_000_000) * hf_cost["input"] * 1.25 +
+            (self.haiku_fast_cache_read / 1_000_000) * hf_cost["input"] * 0.10 +
+            # Haiku 4.5
             (self.haiku_input / 1_000_000) * h_cost["input"] +
             (self.haiku_output / 1_000_000) * h_cost["output"] +
+            (self.haiku_cache_creation / 1_000_000) * h_cost["input"] * 1.25 +
+            (self.haiku_cache_read / 1_000_000) * h_cost["input"] * 0.10 +
+            # Sonnet
             (self.sonnet_input / 1_000_000) * s_cost["input"] +
-            (self.sonnet_output / 1_000_000) * s_cost["output"]
+            (self.sonnet_output / 1_000_000) * s_cost["output"] +
+            (self.sonnet_cache_creation / 1_000_000) * s_cost["input"] * 1.25 +
+            (self.sonnet_cache_read / 1_000_000) * s_cost["input"] * 0.10
+        )
+
+    def _cache_savings_usd(self) -> float:
+        """キャッシュによる節約額（キャッシュなしの場合との差分）"""
+        h_cost = COSTS.get(MODELS["haiku"], {"input": 1.00, "output": 5.00})
+        s_cost = COSTS.get(MODELS["sonnet"], {"input": 3.00, "output": 15.00})
+        hf_cost = COSTS.get(MODELS["haiku_fast"], {"input": 0.25, "output": 1.25})
+        # キャッシュ読み取りがフル入力だった場合のコスト差分（90%節約）
+        return (
+            (self.haiku_cache_read / 1_000_000) * h_cost["input"] * 0.90 +
+            (self.sonnet_cache_read / 1_000_000) * s_cost["input"] * 0.90 +
+            (self.haiku_fast_cache_read / 1_000_000) * hf_cost["input"] * 0.90
         )
 
     def summary(self) -> str:
@@ -3162,15 +3365,19 @@ class CostTracker:
             lines.append(f"Haiku(4.5): {self.haiku_input:,} in / {self.haiku_output:,} out")
         if self.sonnet_input or self.sonnet_output:
             lines.append(f"Sonnet: {self.sonnet_input:,} in / {self.sonnet_output:,} out")
-        if self.cache_read:
+        if self.cache_read or self.cache_creation:
             lines.append(f"Cache: {self.cache_read:,} read / {self.cache_creation:,} create")
+            savings = self._cache_savings_usd()
+            if savings > 0.001:
+                lines.append(f"Cache節約: -${savings:.4f}")
         lines.append(f"API呼出: {self.api_calls}回")
         lines.append(f"推定コスト: ${self.total_cost_usd():.4f}")
         return "\n".join(lines)
 
 
 def estimate_cost(num_scenes: int, use_sonnet_polish: bool = True) -> dict:
-    """生成前にコストを予測（haiku_fast=圧縮/あらすじのみ, haiku=アウトライン+シーン, sonnet=クライマックス）"""
+    """生成前にコストを予測（Prompt Caching反映版）
+    haiku_fast=圧縮/あらすじのみ, haiku=アウトライン+シーン, sonnet=クライマックス"""
     hf_cost = COSTS.get(MODELS["haiku_fast"], {"input": 0.25, "output": 1.25})
     h_cost = COSTS.get(MODELS["haiku"], {"input": 1.00, "output": 5.00})
     s_cost = COSTS.get(MODELS["sonnet"], {"input": 3.00, "output": 15.00})
@@ -3194,9 +3401,23 @@ def estimate_cost(num_scenes: int, use_sonnet_polish: bool = True) -> dict:
     haiku_scenes = int(num_scenes * 0.80)  # intensity 1-4 → haiku
     sonnet_scenes = num_scenes - haiku_scenes  # intensity 5 → sonnet
 
-    haiku_input += haiku_scenes * 5500  # 5500: 実測平均
+    # Prompt Caching効果: system prompt ~16000tokはキャッシュされる
+    # 初回のみcache_creation(1.25x)、以降はcache_read(0.1x)
+    cached_system_tokens = 16000  # 圧縮後のsystemプロンプト推定サイズ
+    # シーン固有の非キャッシュ入力（user prompt: context + story_so_far + scene指示）
+    avg_user_tokens = 3000  # 平均user prompt（story_so_far含む）
+
+    # Haiku シーン: 1回cache_create + (N-1)回cache_read
+    haiku_cache_create_cost = (cached_system_tokens / 1_000_000) * h_cost["input"] * 1.25  # 初回
+    haiku_cache_read_cost = (cached_system_tokens / 1_000_000) * h_cost["input"] * 0.10 * max(0, haiku_scenes - 1)
+    haiku_uncached_input = haiku_scenes * avg_user_tokens
+    haiku_input += haiku_uncached_input
     haiku_output += haiku_scenes * 650
-    sonnet_input = sonnet_scenes * 5500
+
+    # Sonnet シーン: 1回cache_create + (N-1)回cache_read
+    sonnet_cache_create_cost = (cached_system_tokens / 1_000_000) * s_cost["input"] * 1.25 if sonnet_scenes > 0 else 0
+    sonnet_cache_read_cost = (cached_system_tokens / 1_000_000) * s_cost["input"] * 0.10 * max(0, sonnet_scenes - 1)
+    sonnet_input = sonnet_scenes * avg_user_tokens
     sonnet_output = sonnet_scenes * 700
 
     estimated_usd = (
@@ -3204,8 +3425,10 @@ def estimate_cost(num_scenes: int, use_sonnet_polish: bool = True) -> dict:
         (fast_output / 1_000_000) * hf_cost["output"] +
         (haiku_input / 1_000_000) * h_cost["input"] +
         (haiku_output / 1_000_000) * h_cost["output"] +
+        haiku_cache_create_cost + haiku_cache_read_cost +
         (sonnet_input / 1_000_000) * s_cost["input"] +
-        (sonnet_output / 1_000_000) * s_cost["output"]
+        (sonnet_output / 1_000_000) * s_cost["output"] +
+        sonnet_cache_create_cost + sonnet_cache_read_cost
     )
 
     return {
@@ -3224,10 +3447,17 @@ def load_file(filepath: Path) -> str:
     return ""
 
 
+_skill_cache: dict = {}  # スキルファイル読み込みキャッシュ（同一パイプライン内の重複I/O削減）
+
 def load_skill(skill_name: str) -> str:
+    if skill_name in _skill_cache:
+        return _skill_cache[skill_name]
     skill_file = SKILLS_DIR / f"{skill_name}.skill.md"
     if skill_file.exists():
-        return skill_file.read_text(encoding="utf-8")
+        content = skill_file.read_text(encoding="utf-8")
+        _skill_cache[skill_name] = content
+        return content
+    _skill_cache[skill_name] = ""
     return ""
 
 
@@ -3674,6 +3904,8 @@ def generate_synopsis(
 6. 本番パートでは具体的な行為の流れも簡潔に含めること
 7. エロシーンは段階的にエスカレートし、クライマックスに向かうこと
 8. コンセプトにない極端な展開は絶対に追加しないこと（コンセプトの範囲内で物語を展開する）
+9. **同じ行為の繰り返し禁止**: 本番パートで最低5種の異なる展開（体位変更/場所移動/行為変更/主導権交代等）を含めること
+10. **展開バリエーション例**: 愛撫→口淫→正常位→体位変更→騎乗位→バック→絶頂のように行為を変化させエスカレートすること
 
 あらすじの文章のみ出力してください。JSON不要。"""
 
@@ -3706,7 +3938,6 @@ def generate_scene_batch(
     context: dict,
     scenes: list,
     jailbreak: str,
-    sd_guide: str,
     cost_tracker: CostTracker,
     theme: str = "",
     char_profiles: list = None,
@@ -3779,26 +4010,9 @@ def generate_scene_batch(
 
 {char_guide if char_guide else "（キャラ設定なし）"}
 
-## FANZA同人CG集とは
-
-「セリフ付きCG集」＝エロい1枚絵に吹き出しとオノマトペを乗せた画像が何ページも続くコンテンツ。
-**画像がメイン、テキストはサブ**。
-
-各ページの構成:
-- 1枚のCG画像
-- 吹き出し1〜3個（主人公のセリフ1〜2個 + 必要なら男性セリフ1個）
-- オノマトペ0〜2個
-
-【吹き出しの鉄則】
-- 1ページ = 主人公のセリフ1〜2個（speech/moan/thought）+ 男性セリフ0〜1個
-- セリフの長さは自由（短くても長くてもOK。自然さ優先）
-- type: speech（会話）/ moan（喘ぎ）/ thought（心の声）
-- **moanには喘ぎ声・声漏れのみ**。「そうなんだ」「汗すごい」等の説明文は禁止
-  ✅ moan:「あっ♡」「んぁ…っ」「はぁ…♡」 ❌ moan:「そうなんだ」「指先痺れ」「ぐったり」
-- **speechは感情的反応のみ**。身体状態の客観報告はナレーションであり吹き出しに入れない
-  ✅ speech:「やだ…♡」「もう許して♡」 ❌ speech:「汗すごい」「目が回る」「震えてる」
-- 状況説明は吹き出しに入れない（descriptionに書く）
-- **story_flowは各シーン固有の展開**。前シーンと同一テキストのコピペ禁止
+## CG集フォーマット補足
+CG画像1枚 + 吹き出し1-3個（主人公1-2+男0-1） + SE 0-4個。画像がメイン。
+moan=喘ぎ声のみ(説明文禁止) / speech=感情的反応のみ / story_flow=各シーン固有(コピペ禁止)
 
 {f'''
 ## ⚠️ セリフ品質ガイド（厳守・最優先）
@@ -4096,6 +4310,13 @@ def _generate_outline_chunk(
 7. intensity 5は全体で最大2シーン。段階的にエスカレートすること
 8. story_flowは各シーン固有の内容を書け（重複禁止）
 
+## ⚠️ 体位・行為バリエーション強制（違反即不合格）
+- 本番シーン（intensity 4-5）は全て異なる体位・行為を指定すること
+- 体位リスト: 正常位/後背位/騎乗位/立ちバック/側位/寝バック/座位/駅弁/対面座位/背面騎乗位/フェラ/パイズリ
+- 同じ体位の2連続禁止。同じsituation表現の繰り返し禁止
+- titleの重複禁止。同じキーワードを含むtitleは最大2回まで
+- 確定済みシーンのsituation/titleと被らないこと
+
 JSON配列のみ出力。"""
 
     if callback:
@@ -4213,6 +4434,30 @@ def generate_outline(
 8. **locationは3シーン連続で同じ場所にしてはならない**。場所を変えてストーリーを進めること。例: 部屋→廊下→浴室、教室→体育館倉庫→屋上
 9. intensity 5は最大2シーンまで。残りの本番はintensity 4にして、緩急をつけること
 10. intensity 1の次にintensity 3以上は禁止。必ずintensity 2を挟むこと（1→2→3→4→5の段階的上昇）
+
+## ⚠️⚠️ 体位・行為バリエーション強制ルール（最重要・違反即不合格）
+
+**本番シーン（intensity 4-5）は全シーンで異なる体位・行為を指定すること。同じ行為の連続は絶対禁止。**
+
+### 使用可能な体位・行為リスト（2連続使用禁止。ローテーションせよ）
+正常位 / 後背位(バック) / 騎乗位 / 立ちバック / 側位 / 寝バック / 座位 / 駅弁 / 対面座位 / 背面騎乗位 / 正常位(脚持ち上げ) / うつ伏せ / マングリ返し / フェラチオ / パイズリ / 69 / 手マン / クンニ
+
+### situation記述の多様性チェックリスト
+各シーンのsituationは以下の5要素のうち最低2つが前シーンと異なること:
+1. **体位**: 前シーンと違う体位名を明記
+2. **主導権**: 男主導/女主導/対等 - 3シーン連続で同じ主導権は禁止
+3. **テンポ**: 激しい/ゆっくり/焦らし/一気に - 交互に変化させる
+4. **焦点部位**: 胸/腰/脚/首筋/耳/背中 - 毎シーン異なる部位を描写
+5. **心理状態**: 前シーンの心理の「次の段階」を必ず記述
+
+❌ 禁止パターン: 「膣奥を責められ」「膣奥への刺激」等の同じ表現が3シーン以上
+❌ 禁止パターン: 同じ体位名が2シーン連続
+❌ 禁止パターン: titleに同じ単語（「膣奥」「理性」等）が3回以上出現
+
+### titleの多様性ルール
+- 全シーンのtitleは重複禁止（完全一致禁止）
+- 同じキーワードを含むtitleは最大2回まで
+- 具体的な行為・体位・場所・感情を反映した固有のタイトルにすること
 
 ## ⚠️ エスカレーション段階ルール（飛躍禁止・最重要）
 
@@ -4336,6 +4581,45 @@ JSON配列のみ出力。"""
         erotic_map = {1: "none", 2: "light", 3: "medium", 4: "heavy", 5: "climax"}
         for scene in outline:
             scene["erotic_level"] = erotic_map.get(scene.get("intensity", 3), "medium")
+
+        # タイトル重複修正（アウトライン段階で検出・修正）
+        _seen_titles_ol = set()
+        _title_fix_ol = 0
+        for s in outline:
+            t = s.get("title", "")
+            if t in _seen_titles_ol:
+                sid = s.get("scene_id", "?")
+                sit = s.get("situation", "")[:20]
+                loc = s.get("location", "")
+                new_title = f"{loc}での{sit}" if loc and sit else f"シーン{sid}"
+                if new_title in _seen_titles_ol:
+                    new_title = f"{new_title}({sid})"
+                s["title"] = new_title
+                _title_fix_ol += 1
+                log_message(f"アウトラインtitle重複修正: S{sid}「{t}」→「{new_title}」")
+            _seen_titles_ol.add(s.get("title", ""))
+        if _title_fix_ol > 0:
+            log_message(f"アウトラインtitle重複修正: {_title_fix_ol}件")
+
+        # situation連続類似検出・警告（3連続で同一キーワードパターン）
+        _SITUATION_KW_OL = ["膣奥", "突かれ", "責められ", "腰を振", "ピストン",
+                            "挿入", "犯され", "抱かれ", "押し倒", "襲われ",
+                            "口内", "フェラ", "パイズリ", "騎乗", "バック",
+                            "正常位", "四つん這い", "膝立ち", "指で"]
+        _sit_kw_list = []
+        for s in outline:
+            sit = s.get("situation", "")
+            kws = frozenset(kw for kw in _SITUATION_KW_OL if kw in sit)
+            _sit_kw_list.append(kws)
+        _consec_same_ol = 0
+        for idx in range(2, len(outline)):
+            if (_sit_kw_list[idx] and
+                _sit_kw_list[idx] == _sit_kw_list[idx - 1] == _sit_kw_list[idx - 2]):
+                _consec_same_ol += 1
+                sid = outline[idx].get("scene_id", idx + 1)
+                log_message(f"⚠️ アウトライン: S{sid-2}〜S{sid} situationキーワード同一（{_sit_kw_list[idx]}）")
+        if _consec_same_ol > 0:
+            log_message(f"⚠️ アウトライン: {_consec_same_ol}箇所でsituation連続類似検出")
 
         # アウトライン数がnum_scenesに不足する場合、自動補完
         if len(outline) < num_scenes:
@@ -4562,7 +4846,6 @@ def generate_scene_draft(
     context: dict,
     scene: dict,
     jailbreak: str,
-    sd_guide: str,
     cost_tracker: CostTracker,
     theme: str = "",
     char_profiles: list = None,
@@ -4864,162 +5147,36 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 {char_guide if char_guide else "（キャラ設定なし）"}
 
-## FANZA同人CG集とは
+## FANZA同人CG集フォーマット
+「セリフ付きCG集」＝1枚絵に吹き出し+オノマトペ。**画像がメイン、テキストはサブ**。
+各ページ: CG画像1枚 + 吹き出し1-3個（主人公1-2+男0-1） + SE 0-4個
 
-「セリフ付きCG集」＝エロい1枚絵に吹き出しとオノマトペを乗せた画像が何ページも続くコンテンツ。
-**画像がメイン、テキストはサブ**。小説でも脚本でもない。
+## ⚠️ 追加厳守ルール（上記吹き出しスキルに加えて）
 
-各ページの構成:
-- 1枚のエロCG画像（SDで生成）
-- 吹き出し1〜3個（主人公1〜2個 + 男性0-1個）
-- オノマトペ0〜4個（効果音テキスト）
-
-## 吹き出しの書き方
-
-【種類】
-1. speech（会話）: キャラの短い発言。「ねえ…」「だめ…」「来ないで…」
-2. moan（喘ぎ）: 声・息・反応。「あっ♡」「んぁ…っ」「はぁ…はぁ…」
-3. thought（心の声）: 画像上の小さい文字。「やばい…」「もう…」「彼氏に…」
-
-【男性キャラの吹き出し（0-1個/ページ厳守）】
-男のセリフが多いと「うるさい」と不評になる。女性の喘ぎが主役。
-・支配系: 「逃がさねぇよ」「おとなしくしろ」「言えよ」
-・事実描写系（最も効果的）: 「すげえ締まる」「全部出すぞ」「奥まで入ったな」
-・挑発系: 「感じてんだろ？」「もう濡れてる」「弱いとこわかってるよ」
-・優しめ責め: 「気持ちいい？」「もっと聞かせて」「我慢しなくていいよ」
-※男のセリフは短く粗野に。丁寧語禁止。1ページ最大1個。
-※男に♡を絶対使わない。「きもちぃ」「もっとぉ」等の甘え語尾も禁止。
-※男のmoan(喘ぎ)タイプは禁止。男は喘がない。
-※NTR/陵辱の攻め側に「好きだよ」「大丈夫？」等の優しいセリフは禁止。
-
-【鉄則】
-- セリフの長さは自由。自然さを優先（短くても長くてもOK）
-- 「。」禁止。「…」「っ」「♡」「〜」で閉じる
-- 状況説明は吹き出しに入れない（descriptionに書く）
-- 吹き出しの中に主語や目的語を入れない
-- 「私は〜」「あなたが〜」のような文章はNG
-- 会話のキャッチボールではなく、画像の補強テキスト
-- **bubblesの内容はdescriptionのシーン内容と一致させる**こと
-- **画像+吹き出し+オノマトペだけで視聴者にシーンが伝わる**ようにする
-- ひらがな優先（「気持ちいい」→「きもちぃ」、「欲しい」→「ほしい」）
-
-【⚠️NG表現→正しい変換（書き言葉は全て話し言葉の断片に変換せよ）】
-❌信じられない→✅うそ… ❌現実じゃない→✅え…うそ… ❌体温が上がる→✅あつい…
-❌考えられない→✅なんで… ❌ずっと震えてる→✅ふるえ…てる ❌離れたくない→✅やだ…いかないで
-❌感じてしまう→✅あ…やば… ❌何も考えられない→✅あたま…まっしろ ❌声が出てしまう→✅あ…声…っ
-❌こんなことしてる→✅なにしてるの… ❌受け入れてしまう→✅あ…っ ❌抗えない→✅やだ…のに…
-
-【thoughtの書き方（重要）】
-thoughtは感情の断片。説明や反省はNG。
-✅「やば…」「もう…むり…」「なにこれ…」「おかしく…なる」
-❌「彼氏に...ごめん...」（反省文→不自然）
-❌「彼のことなんて...忘れてしまった」（ナレーション→不自然）
-❌「こんなことをしている自分が信じられない」（独白→長すぎ）
-❌「なぜ私に…これは夢じゃない」（説明→不自然）
-NTR系のthoughtは: 「彼より…」「もう…戻れない」「なんで…こんなに」等の短い感情断片
-
-【intensity別の目安】
-- 1-2: 吹き出し1-2個（主人公の自然な一言 + 男0-1個）、オノマトペなし〜1個
-- 3: 吹き出し1-3個（主人公の反応1-2個 + 男0-1個）、オノマトペ1-2個
-- 4-5: 吹き出し1-3個（主人公の喘ぎ1-2個 + 男の言葉責め0-1個）、オノマトペ2-4個
-
-## ⚠️ 絶対厳守ルール
-
-### セリフ・オノマトペ重複禁止
-**全シーンを通じて同じセリフ・喘ぎ・オノマトペの組み合わせを2回以上使うな。**
-story_so_farに含まれるセリフと同じ・類似のものは絶対禁止。
-毎シーン必ず辞書の別パターンを選べ。バリエーションがCG集の生命線。
+### セリフ・SE重複禁止
+story_so_farのセリフ・SEと同一・類似は絶対禁止。毎シーン辞書の別パターンを選べ。
 
 ### 場所名の一貫性
-同じ場所は**全シーンで同一の表記**を使え。
-❌ 「神社の境内」→「神殿の祭壇」→「神社の祭壇」（表記ブレ）
-✅ 「村の神社」→「村の神社」→「村の神社」（統一）
-最初のシーンで確定した場所名をそのまま使い続けること。
+同じ場所は**全シーンで同一の表記**。表記ブレ禁止。
 
-### エロシーン優先
-FANZA CG集はエロがメイン。**全体の70%以上をエロシーンに充てる**こと。
-・10ページなら導入1-2ページ、エロ7-8ページ
-・導入は最小限に。読者は素早くエロシーンに入りたい
-・descriptionよりも**sd_promptとbubblesの質にこだわれ**
-・エロシーンではdescriptionは行為の具体的描写（体位、状態、反応）を書け
+### セリフ内容整合性
+- moan=喘ぎ声のみ。説明文禁止（❌「そうなんだ」「汗すごい」）
+- speech=感情的反応のみ。身体報告禁止（❌「震えてる」「目が回る」）
+- thought=感情断片のみ。ナレーション禁止（❌「こんなことをしている自分が…」）
+- descriptionと吹き出しの内容が**論理的に一致**すること
 
-### ⚠️ セリフ内容整合性ルール（厳守）
-- type="moan"の吹き出しには**喘ぎ声・声漏れのみ**を入れろ。「そうなんだ」「指先痺れ」等の説明文は絶対禁止
-  ✅ moan: 「あっ♡」「んぁ…っ」「はぁ…♡」「やだ…っ♡」
-  ❌ moan: 「そうなんだ」「汗すごい」「ぐったり」「目が回る」（これらはspeech/thought）
-- type="speech"は**キャラの感情的反応**。身体状態の客観報告は禁止
-  ✅ speech: 「やだ…♡」「もう許して♡」「きもちぃ…♡」
-  ❌ speech: 「汗すごい」「指先痺れ」「目が回る」「震えてる」「ぐったり」（これはナレーション）
-- type="thought"は**心の声の感情的断片**。身体状態の報告ではなく感情を書け
-  ✅ thought: 「もうダメ…♡」「こんなの初めて…」「壊れちゃう…♡」
-  ❌ thought: 「汗すごい」「力入んない」「息できない」（これはト書き）
-- descriptionの内容と吹き出しの内容が**論理的に一致**すること
-  ❌ description「路地裏で襲われた」→ bubble moan:「そうなんだ」（意味不明）
-  ✅ description「路地裏で襲われた」→ bubble speech:「やめ…っ」+ moan:「んっ…！」
+### story_flowの書き方
+各シーン固有の展開。前シーンのコピペ禁止。状況が必ず進展すること。
 
-### story_flowの書き方（重要）
-- story_flowは**このシーン固有の次への繋がり**を書け
-  ❌ 「三玖は完全に村人たちに支配され…」（毎シーンコピペ禁止）
-  ✅ 「抵抗を諦めた三玖は、男の手を自ら求め始める」（具体的な変化）
-- 前シーンのstory_flowと同一テキストは禁止。各シーンで状況が進展すること
+### thought先頭パターン反復禁止
+同じ書き出し（先頭2文字）を3シーン以内で再使用するな。バリエーションが生命線。
 
-## 喘ぎ声パターン辞書（補助。★セリフ品質ガイドの段階別辞書を優先して使え）
-
-・吐息系: はぁ…, ふぅ…♡, んはぁ…, ふぁ…っ, すぅ…はぁ…
-・声漏れ系: あっ, やぁ…, ひゃっ, くぅん, あぅ…, きゃっ, みゃっ
-・甘え系: もっと…♡, そこ…♡, ねぇ…♡, いい…♡, すき…♡
-・我慢系: んんっ…!, くっ…, うぅ…っ, ぐっ…, んぅ…っ
-・否定系: やだ…, だめ…, いや…っ, むり…, やめ…
-・快感否定: いやっ…でも…, だめなのに…♡, 嫌…なのに…
-・堕落系: もっと…ちょうだい♡, もう…戻れない♡, おかしく…なる♡
-・絶頂系: イっ…♡, イっちゃ…っ, あああっ…!, もうだめ…♡, きもちぃ…♡
-・絶頂後: はぁ…はぁ…, もう…むり…, びくっ…, まだ…ダメ…
-・懇願系: お願い…, 許して…, もう…許して…♡
-・混乱系: なにこれ…, おかしい…, 頭…真っ白…
-
-## オノマトペ辞書（場面に合わせて選べ・同じ組み合わせの連続禁止）
-
-・挿入系: ズブッ, ズブズブ, ヌプッ, ズリュッ, ブチュッ, ヌルッ, ズンッ
-・抽送系: パンパン, ズチュズチュ, グチュグチュ, ヌチュヌチュ, ピチャピチャ, パチュパチュ
-・愛撫系: サワッ, ツー, ペロッ, チュッ, レロレロ, コリッ, ニュルッ
-・吸引系: チュパッ, ジュルッ, ゴクッ, ンチュ, チュルル, レロッ
-・射精系: ドクドク, ビュルル, ドビュッ, ピュッピュッ, ドクッドクッ, ビュクッ
-・反応系: ビクッ, ビクビク, ガクガク, プルプル, ゾクッ, ブルッ, ワナワナ
-・心音系: ドキドキ, バクバク, トクン, ドクンドクン
-・衝撃系: ドンッ, バンッ, ギシギシ, ミシッ, ガタン, バシッ
-・濡れ系: トロッ, ジュワッ, グショッ, タラッ, ヌルヌル, ベチャ
-・剥ぎ系: ビリッ, バサッ, スルッ, シュルッ, パサッ
-
-## 良い例 vs 悪い例
-
-✅「あっ♡」（喘ぎ・自然）
-❌「そこを触られると気持ちいいです」（説明的・不自然）
-
-✅「逃がさねぇよ」（男の言葉責め・粗野）
-❌「心配するな、俺たちは優しくしてやる」（丁寧すぎ）
-
-✅「やだ…っ」（否定・感情的）
-❌「こんなことしないでください…」（文章・不自然）
-
-✅「きもちぃ…♡」（堕落・自然）
-❌「あなたに触れられて体が熱くなる」（小説・不自然）
-
-✅ 心の声:「彼より…」（感情断片）
-❌ 心の声:「彼氏に...ごめん...」（反省文で不自然）
-
-✅ 心の声:「もう…戻れない」（状態の暗示）
-❌ 心の声:「彼のことなんて...忘れてしまった」（ナレーション）
-
-✅ オノマトペ: ズブッ, グチュグチュ, ビクッ
-❌ オノマトペは吹き出しの中に入れない（別フィールド）
-
-## speech吹き出しで状況を伝えるテクニック
-
-descriptionの説明がなくても、画像+吹き出しで視聴者に伝わるようにする。
-・抵抗シーン: 「やめ…」+男「おとなしくしろ」→ 強制されているとわかる
-・堕落シーン: 「もっと…♡」+男「もう正直だな」→ 快楽に堕ちたとわかる
-・NTR比較: 「こんなの…初めて…♡」→ 彼氏より気持ちいいと暗示
-・絶頂シーン: 「イっ…ちゃ…♡」+オノマトペ「ドビュッ」→ 中出し絶頂とわかる
+## オノマトペ辞書（同じ組み合わせの連続禁止）
+・挿入: ズブッ, ヌプッ, ズリュッ, ヌルッ, ズンッ ・抽送: パンパン, グチュグチュ, ヌチュヌチュ
+・愛撫: サワッ, ペロッ, チュッ, レロレロ ・吸引: チュパッ, ジュルッ, ゴクッ
+・射精: ドクドク, ドビュッ, ビュルル ・反応: ビクッ, ビクビク, ガクガク, ゾクッ
+・心音: ドキドキ, バクバク ・衝撃: ドンッ, ギシギシ ・濡れ: トロッ, グショッ, ヌルヌル
+・剥ぎ: ビリッ, スルッ
 
 {f'''
 ## ⚠️ セリフ品質ガイド（厳守・最優先）
@@ -5162,6 +5319,14 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 - 前シーンが1対1なら→このシーンも1対1か、せいぜい2人目の登場まで
 - 前シーンで抵抗していたなら→このシーンは葛藤。いきなり完全堕落は禁止
 - **心情の変化は前シーンの「次への繋がり」を必ず引き継ぐこと**
+
+### ⚠️ 体位・描写バリエーション強制（違反即不合格）
+- **descriptionに書く体位・行為は前シーンと必ず変えること**
+- 使える体位: 正常位/後背位/騎乗位/立ちバック/側位/寝バック/座位/駅弁/対面座位/背面騎乗位/フェラ/パイズリ/手マン
+- 描写する身体部位・焦点も前シーンと変えること（胸→腰→脚→首筋→耳→背中をローテーション）
+- **「膣奥」「膣内」等の同じ表現を3シーン以上繰り返し使用するのは禁止**
+- **descriptionは前シーンと異なる体位・行為・身体部位を描写すること**
+- **titleは全シーンで固有であること。前シーンと同じキーワードの繰り返し禁止**
 ---
 """
 
@@ -5266,7 +5431,9 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 - descriptionが歩行・食事・帰宅等の非エロ場面なのにbubblesに喘ぎ・♡がある → 場面に合った普通のセリフに直せ
 - 「初めて」「彼のこと忘れ」等の同じフレーズを全体で3回以上使っている → 別の表現にしろ
 - type="moan"の吹き出しに説明文・会話文が入っている → 喘ぎ声に書き換えろ（「そうなんだ」「汗すごい」等は禁止）
-- story_flowが前シーンと同一テキスト → このシーン固有の展開に書き換えろ"""
+- story_flowが前シーンと同一テキスト → このシーン固有の展開に書き換えろ
+- descriptionの体位・行為が前シーンと同じ → 別の体位・行為に変えろ（正常位/後背位/騎乗位/立ちバック/側位/座位等をローテーション）
+- titleが前シーンと同じキーワード（「膣奥」「理性」等）を含んでいる → 別のキーワードに変えろ"""
 
     prompt = prompt + dedup_warning + "\n\nJSONのみ出力。"
 
@@ -5483,7 +5650,6 @@ def generate_pipeline(
     cost_tracker = CostTracker()
 
     jailbreak = load_file(JAILBREAK_FILE)
-    sd_guide = load_file(SD_PROMPT_GUIDE_FILE)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -5661,7 +5827,7 @@ def generate_pipeline(
         _high_n = sum(1 for s in outline if s.get("intensity", 3) >= 5)
         callback(f"[OK]シーン分割完成: {len(outline)}シーン（Haiku4.5×{_haiku_n} + Sonnet×{_high_n}）")
 
-    # コスト見積もり（実際のモデルコストで計算）
+    # コスト見積もり（Prompt Caching反映版）
     haiku_count = sum(1 for s in outline if s.get("intensity", 3) <= 4)
     high_count = sum(1 for s in outline if s.get("intensity", 3) >= 5)
     hf_cost = COSTS.get(MODELS["haiku_fast"], {"input": 0.25, "output": 1.25})
@@ -5669,12 +5835,24 @@ def generate_pipeline(
     s_cost = COSTS.get(MODELS["sonnet"], {"input": 3.00, "output": 15.00})
     # あらすじ+アウトライン → haiku_fast
     overhead_cost = 2 * (2000 / 1_000_000 * hf_cost["input"] + 2000 / 1_000_000 * hf_cost["output"])
-    # シーン生成（全intensity → Haiku 4.5, intensity 5 → Sonnet）
-    scene_cost = (
-        haiku_count * (5500 / 1_000_000 * h_cost["input"] + 700 / 1_000_000 * h_cost["output"]) +
-        high_count * (5500 / 1_000_000 * s_cost["input"] + 700 / 1_000_000 * s_cost["output"])
-    )
-    est_cost = overhead_cost + scene_cost
+    # シーン生成（Prompt Caching: systemは1回cache_create + (N-1)回cache_read）
+    cached_sys = 16000  # systemプロンプト推定トークン数
+    avg_user = 3000  # 平均user prompt
+    # Haiku: cache_create 1回(1.25x) + cache_read (N-1)回(0.1x) + 非キャッシュ入力 + 出力
+    haiku_scene_cost = (
+        (cached_sys / 1_000_000 * h_cost["input"] * 1.25) +  # 初回cache作成
+        (cached_sys / 1_000_000 * h_cost["input"] * 0.10 * max(0, haiku_count - 1)) +  # cache読取
+        (haiku_count * avg_user / 1_000_000 * h_cost["input"]) +  # 非キャッシュ入力
+        (haiku_count * 700 / 1_000_000 * h_cost["output"])  # 出力
+    ) if haiku_count > 0 else 0
+    # Sonnet: 同様
+    sonnet_scene_cost = (
+        (cached_sys / 1_000_000 * s_cost["input"] * 1.25) +
+        (cached_sys / 1_000_000 * s_cost["input"] * 0.10 * max(0, high_count - 1)) +
+        (high_count * avg_user / 1_000_000 * s_cost["input"]) +
+        (high_count * 700 / 1_000_000 * s_cost["output"])
+    ) if high_count > 0 else 0
+    est_cost = overhead_cost + haiku_scene_cost + sonnet_scene_cost
     if callback:
         callback(f"[COST]推定コスト: ${est_cost:.4f}（API {len(outline)+2}回: Haiku4.5×{haiku_count} + Sonnet×{high_count}）")
 
@@ -5690,7 +5868,9 @@ def generate_pipeline(
         _rm_intensity = s.get("intensity", 3)
         situation = s.get("situation", "")[:60]
         location = s.get("location", "")[:15]
-        roadmap_lines.append(f"[{sid}] {title} (i={_rm_intensity}, {location}) {situation}")
+        goal = s.get("goal", "")[:30]
+        goal_part = f" 目的:{goal}" if goal else ""
+        roadmap_lines.append(f"[{sid}] {title} (i={_rm_intensity}, {location}) {situation}{goal_part}")
     outline_roadmap = "\n".join(roadmap_lines)
 
     for i, scene in enumerate(outline):
@@ -5723,7 +5903,7 @@ def generate_pipeline(
                 callback(f"[SCENE]シーン {i+1}/{len(outline)} [{model_type}] 重要度{intensity}")
 
             draft = generate_scene_draft(
-                client, context, scene, jailbreak, sd_guide,
+                client, context, scene, jailbreak,
                 cost_tracker, theme, char_profiles, callback,
                 story_so_far=story_so_far,
                 synopsis=synopsis,
@@ -5772,7 +5952,7 @@ def generate_pipeline(
                 time.sleep(cooldown)
                 try:
                     draft = generate_scene_draft(
-                        client, context, scene, jailbreak, sd_guide,
+                        client, context, scene, jailbreak,
                         cost_tracker, theme, char_profiles, callback,
                         story_so_far=story_so_far, synopsis=synopsis,
                         outline_roadmap=current_roadmap
@@ -5804,7 +5984,7 @@ def generate_pipeline(
                 for retry_n in range(2):
                     try:
                         draft = generate_scene_draft(
-                            client, context, scene, jailbreak, sd_guide,
+                            client, context, scene, jailbreak,
                             cost_tracker, theme, char_profiles, callback,
                             story_so_far=story_so_far,
                             synopsis="" if is_refusal else synopsis

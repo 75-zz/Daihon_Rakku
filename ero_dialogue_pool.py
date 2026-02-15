@@ -1,12 +1,13 @@
-"""エロセリフプール v3.0: 重複置換用の大量セリフ辞書（CG集吹き出し用）
+"""エロセリフプール v3.5: 重複置換用の大量セリフ辞書（CG集吹き出し用）
 
-合計1265+エントリー:
+合計1415+エントリー:
   MOAN_POOL: 5 intensity × 80 = 400
   SPEECH_FEMALE_POOL: 8 categories = 370
-  THOUGHT_POOL: 5 categories = 240
+  THOUGHT_POOL: 5 categories + forced = 340
   SPEECH_MALE_POOL: 4 categories = 155
   NEUTRAL_POOL: 2 categories = 50 (非エロシーン用)
   AFTERMATH_POOL: 2 categories = 50 (事後シーン用)
+  MALE_SHORT_REPLACEMENTS: 男性セリフ短縮辞書 = 50+
 """
 import random
 
@@ -849,7 +850,7 @@ SPEECH_FEMALE_POOL = {
 # 心の声プール（テーマ別）
 # ============================================================================
 THOUGHT_POOL = {
-    # general: 汎用
+    # general: 汎用（70エントリー - 先頭2文字の偏りを最小化）
     "general": [
         "やば…",
         "なにこれ…",
@@ -901,6 +902,62 @@ THOUGHT_POOL = {
         "うそ…これ…",
         "呼吸が…乱れ",
         "限界…近い…",
+        # v3.5追加: 多様な先頭パターン（だめ/やだ以外）
+        "こんな声…",
+        "腰が…勝手に",
+        "とまんない…",
+        "ぞくぞくする…",
+        "奥…響いてる",
+        "もう…わかんない",
+        "頭ぐるぐる…",
+        "びくってした…",
+        "ぴくぴくする…",
+        "あたし…変…",
+        "なんか…へん…",
+        "ずっと…ずっと…",
+        "ここ…弱い…",
+        "指が…震えて…",
+        "視界が…ぼやけ",
+        "耳…きこえない",
+        "脳みそ…とけ…",
+        "体…言うこと…",
+        "膝…がくがく…",
+        "お腹…きゅって…",
+        "つま先まで…",
+    ],
+
+    # forced: 強制・暴行テーマ専用
+    "forced": [
+        "やめて…",
+        "離して…",
+        "いたい…のに…",
+        "なんで…あたし…",
+        "たすけて…",
+        "こんなの…嫌…",
+        "体が…裏切る",
+        "やだ…感じて…",
+        "抵抗できない…",
+        "力が…入らない",
+        "逃げたいのに…",
+        "怖い…でも…",
+        "声…出さない…",
+        "誰か…たすけ…",
+        "嫌なのに体が…",
+        "頭は拒否…でも",
+        "涙…止まらない",
+        "動けない…",
+        "こんな場所で…",
+        "屈辱的…",
+        "なのに腰が…",
+        "悔しい…",
+        "こんな奴に…",
+        "惨めだ…",
+        "なんで反応…",
+        "勝手に濡れて…",
+        "心は拒否してる",
+        "もう…耐えられ",
+        "体だけ…勝手に",
+        "やだ…やだよ…",
     ],
 
     # ntr: NTR・寝取られ
@@ -1376,7 +1433,10 @@ def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3) -> li
         if "ntr" in theme_lower or "寝取" in theme:
             return THOUGHT_POOL["ntr"]
         elif is_forced:
-            return THOUGHT_POOL["reluctant"]
+            # forced: 専用プール + reluctantの混合で幅を持たせる
+            pool = list(THOUGHT_POOL.get("forced", []))
+            pool.extend(THOUGHT_POOL["reluctant"])
+            return pool
         elif "純愛" in theme or "vanilla" in theme_lower:
             return THOUGHT_POOL["vanilla"]
         elif "堕落" in theme or "催眠" in theme or "調教" in theme or "corruption" in theme_lower:
@@ -1451,3 +1511,66 @@ def get_male_speech_pool(male_type: str = "") -> list:
     for pool in SPEECH_MALE_POOL.values():
         combined.extend(pool)
     return combined
+
+
+# ============================================================================
+# 男性セリフ短縮辞書（長文→8文字以内の命令形/断定形に変換）
+# ============================================================================
+MALE_SHORT_REPLACEMENTS = {
+    # 描写的な長文 → 短い命令形/断定形
+    "こんなに締まってんぞ": "締まるな",
+    "こんなに締まって": "締まりすぎだ",
+    "すごくいい…締まってる": "いい締まりだ",
+    "こんな膣": "最高だ",
+    "ずっと待ってたんだ": "待たせたな",
+    "本当は感じてんだろ": "感じてんだろ",
+    "本当はほしいんだろ": "欲しいんだろ",
+    "勝手に動いてんぞ": "腰振ってんぞ",
+    "抵抗できてねぇ": "無駄だよ",
+    "抵抗できてない": "無駄だ",
+    "我慢できなくなってんな": "もう無理だろ",
+    "我慢できてねぇんだろ": "もう無理だろ",
+    "身体が素直に反応してんな": "正直だな",
+    "声漏れてんぞ": "声出てんぞ",
+    "もう限界だな": "限界だな",
+    "完全に堕ちちゃってるな": "堕ちたな",
+    "逃げられねぇぞ": "逃がさねえ",
+    "おくまでぐちゃぐちゃだ": "ぐちゃぐちゃだ",
+    "もう隠すなよ": "隠すなよ",
+    "全部出してやる": "全部出すぞ",
+    "声出てんぞ…抵抗できてねぇ": "声出てんぞ",
+    "声、我慢できなくなってんな": "もう無理だろ",
+    "もう我慢できてねぇんだろ": "もう無理だろ",
+    "おく…ぐちゃぐちゃになってんぞ": "ぐちゃぐちゃだ",
+    "膣、こんなに締まってんぞ…最高だ": "締まるな",
+    "腰が勝手に動いてんぞ…本当はほしいんだろ": "欲しいんだろ",
+    "限界だな…もう堪えられてねぇ": "限界だろ",
+    "もう限界だな…声漏れてんぞ": "漏れてんぞ",
+    "いい顔になってんな": "いい顔だ",
+    "もう逃げられねぇ": "逃がさねえ",
+}
+
+
+def shorten_male_speech(text: str, max_len: int = 8) -> str:
+    """男性セリフを最大max_len文字に短縮する。
+    1. MALE_SHORT_REPLACEMENTS辞書で既知の長文を変換
+    2. それでも長ければ最初の句切り（…）までをカット
+    3. それでも長ければ先頭max_len文字に切り詰め
+    """
+    if len(text) <= max_len:
+        return text
+
+    # 辞書マッチ（部分一致: 長い方を優先）
+    for long_form, short_form in sorted(MALE_SHORT_REPLACEMENTS.items(),
+                                         key=lambda x: len(x[0]), reverse=True):
+        if long_form in text:
+            return short_form
+
+    # …で区切って先頭部分のみ取得
+    if "…" in text:
+        first_part = text.split("…")[0]
+        if 2 <= len(first_part) <= max_len:
+            return first_part
+
+    # 最終手段: 先頭max_len文字
+    return text[:max_len]
