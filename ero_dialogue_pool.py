@@ -1,10 +1,12 @@
-"""エロセリフプール v3.7: 重複置換用の大量セリフ辞書（CG集吹き出し用）
+"""エロセリフプール v3.8: 重複置換用の大量セリフ辞書（CG集吹き出し用）
 
-合計1840+エントリー:
+合計2100+エントリー:
   MOAN_POOL: 5 intensity × 80 = 400（んほぉ/おほぉ/あへぇ系強化）
-  SPEECH_FEMALE_POOL: 10 categories = 455（+insertion 30 +beg 25）
-  THOUGHT_POOL: 9 categories = 455（+body_awareness 20 +contradiction 15 +self_surprise 20）
-  SPEECH_MALE_POOL: 5 categories = 185（+climax 30）
+  SPEECH_FEMALE_POOL: 16 categories = 590
+    (+receiving_climax 20 +position_change 15 +ntr_comparison 15
+     +round2 15 +hypnosis 15 +public 15)
+  THOUGHT_POOL: 11 categories = 490（+hypnosis 20 +public 15）
+  SPEECH_MALE_POOL: 6 categories = 195（+breath 10）
   ONOMATOPOEIA_POOL: 9 categories = 200+（行為別×intensity連動）
   NEUTRAL_POOL: 2 categories = 50 (非エロシーン用)
   AFTERMATH_POOL: 2 categories = 50 (事後シーン用)
@@ -898,6 +900,125 @@ SPEECH_FEMALE_POOL = {
         "服従します♡",
         "忠誠…♡♡",
     ],
+
+    # receiving_climax: 射精を受ける女性のセリフ（中出し/外出し/懇願）
+    "receiving_climax": [
+        "あ…出てる…♡♡",
+        "中…あつい…♡♡",
+        "いっぱい…♡♡♡",
+        "あふれ…てる…♡♡",
+        "奥…あつい…♡♡",
+        "お腹…あったかい♡♡",
+        "とまんない…♡♡",
+        "ぜんぶ…受け止める♡♡",
+        "まだ出てる…♡♡",
+        "すごい量…♡♡",
+        "中…ドクドク…♡♡♡",
+        "あ…感じる…♡♡",
+        "注がれてる…♡♡",
+        "体の中…♡♡♡",
+        "ぬくい…♡♡",
+        "溢れちゃう…♡♡",
+        "抜かないで…♡♡",
+        "もっと…出して♡♡♡",
+        "ぜんぶちょうだい♡♡",
+        "中に…♡♡♡",
+    ],
+
+    # position_change: 体位変更時のリアクション
+    "position_change": [
+        "え…この体勢…♡",
+        "恥ずかし…♡",
+        "見えちゃう…♡",
+        "あ…深い…♡♡",
+        "さっきより…♡♡",
+        "角度…やば…♡♡",
+        "え…後ろから…♡",
+        "上なの…♡",
+        "こんな格好…♡",
+        "奥…届く…♡♡",
+        "あ…当たる…♡♡",
+        "全然違う…♡♡",
+        "ひろげないで…♡",
+        "顔…見ないで…♡",
+        "こっちのが…♡♡",
+    ],
+
+    # ntr_comparison: NTR比較表現
+    "ntr_comparison": [
+        "彼より…おっきい…♡♡",
+        "こんなの…彼じゃ…♡♡",
+        "全然…ちがう…♡♡",
+        "彼のじゃ…もう…♡♡",
+        "上書き…されちゃう…♡♡",
+        "比べちゃだめ…♡♡",
+        "彼に…ごめん…♡♡",
+        "彼より…すごい…♡♡",
+        "もう…戻れない…♡♡",
+        "彼のこと…忘れそう…♡♡",
+        "知らなかった…こんなの♡♡",
+        "体が…覚えちゃう…♡♡",
+        "こっちのが…♡♡♡",
+        "彼じゃ…足りない…♡♡",
+        "もう…あの人じゃ…♡♡",
+    ],
+
+    # round2: 2回戦・連続行為
+    "round2": [
+        "まだするの…♡",
+        "もう…3回目…♡♡",
+        "体…覚えちゃった…♡♡",
+        "さっきより…感じる…♡♡",
+        "もう…すぐイっちゃう…♡♡",
+        "まだ足りないの…♡",
+        "もう…立てない…♡♡",
+        "休ませて…♡",
+        "またイっちゃ…♡♡",
+        "何回目…♡♡",
+        "体…敏感になって…♡♡",
+        "もう…無理なのに…♡♡",
+        "すぐイっちゃう…♡♡",
+        "また…奥に…♡♡",
+        "もう…とまらない…♡♡",
+    ],
+
+    # hypnosis: 催眠・洗脳テーマ
+    "hypnosis": [
+        "はい…♡",
+        "わかり…ました…♡",
+        "なんでも…します…♡",
+        "ぼーっと…♡",
+        "ふわふわ…♡",
+        "あたま…からっぽ…♡",
+        "きもちぃ…♡",
+        "言うこと…聞きます♡",
+        "逆らえない…♡",
+        "ご命令…♡♡",
+        "もっと…かけて…♡",
+        "とろとろ…♡♡",
+        "考えられない…♡",
+        "はい…もっと…♡♡",
+        "お人形さん…♡",
+    ],
+
+    # public: 痴漢・公共場所（声を我慢する状況）
+    "public": [
+        "声…出せない…",
+        "バレちゃう…",
+        "こんなとこで…",
+        "ん…んぅ…っ",
+        "やめ…人が…",
+        "だめ…ここ…",
+        "誰か来たら…",
+        "我慢…しなきゃ…",
+        "口…塞いで…",
+        "声…漏れちゃ…",
+        "静かにしなきゃ…",
+        "見られたら…",
+        "あ…っ…ん…っ",
+        "電車…なのに…",
+        "隣の人…気づいて…",
+    ],
 }
 
 
@@ -1080,6 +1201,49 @@ THOUGHT_POOL = {
         "声が…出ちゃう…嘘",
         "反応してる…嫌なのに",
         "認めたくないけど…",
+    ],
+
+    # hypnosis: 催眠・洗脳テーマの心の声
+    "hypnosis": [
+        "あれ…わたし…なにして…",
+        "頭の中…ぼんやり…",
+        "逆らえない…なんで…",
+        "体が…勝手に…",
+        "意識が…遠く…",
+        "考えがまとまらない…",
+        "なんで…言いなりに…",
+        "ふわふわして…気持ちいい…",
+        "目が…覚めない…",
+        "声が…自分のじゃない…",
+        "止まれない…体が…",
+        "おかしい…でも…きもちぃ…",
+        "わかってるのに…動けない…",
+        "あたま…とろとろ…",
+        "気づいたら…こんなことに…",
+        "夢みたい…でも…",
+        "抵抗しなきゃ…でも…",
+        "操られてる…のに…",
+        "目が合うと…従いたく…",
+        "もう…自分じゃない…",
+    ],
+
+    # public: 痴漢・公共場所の心の声
+    "public": [
+        "声出しちゃだめ…",
+        "バレたらどうしよう…",
+        "なんでこんなとこで…",
+        "周りの人…気づいてない…？",
+        "叫びたい…でも…",
+        "誰か…助けて…",
+        "降りなきゃ…でも…体が…",
+        "隣の人…こっち見てる…？",
+        "我慢…我慢…っ",
+        "顔に出てる…絶対…",
+        "足が…震えてる…バレる…",
+        "こんなとこで…感じちゃ…",
+        "止まらない…ここなのに…",
+        "息…荒くなってる…",
+        "次の駅まで…持たない…",
     ],
 
     # forced: 強制・暴行テーマ専用
@@ -1532,6 +1696,20 @@ SPEECH_MALE_POOL = {
         "素晴らしい",
         "こんな子初めて",
     ],
+
+    # breath: 男性の短い息遣い・唸り（♡禁止）
+    "breath": [
+        "くっ…",
+        "ぐっ…",
+        "はぁ…",
+        "ふぅ…",
+        "ちっ…",
+        "くそ…",
+        "っ…",
+        "ん…",
+        "はっ…",
+        "ぐ…っ",
+    ],
 }
 
 
@@ -1721,12 +1899,24 @@ def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3) -> li
     """タイプとテーマに応じたセリフプールを返す"""
     theme_lower = theme.lower() if theme else ""
     is_forced = any(k in theme_lower for k in ["forced", "陵辱", "レイプ", "reluctant", "暴行", "強制"])
+    is_hypnosis = any(k in theme_lower for k in ["催眠", "洗脳", "hypnosis", "マインド"])
+    is_public = any(k in theme_lower for k in ["痴漢", "電車", "バス", "公共", "public", "chikan"])
+    is_ntr = "ntr" in theme_lower or "寝取" in theme
 
     if bubble_type == "thought":
-        if "ntr" in theme_lower or "寝取" in theme:
+        if is_ntr:
             pool = list(THOUGHT_POOL["ntr"])
             if intensity >= 3:
                 pool.extend(THOUGHT_POOL.get("contradiction", []))
+            return pool
+        elif is_hypnosis:
+            pool = list(THOUGHT_POOL.get("hypnosis", []))
+            pool.extend(THOUGHT_POOL.get("corruption", []))
+            return pool
+        elif is_public:
+            pool = list(THOUGHT_POOL.get("public", []))
+            if intensity >= 3:
+                pool.extend(THOUGHT_POOL.get("body_awareness", []))
             return pool
         elif is_forced:
             # forced: 専用プール + reluctant + 矛盾型の混合
@@ -1757,6 +1947,29 @@ def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3) -> li
         return pool
     elif bubble_type == "speech":
         pool = []
+        # テーマ特化: 催眠
+        if is_hypnosis:
+            pool.extend(SPEECH_FEMALE_POOL.get("hypnosis", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("submissive", []))
+            if intensity >= 4:
+                pool.extend(SPEECH_FEMALE_POOL.get("ecstasy", []))
+            if intensity >= 5:
+                pool.extend(SPEECH_FEMALE_POOL.get("receiving_climax", []))
+            return pool if pool else [v for sp in SPEECH_FEMALE_POOL.values() for v in sp]
+        # テーマ特化: 痴漢・公共
+        if is_public:
+            pool.extend(SPEECH_FEMALE_POOL.get("public", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("embarrassed", []))
+            if intensity >= 4:
+                pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
+            return pool if pool else [v for sp in SPEECH_FEMALE_POOL.values() for v in sp]
+        # テーマ特化: NTR（比較表現を混合）
+        if is_ntr:
+            pool.extend(SPEECH_FEMALE_POOL.get("ecstasy", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("ntr_comparison", []))
+            if intensity >= 5:
+                pool.extend(SPEECH_FEMALE_POOL.get("receiving_climax", []))
+            return pool if pool else [v for sp in SPEECH_FEMALE_POOL.values() for v in sp]
         if is_forced:
             # 暴行/強制テーマ: 合意セリフ(acceptance/ecstasy)は使わない
             pool.extend(SPEECH_FEMALE_POOL.get("denial", []))
@@ -1772,17 +1985,20 @@ def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3) -> li
             pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
             pool.extend(SPEECH_FEMALE_POOL.get("acceptance", []))
             pool.extend(SPEECH_FEMALE_POOL.get("embarrassed", []))
-            pool.extend(SPEECH_FEMALE_POOL.get("insertion", []))  # 挿入リアクション
+            pool.extend(SPEECH_FEMALE_POOL.get("insertion", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("position_change", []))
         elif intensity == 4:
             pool.extend(SPEECH_FEMALE_POOL.get("acceptance", []))
             pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
             pool.extend(SPEECH_FEMALE_POOL.get("ecstasy", []))
-            pool.extend(SPEECH_FEMALE_POOL.get("beg", []))  # おねだり
+            pool.extend(SPEECH_FEMALE_POOL.get("beg", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("round2", []))
         else:
             pool.extend(SPEECH_FEMALE_POOL.get("ecstasy", []))
             pool.extend(SPEECH_FEMALE_POOL.get("submissive", []))
             pool.extend(SPEECH_FEMALE_POOL.get("plea", []))
-            pool.extend(SPEECH_FEMALE_POOL.get("beg", []))  # おねだり
+            pool.extend(SPEECH_FEMALE_POOL.get("beg", []))
+            pool.extend(SPEECH_FEMALE_POOL.get("receiving_climax", []))
         return pool if pool else [v for sp in SPEECH_FEMALE_POOL.values() for v in sp]
     return []
 
@@ -1794,6 +2010,9 @@ def get_male_speech_pool_for_theme(theme: str = "", intensity: int = 3) -> list:
     if any(k in t for k in ["ntr", "寝取", "夜這", "村", "レイプ", "陵辱", "調教", "奴隷"]):
         pool.extend(SPEECH_MALE_POOL.get("command", []))
         pool.extend(SPEECH_MALE_POOL.get("dirty", []))
+    elif any(k in t for k in ["催眠", "洗脳", "hypnosis"]):
+        pool.extend(SPEECH_MALE_POOL.get("command", []))
+        pool.extend(SPEECH_MALE_POOL.get("gentle", []))
     elif any(k in t for k in ["純愛", "ラブ", "恋人", "カップル"]):
         pool.extend(SPEECH_MALE_POOL.get("gentle", []))
         pool.extend(SPEECH_MALE_POOL.get("praise", []))
@@ -1804,6 +2023,9 @@ def get_male_speech_pool_for_theme(theme: str = "", intensity: int = 3) -> list:
         else:
             pool.extend(SPEECH_MALE_POOL.get("dirty", []))
             pool.extend(SPEECH_MALE_POOL.get("praise", []))
+    # intensity 3+で息遣い追加（全テーマ共通）
+    if intensity >= 3:
+        pool.extend(SPEECH_MALE_POOL.get("breath", []))
     # intensity 5で射精宣言プール追加（全テーマ共通）
     if intensity >= 5:
         pool.extend(SPEECH_MALE_POOL.get("climax", []))
