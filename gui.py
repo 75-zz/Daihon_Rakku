@@ -537,6 +537,22 @@ POSITION_FALLBACKS = {
     "bent_over": ["against_wall", "doggy_style", "standing_sex"],
     "face_sitting": ["sixty_nine", "cowgirl_position", "sitting_on_lap"],
     "legs_up": ["mating_press", "missionary", "legs_over_head"],
+    "spread_legs": ["missionary", "legs_up", "on_back"],
+    "standing": ["against_wall", "standing_sex", "from_behind"],
+    "sitting": ["sitting_on_lap", "straddling", "lotus_position"],
+    "straddling": ["cowgirl_position", "sitting_on_lap", "face_sitting"],
+    "on_back": ["missionary", "spread_legs", "legs_up"],
+    "on_side": ["spooning", "from_behind", "prone_bone"],
+    "on_stomach": ["prone_bone", "doggy_style", "all_fours"],
+    "kneeling": ["all_fours", "doggy_style", "fellatio"],
+    "squatting": ["cowgirl_position", "sitting_on_lap", "standing_sex"],
+    "lotus_position": ["sitting_on_lap", "straddling", "cowgirl_position"],
+    "suspended_congress": ["standing_sex", "against_wall", "mating_press"],
+    "legs_over_head": ["legs_up", "mating_press", "missionary"],
+    "sixty_nine": ["face_sitting", "on_back", "on_side"],
+    "cunnilingus": ["face_sitting", "sixty_nine", "spread_legs"],
+    "handjob": ["fellatio", "paizuri", "kneeling"],
+    "leg_lock": ["missionary", "cowgirl_position", "mating_press"],
 }
 
 # intensity別 体位優先度（高intensityではより激しい体位を優先）
@@ -546,6 +562,17 @@ _POSITION_INTENSITY_PREFERENCE = {
     4: {"doggy_style", "cowgirl_position", "reverse_cowgirl", "from_behind",
         "bent_over", "standing_sex"},
     3: {"missionary", "spooning", "sitting_on_lap", "on_side"},
+}
+
+# アングル代替マップ（同一アングル連続時のフォールバック）
+ANGLE_FALLBACKS = {
+    "from_above": ["from_side", "pov", "dutch_angle"],
+    "from_below": ["from_side", "straight-on", "dutch_angle"],
+    "from_behind": ["from_side", "from_above", "pov"],
+    "from_side": ["from_above", "pov", "straight-on"],
+    "pov": ["from_above", "from_side", "dutch_angle"],
+    "straight-on": ["from_side", "from_above", "pov"],
+    "dutch_angle": ["from_side", "from_above", "pov"],
 }
 
 def deduplicate_sd_tags(prompt: str) -> str:
@@ -904,6 +931,14 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         else:
             seen_descs[desc_prefix] = scene_id
 
+    # --- クロスシーン: title長さチェック ---
+    for i, scene in enumerate(results):
+        title = scene.get("title", "")
+        scene_id = scene.get("scene_id", i + 1)
+        if len(title) > 25:
+            scene_issues.setdefault(scene_id, []).append(
+                f"title長すぎ({len(title)}字): 「{title[:30]}...」")
+
     # --- クロスシーン: title重複チェック ---
     seen_titles = {}  # title -> scene_id
     for i, scene in enumerate(results):
@@ -926,8 +961,10 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         for kw in _TITLE_CHECK_KW:
             if kw in title:
                 _title_kw_count[kw] = _title_kw_count.get(kw, 0) + 1
+    _total_scenes = len(results)
+    _title_kw_threshold = max(3, _total_scenes // 10)  # 10シーンにつき1回まで許容
     for kw, cnt in _title_kw_count.items():
-        if cnt >= 3:
+        if cnt >= _title_kw_threshold:
             scene_issues.setdefault("global", []).append(
                 f"titleキーワード過剰: 「{kw}」が{cnt}回使用（推奨2回以下）")
 
@@ -941,11 +978,11 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         kws = frozenset(kw for kw in _DESC_ACT_KW if kw in desc)
         _desc_kw_per_scene.append(kws)
     for k in range(2, len(_desc_kw_per_scene)):
-        if (_desc_kw_per_scene[k] and
-            _desc_kw_per_scene[k] == _desc_kw_per_scene[k-1] == _desc_kw_per_scene[k-2]):
+        common = _desc_kw_per_scene[k] & _desc_kw_per_scene[k-1] & _desc_kw_per_scene[k-2]
+        if len(common) >= 2:  # 2キーワード以上一致で類似判定（1つだけなら正常）
             sid = results[k].get("scene_id", k + 1)
             scene_issues.setdefault(sid, []).append(
-                f"description3連続類似（行為キーワード同一: {_desc_kw_per_scene[k]}）")
+                f"description3連続類似（行為キーワード同一: {common}）")
 
     # --- クロスシーン: character_feelings類似チェック ---
     seen_feelings = {}  # feelings_str -> scene_id
@@ -1020,12 +1057,12 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             if prefix:
                 thought_prefix_counter.setdefault(prefix, []).append((sid, text))
     for prefix, entries in thought_prefix_counter.items():
-        if len(entries) >= 4:
+        if len(entries) >= 6:
             scene_ids_str = ",".join(str(e[0]) for e in entries[:6])
             scene_issues.setdefault("global", []).append(
                 f"thought先頭「{prefix}」が{len(entries)}回反復（シーン{scene_ids_str}）")
 
-    # --- クロスシーン: 男性セリフ長文チェック（8文字超え） ---
+    # --- クロスシーン: 男性セリフ長文チェック（15文字超え） ---
     for i, scene in enumerate(results):
         scene_id = scene.get("scene_id", i + 1)
         for b in scene.get("bubbles", []):
@@ -1035,9 +1072,21 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                 txt = b.get("text", "")
                 # ♡…っ等の装飾を除いた実質文字数
                 core = txt.replace("…", "").replace("♡", "").replace("っ", "").replace("♥", "").strip()
-                if len(core) > 8:
+                if len(core) > 15:
                     scene_issues.setdefault(scene_id, []).append(
                         f"男性セリフ長文({len(core)}字): 「{txt}」")
+
+    # --- クロスシーン: 不自然表現チェック（「らめ」「括弧」「一人称ブレ」） ---
+    for i, scene in enumerate(results):
+        scene_id = scene.get("scene_id", i + 1)
+        for b in scene.get("bubbles", []):
+            txt = b.get("text", "")
+            if "らめ" in txt:
+                scene_issues.setdefault(scene_id, []).append(
+                    f"不自然表現「らめ」: 「{txt}」")
+            if "」" in txt or "「" in txt:
+                scene_issues.setdefault(scene_id, []).append(
+                    f"括弧混入: 「{txt}」")
 
     # --- クロスシーン: オノマトペ近接重複（3シーン以内） ---
     repeated_onom = []
@@ -1392,7 +1441,7 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
     used_patterns = {}  # pattern_key -> count
     # thought先頭パターン追跡（「だめ…」「やだ…」等の同一先頭3文字反復防止）
     thought_prefix_counter = {}  # prefix3 -> count
-    _THOUGHT_PREFIX_LIMIT = 3  # 同一先頭パターンの上限
+    _THOUGHT_PREFIX_LIMIT = 4  # 同一先頭パターンの上限
 
     replace_count = 0
 
@@ -1480,7 +1529,7 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 if (text in used_moan_raw) or (norm in used_moan_texts):
                     need_replace = True
                     reason = "重複"
-                elif any(_is_similar_bubble(text, prev, strict=True) for prev in used_moan_raw):
+                elif any(_is_similar_bubble(text, prev) for prev in used_moan_raw):
                     need_replace = True
                     reason = "類似"
                 # 非エロシーンで喘ぎは文脈不整合
@@ -1611,6 +1660,42 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
             scene["sd_prompt"] = ", ".join(new_tags)
         _prev_pos = _cur_pos
 
+    # sd_prompt内のアングルタグ: 前シーンとの連続重複を検出し代替置換
+    _angle_kw = {"from_above", "from_below", "from_behind", "from_side",
+                 "pov", "straight-on", "dutch_angle"}
+    _prev_angles = set()
+    for scene in results:
+        sd = scene.get("sd_prompt", "")
+        if not sd:
+            _prev_angles = set()
+            continue
+        tags = [t.strip() for t in sd.split(",") if t.strip()]
+        _cur_angles = set()
+        new_tags = []
+        changed = False
+        for tag in tags:
+            _inner = _re_dedup.sub(r'[()]', '', tag).split(":")[0].strip().lower().replace(" ", "_")
+            if _inner in _angle_kw:
+                _cur_angles.add(_inner)
+                if _inner in _prev_angles:
+                    fallbacks = ANGLE_FALLBACKS.get(_inner, [])
+                    replacement = None
+                    for fb in fallbacks:
+                        if fb not in _prev_angles:
+                            replacement = fb
+                            break
+                    if replacement:
+                        _cur_angles.discard(_inner)
+                        _cur_angles.add(replacement)
+                        new_tags.append(replacement)
+                        changed = True
+                        log_message(f"  S{scene.get('scene_id', '?')}: アングル重複置換 {_inner}→{replacement}")
+                        continue
+            new_tags.append(tag)
+        if changed:
+            scene["sd_prompt"] = ", ".join(new_tags)
+        _prev_angles = _cur_angles
+
 def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") -> list:
     """生成結果の自動修正（APIコスト不要のローカル後処理）"""
     import re
@@ -1709,15 +1794,59 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                     # moan→speech変換
                     if bubble.get("type") == "moan":
                         bubble["type"] = "speech"
-                    # 長文短縮（8文字超え→短縮）
-                    if _has_male_shorten and len(txt) > 8:
-                        shortened = shorten_male_speech(txt, max_len=8)
+                    # 長文短縮（15文字超え→辞書短縮のみ）
+                    if _has_male_shorten and len(txt) > 15:
+                        shortened = shorten_male_speech(txt, max_len=15)
                         if shortened != txt:
                             log_message(f"  男性セリフ短縮: 「{txt}」→「{shortened}」")
                             bubble["text"] = shortened
                             _male_shorten_count += 1
     if _male_shorten_count > 0:
         log_message(f"  男性セリフ短縮: {_male_shorten_count}件")
+
+    # 4.6. 括弧除去・「らめ」修正・一人称ブレ修正・タイトル長制限
+    _46_fix_count = 0
+    # 一人称マップ構築（キャラプロファイルから）
+    _first_person_map = {}  # character_name -> first_person
+    if char_profiles:
+        for cp in char_profiles:
+            cn = cp.get("character_name", "")
+            fp = cp.get("first_person", "")
+            if cn and fp:
+                _first_person_map[cn] = fp
+    for scene in results:
+        # タイトル長制限（25文字超え→先頭25文字に切り詰め）
+        title = scene.get("title", "")
+        if len(title) > 25:
+            scene["title"] = title[:25].rstrip("。、…")
+            log_message(f"  S{scene.get('scene_id','?')}: タイトル短縮「{title[:30]}...」→「{scene['title']}」")
+            _46_fix_count += 1
+        if "bubbles" not in scene:
+            continue
+        for bubble in scene["bubbles"]:
+            txt = bubble.get("text", "")
+            if not txt:
+                continue
+            orig = txt
+            # 括弧除去
+            txt = txt.strip("「」『』""")
+            # 「らめ」→「だめ」修正（moanでもspeechでも）
+            if "らめ" in txt:
+                txt = txt.replace("らめぇぇ", "だめぇ").replace("らめぇん", "だめぇ")
+                txt = txt.replace("らめにゃ", "だめぇ").replace("らめらめ", "だめだめ")
+                txt = txt.replace("らめなの", "だめなの").replace("らめぇっ", "だめぇっ")
+                txt = txt.replace("らめっ", "だめっ").replace("らめぇ", "だめぇ")
+                txt = txt.replace("らめ", "だめ")
+            # 一人称ブレチェック
+            speaker = bubble.get("speaker", "")
+            expected_fp = _first_person_map.get(speaker, "")
+            if expected_fp and expected_fp != "あたし" and "あたし" in txt:
+                txt = txt.replace("あたし", expected_fp)
+            if txt != orig:
+                bubble["text"] = txt
+                _46_fix_count += 1
+    if _46_fix_count > 0:
+        log_message(f"  括弧/らめ/一人称修正: {_46_fix_count}件")
 
     # 4.7. 不自然表現の自動修正（書き言葉→話し言葉、句点除去、ひらがな化）
     _UNNATURAL_REPLACEMENTS = {
@@ -2384,18 +2513,18 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
             "後ろから突き上げられて身体が跳ね、",
             "騎乗位で腰を打ちつけながら、",
             "脚を大きく開かされた体勢で、",
-            "背後から抱きかかえられ突かれ、",
-            "壁に押し付けられた体勢のまま、",
+            "背後から抱きかかえられ腰を突かれ、",
+            "壁に押し付けられ腰を掴まれた体勢のまま、",
             "四つん這いの姿勢で腰を掴まれ、",
         ],
         5: [
             "限界を超えた激しいピストンに身体が痙攣し、",
             "奥まで突き上げられ仰け反りながら、",
-            "腰が砕けそうな激しさで突かれ続け、",
+            "腰を掴まれ激しいピストンで突かれ続け、",
             "全身が震えるほどの快感に耐えきれず、",
             "何度もイかされビクビクと痙攣しながら、",
-            "力が入らなくなった身体を好きにされ、",
-            "意識が飛ぶほどの快楽に溺れ、",
+            "力が抜けた身体を好きにされ挿入が続き、",
+            "ピストンの快楽に意識が飛びそうになり、",
             "汗だくの身体を抱え上げられ突かれ、",
         ],
     }
@@ -2425,6 +2554,38 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     if _desc_fix_count > 0:
         log_message(f"  description具体化修正: {_desc_fix_count}件")
 
+    # 16b. description連続類似修正（3連続で同一行為キーワード→中央シーンを差し替え）
+    _DESC_ACT_KW_FIX = ["膣奥", "突かれ", "責められ", "腰を振", "ピストン",
+                         "挿入", "フェラ", "パイズリ", "騎乗", "バック",
+                         "正常位", "四つん這い"]
+    _DESC_SYNONYMS = {
+        "ピストン": ["律動", "腰の動き", "突き上げ"],
+        "膣奥": ["最奥部", "子宮口付近", "一番奥"],
+        "突かれ": ["貫かれ", "押し込まれ", "攻められ"],
+        "挿入": ["結合", "繋がった状態で", "受け入れた体勢で"],
+    }
+    _desc_sim_fix = 0
+    _desc_kw_list = []
+    for scene in results:
+        desc = scene.get("description", "")
+        kws = frozenset(kw for kw in _DESC_ACT_KW_FIX if kw in desc)
+        _desc_kw_list.append(kws)
+    for k in range(2, len(_desc_kw_list)):
+        common = _desc_kw_list[k] & _desc_kw_list[k-1] & _desc_kw_list[k-2]
+        if len(common) >= 2:
+            # 中央シーン(k-1)のdescriptionを修正: 共通キーワードを類語に置換
+            mid = results[k-1]
+            desc = mid.get("description", "")
+            for ckw in common:
+                syns = _DESC_SYNONYMS.get(ckw, [])
+                if syns:
+                    desc = desc.replace(ckw, syns[k % len(syns)], 1)
+            mid["description"] = desc
+            _desc_kw_list[k-1] = frozenset(kw for kw in _DESC_ACT_KW_FIX if kw in desc)
+            _desc_sim_fix += 1
+    if _desc_sim_fix > 0:
+        log_message(f"  description連続類似修正: {_desc_sim_fix}件")
+
     # 17. title重複修正（同一titleの2回目以降を場所+状況で差し替え）
     _seen_titles_af = set()
     _title_fix_af = 0
@@ -2447,7 +2608,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         log_message(f"  title重複修正: {_title_fix_af}件")
 
     # 18. titleキーワード過剰使用修正（同じキーワードが3回以上→場所/mood/行為ベースに差し替え）
-    _TITLE_KW_FIX = ["膣奥", "理性", "崩壊", "限界", "快感", "堕ち"]
+    _TITLE_KW_FIX = ["膣奥", "理性", "崩壊", "限界", "快感", "堕ち", "抵抗",
+                      "連続", "激突", "責め", "声", "最後"]
     for kw in _TITLE_KW_FIX:
         kw_scenes = [(i, s) for i, s in enumerate(results) if kw in s.get("title", "")]
         if len(kw_scenes) >= 3:
@@ -2465,6 +2627,12 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 new_title = f"{alt}の{loc}" if loc else f"{alt}のシーン{sid}"
                 scene["title"] = new_title
                 log_message(f"  S{sid}: titleキーワード過剰修正「{old_title}」→「{new_title}」")
+
+    # 19. title長制限（最終ステップ: Step 17-18で生成されたtitleも含め25文字以内に）
+    for scene in results:
+        title = scene.get("title", "")
+        if len(title) > 25:
+            scene["title"] = title[:25].rstrip("。、…")
 
     return results
 
@@ -3060,6 +3228,40 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                             new_tags.append(t.strip())
                     sc["sd_prompt"] = deduplicate_sd_tags(", ".join(new_tags))
                 log_message(f"体位リバランス: {ptag} {cnt}/{total}({cnt*100//total}%)→{cnt-len(replace_targets[:excess])}/{total}に削減")
+
+    # 最終パス: 体位/アングル連続重複の再チェック（Step 8で再導入された可能性対応）
+    import re as _re_final
+    _prev_pos_f = set()
+    for scene in results:
+        sd = scene.get("sd_prompt", "")
+        if not sd:
+            _prev_pos_f = set()
+            continue
+        tags = [t.strip() for t in sd.split(",") if t.strip()]
+        _cur_pos_f = set()
+        new_tags = []
+        changed = False
+        for tag in tags:
+            _inner = _re_final.sub(r'[()]', '', tag).split(":")[0].strip().lower().replace(" ", "_")
+            if _inner in POSITION_TAGS:
+                _cur_pos_f.add(_inner)
+                if _inner in _prev_pos_f:
+                    fallbacks = POSITION_FALLBACKS.get(_inner, [])
+                    replacement = None
+                    for fb in fallbacks:
+                        if fb not in _prev_pos_f:
+                            replacement = fb
+                            break
+                    if replacement:
+                        _cur_pos_f.discard(_inner)
+                        _cur_pos_f.add(replacement)
+                        new_tags.append(replacement)
+                        changed = True
+                        continue
+            new_tags.append(tag)
+        if changed:
+            scene["sd_prompt"] = ", ".join(new_tags)
+        _prev_pos_f = _cur_pos_f
 
     return results
 
@@ -5422,6 +5624,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 - bubblesのtextに前シーンと同じ文言がある → 辞書から別パターンを選び直せ
 - onomatopoeiaが前シーンと同じ組み合わせ → 別の効果音に変えろ
 - descriptionが前シーンと類似している → 具体的な行為を変えろ
+- descriptionでキャラ名を省略している（「ボア」だけにしてる等） → 必ずフルネームで書け
 - キャラ名が「{', '.join(char_names) if char_names else 'ヒロイン'}」または「{', '.join(char_short_names) if char_short_names else 'ヒロイン'}」以外の表記になっている → 修正しろ
 - 男性キャラのセリフに♡が含まれている → 即座に削除しろ
 - 男性キャラが喘いでいる(moanタイプ) → speechに変更し男性的な短い台詞に書き換えろ
@@ -5454,7 +5657,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
     response = _call_api(
         client, model,
         system_with_cache,
-        prompt, cost_tracker, 2500, callback
+        prompt, cost_tracker, 3000, callback
     )
     
     # 重複排除の後処理

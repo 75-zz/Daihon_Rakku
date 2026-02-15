@@ -275,20 +275,17 @@ MOAN_POOL = {
         "ひぎぃっ♡♡",
         "ん゛っ♡♡",
         "あ゛っ♡♡",
-        "らめぇ♡♡",
         "ぐぅっ♡♡",
         "お゛ぉっ♡♡",
         "ひぎっ♡♡",
         "あ゛ぁっ♡♡",
         "ん゛んっ♡♡",
-        "らめぇっ♡♡",
         "ぐっ♡♡",
         "お゛ほっ♡♡",
         "ひぎぃ♡♡",
         "あ゛はっ♡♡",
         "ん゛ぁっ♡♡",
         "ぐぅぅっ♡♡",
-        "らめっ♡♡",
         "お゛あっ♡♡",
         "ひぎぃん♡♡",
         "あ゛んっ♡♡",
@@ -297,7 +294,6 @@ MOAN_POOL = {
         "お゛ぅっ♡♡",
         "ひぎゃっ♡♡",
         "あ゛ぅっ♡♡",
-        "らめぇぇ♡♡",
         "ん゛ふっ♡♡",
         "ぐひっ♡♡",
         "お゛おっ♡♡",
@@ -305,7 +301,6 @@ MOAN_POOL = {
         "あ゛あぁっ♡♡",
         "ん゛くっ♡♡",
         "ぐうっ♡♡",
-        "らめらめ♡♡",
         "お゛ひぃ♡♡",
         "ひぎぃぃ♡♡",
         "あ゛ひっ♡♡",
@@ -314,7 +309,6 @@ MOAN_POOL = {
         "お゛ぉぉ♡♡",
         "ひぎゅっ♡♡",
         "あ゛ふっ♡♡",
-        "らめなの♡♡",
         "ん゛おっ♡♡",
         "ぐあぁっ♡♡",
         "お゛くっ♡♡",
@@ -323,7 +317,6 @@ MOAN_POOL = {
         "ん゛ひっ♡♡",
         "ぐぅあっ♡♡",
         "お゛はっ♡♡",
-        "らめぇん♡♡",
         "ひぎはっ♡♡",
         "あ゛ぁぁ♡♡",
         "ん゛ぅんっ♡♡",
@@ -331,7 +324,6 @@ MOAN_POOL = {
         "お゛んっ♡♡",
         "ひぎふっ♡♡",
         "あ゛おっ♡♡",
-        "らめぇぇっ♡♡",
         "ん゛やっ♡♡",
         "ぐはっ♡♡",
         "お゛ぁっ♡♡",
@@ -342,7 +334,6 @@ MOAN_POOL = {
         "お゛ふっ♡♡",
         "ひぎくっ♡♡",
         "あ゛くっ♡♡",
-        "らめにゃ♡♡",
         "ん゛ぐっ♡♡",
         "ぐぅひっ♡♡",
         "お゛ひっ♡♡",
@@ -1415,13 +1406,30 @@ def pick_replacement(pool_list: list, used_set: set, normalize_fn=None,
         candidates = [t for t in pool_list if t not in used_set]
     if candidates:
         return random.choice(candidates)
-    # 全て使用済みなら、元のリストからランダムに返す（最終手段）
-    return random.choice(pool_list) if pool_list else ""
+    # 全て使用済みなら、バリエーション生成で重複回避
+    if pool_list:
+        base = random.choice(pool_list)
+        _VARIANTS = ["♡", "…♡", "っ♡", "…", "♡♡"]
+        for v in _VARIANTS:
+            candidate = base.rstrip("♡…っ。") + v
+            if candidate not in used_set and (not normalize_fn or normalize_fn(candidate) not in used_normalized):
+                return candidate
+        return base  # 最終手段: バリエーション不可なら元を返す
+    return ""
 
 
-def get_moan_pool(intensity: int) -> list:
-    """intensity(1-5)に応じた喘ぎ声プールを返す"""
-    return MOAN_POOL.get(max(1, min(5, intensity)), MOAN_POOL[3])
+def get_moan_pool(intensity: int, expand: bool = True) -> list:
+    """intensity(1-5)に応じた喘ぎ声プールを返す。
+    expand=Trueの場合、隣接intensityからも補充して枯渇を防ぐ"""
+    i = max(1, min(5, intensity))
+    pool = list(MOAN_POOL.get(i, MOAN_POOL[3]))
+    if expand:
+        # 隣接intensityから補充（±1）。本来のintensityが先に来るよう順序維持
+        if i + 1 <= 5:
+            pool.extend(MOAN_POOL.get(i + 1, []))
+        if i - 1 >= 1:
+            pool.extend(MOAN_POOL.get(i - 1, []))
+    return pool
 
 
 def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3) -> list:
@@ -1551,11 +1559,11 @@ MALE_SHORT_REPLACEMENTS = {
 }
 
 
-def shorten_male_speech(text: str, max_len: int = 8) -> str:
+def shorten_male_speech(text: str, max_len: int = 15) -> str:
     """男性セリフを最大max_len文字に短縮する。
     1. MALE_SHORT_REPLACEMENTS辞書で既知の長文を変換
     2. それでも長ければ最初の句切り（…）までをカット
-    3. それでも長ければ先頭max_len文字に切り詰め
+    3. max_len以下ならそのまま返す（強制切り詰めしない）
     """
     if len(text) <= max_len:
         return text
@@ -1572,5 +1580,5 @@ def shorten_male_speech(text: str, max_len: int = 8) -> str:
         if 2 <= len(first_part) <= max_len:
             return first_part
 
-    # 最終手段: 先頭max_len文字
-    return text[:max_len]
+    # 強制切り詰めはしない（意味が壊れるため）
+    return text
