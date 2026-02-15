@@ -1,6 +1,6 @@
-"""エロセリフプール v3.8: 重複置換用の大量セリフ辞書（CG集吹き出し用）
+"""エロセリフプール v3.9: 重複置換用の大量セリフ辞書（CG集吹き出し用）
 
-合計2100+エントリー:
+合計2100+エントリー + STORY_PATTERN_LIBRARY(16パターン):
   MOAN_POOL: 5 intensity × 80 = 400（んほぉ/おほぉ/あへぇ系強化）
   SPEECH_FEMALE_POOL: 16 categories = 590
     (+receiving_climax 20 +position_change 15 +ntr_comparison 15
@@ -1895,8 +1895,21 @@ def get_moan_pool(intensity: int, expand: bool = True) -> list:
     return pool
 
 
-def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3) -> list:
-    """タイプとテーマに応じたセリフプールを返す"""
+def get_speech_pool(bubble_type: str, theme: str = "", intensity: int = 3, concept: str = "") -> list:
+    """タイプとテーマに応じたセリフプールを返す。
+    concept指定時はSTORY_PATTERN_LIBRARYのkey_linesも混合。"""
+    pool = _get_speech_pool_core(bubble_type, theme, intensity)
+    # パターンkey_lines混合（speechまたはthoughtのみ）
+    if concept and bubble_type in ("speech", "thought") and pool:
+        phase = "early" if intensity <= 2 else ("late" if intensity >= 5 else "mid")
+        pattern_lines = get_pattern_key_lines(theme, concept, phase)
+        if pattern_lines:
+            pool.extend(pattern_lines)
+    return pool
+
+
+def _get_speech_pool_core(bubble_type: str, theme: str = "", intensity: int = 3) -> list:
+    """内部: タイプとテーマに応じたセリフプールを返す"""
     theme_lower = theme.lower() if theme else ""
     is_forced = any(k in theme_lower for k in ["forced", "陵辱", "レイプ", "reluctant", "暴行", "強制"])
     is_hypnosis = any(k in theme_lower for k in ["催眠", "洗脳", "hypnosis", "マインド"])
@@ -2113,3 +2126,347 @@ def shorten_male_speech(text: str, max_len: int = 15) -> str:
 
     # 強制切り詰めはしない（意味が壊れるため）
     return text
+
+
+# ============================================================================
+# ストーリーパターンライブラリ（エロ漫画頻出16パターン）
+# generate_outline()でプロンプトに注入し、LLM出力の整合性を向上させる
+# ============================================================================
+STORY_PATTERN_LIBRARY = {
+    "blackmail_corruption": {
+        "name": "脅迫→堕落",
+        "applicable_themes": ["netorare", "corruption", "forced", "脅迫", "弱み"],
+        "beats": [
+            "弱みを握られる/秘密を知られる",
+            "最初の要求（軽い）→渋々従う",
+            "要求がエスカレート→体を求められる",
+            "抵抗するが力で/脅しで屈服",
+            "繰り返すうちに体が覚える",
+            "自分から求めてしまう（完堕ち）",
+        ],
+        "dialogue_evolution": "拒絶→懇願→妥協→受容→渇望",
+        "intensity_pattern": [1, 2, 3, 4, 4, 5],
+        "key_lines": {
+            "early": ["やめて…誰にも言わないから…", "お願い…それだけは…"],
+            "mid": ["もう…逆らえない…", "体が…勝手に…"],
+            "late": ["またして…♡", "もう…あの人なしじゃ…♡♡"],
+        },
+    },
+    "childhood_friend": {
+        "name": "幼なじみ再会→関係変化",
+        "applicable_themes": ["vanilla", "純愛", "幼なじみ", "再会", "love"],
+        "beats": [
+            "久しぶりの再会・成長した姿に驚き",
+            "昔の距離感で接するが意識してしまう",
+            "二人きりの状況が生まれる",
+            "告白または衝動的なキス",
+            "互いの気持ちを確認しながら初体験",
+            "恋人として結ばれる",
+        ],
+        "dialogue_evolution": "照れ→意識→動揺→告白→甘え→愛",
+        "intensity_pattern": [1, 1, 2, 3, 4, 5],
+        "key_lines": {
+            "early": ["久しぶり…大きくなったね", "昔と変わんないな…"],
+            "mid": ["ずっと…好きだった", "幼なじみのままじゃ…嫌だよ"],
+            "late": ["初めてが…あなたで良かった♡", "ずっと一緒にいよ…♡"],
+        },
+    },
+    "tutor_student": {
+        "name": "家庭教師×教え子",
+        "applicable_themes": ["teacher_student", "先生", "家庭教師", "教え子", "年上"],
+        "beats": [
+            "勉強を教える日常から距離が縮まる",
+            "偶然の身体接触で意識し始める",
+            "勉強に集中できなくなる/誘惑",
+            "禁断の一線を越える",
+            "秘密の関係が始まる",
+            "勉強と称して情事を重ねる",
+        ],
+        "dialogue_evolution": "敬語→親しみ→意識→誘惑→背徳→常習",
+        "intensity_pattern": [1, 2, 3, 3, 4, 5],
+        "key_lines": {
+            "early": ["先生、ここ分かんない…", "集中して…ほら、ここ見て"],
+            "mid": ["先生…勉強どころじゃないよ…", "これは…ダメだ…生徒に…"],
+            "late": ["先生のこと…勉強より好き♡", "もう…授業にならないな"],
+        },
+    },
+    "drunk_mistake": {
+        "name": "酔った勢い→既成事実",
+        "applicable_themes": ["vanilla", "OL", "飲み会", "酔い", "上司", "同僚"],
+        "beats": [
+            "飲み会/宅飲みで酔いが回る",
+            "酔った勢いで大胆になる",
+            "理性が緩んで身体が近づく",
+            "酔いを言い訳に一線を越える",
+            "朝起きて状況を理解する",
+            "既成事実から関係が始まる",
+        ],
+        "dialogue_evolution": "陽気→大胆→甘え→本音→後悔→受容",
+        "intensity_pattern": [1, 2, 3, 4, 5, 3],
+        "key_lines": {
+            "early": ["もう一杯…いっちゃおっかな～", "酔ってないし…ちょっとだけ"],
+            "mid": ["ねぇ…今日は帰りたくない…", "酔ってるから…いいでしょ？"],
+            "late": ["昨日の…覚えてる？", "酔ってなくても…したかったかも♡"],
+        },
+    },
+    "massage_escalation": {
+        "name": "マッサージ→エスカレート",
+        "applicable_themes": ["vanilla", "massage", "マッサージ", "整体", "オイル"],
+        "beats": [
+            "肩こりや疲れを理由にマッサージ開始",
+            "気持ちよさで声が漏れ始める",
+            "際どい場所に手が伸びる",
+            "マッサージが愛撫に変わる",
+            "抵抗できず身を委ねる",
+            "最後まで流れるように",
+        ],
+        "dialogue_evolution": "リラックス→羞恥→困惑→快感→脱力→陶酔",
+        "intensity_pattern": [1, 2, 3, 3, 4, 5],
+        "key_lines": {
+            "early": ["お願い…肩パンパンで…", "ここ凝ってるね…ほぐすよ"],
+            "mid": ["んっ…そこ…ちょっと…", "声出ちゃう…くすぐったいから…"],
+            "late": ["もう…マッサージじゃないでしょ…♡", "気持ちよすぎて…力入んない…♡"],
+        },
+    },
+    "caught_masturbating": {
+        "name": "自慰目撃→関係発展",
+        "applicable_themes": ["vanilla", "corruption", "オナニー", "目撃", "覗き"],
+        "beats": [
+            "一人の時間に自慰をしているところを目撃される",
+            "互いに気まずい空気",
+            "秘密にする代わりに…という提案",
+            "恥ずかしさの中で身体を許す",
+            "隠していた本音/欲望が溢れる",
+            "秘密を共有する関係に",
+        ],
+        "dialogue_evolution": "羞恥→パニック→妥協→困惑→快感→共犯",
+        "intensity_pattern": [2, 1, 2, 3, 4, 5],
+        "key_lines": {
+            "early": ["見ないで…！出てって…！", "ごめん…でも…すごかった"],
+            "mid": ["誰にも…言わないでね…", "こんなの…初めてだから…"],
+            "late": ["一人でするより…全然…♡", "また…見つかっちゃった♡"],
+        },
+    },
+    "bet_game": {
+        "name": "賭け/ゲーム→罰ゲーム",
+        "applicable_themes": ["vanilla", "harem", "ゲーム", "罰ゲーム", "王様ゲーム", "賭け"],
+        "beats": [
+            "ゲームや賭けを始める",
+            "負けた方が罰ゲーム（軽い内容）",
+            "罰ゲームがだんだんエスカレート",
+            "脱衣やキスなど際どい要求",
+            "歯止めが効かなくなる",
+            "ゲームを口実に最後まで",
+        ],
+        "dialogue_evolution": "余裕→焦り→動揺→覚悟→開き直り→没頭",
+        "intensity_pattern": [1, 1, 2, 3, 4, 5],
+        "key_lines": {
+            "early": ["罰ゲームくらい余裕でしょ", "え…それはちょっと…"],
+            "mid": ["次負けたら…何させられるの…", "ルールはルールだから…"],
+            "late": ["もうゲームとか…どうでもいい♡", "負けてよかった…♡"],
+        },
+    },
+    "bodyswap_possession": {
+        "name": "入れ替わり/憑依",
+        "applicable_themes": ["bodyswap", "入れ替わり", "憑依", "変身", "time_stop"],
+        "beats": [
+            "入れ替わり/憑依が発生",
+            "相手の体の感覚に戸惑う",
+            "好奇心で体を探り始める",
+            "異性の快感を知る",
+            "元に戻れなくなる焦りと快感の葛藤",
+            "快楽に溺れる/元の体を求める",
+        ],
+        "dialogue_evolution": "困惑→好奇心→実験→発見→葛藤→陶酔",
+        "intensity_pattern": [1, 2, 3, 4, 4, 5],
+        "key_lines": {
+            "early": ["え…これ…私の体じゃない…", "この感覚…なに…"],
+            "mid": ["女の体って…こんなに敏感なの…", "やば…触るだけでこんなに…"],
+            "late": ["戻りたくない…この体…♡", "もう…元の体じゃ物足りない…♡"],
+        },
+    },
+    "overnight_stay": {
+        "name": "お泊まり→夜這い",
+        "applicable_themes": ["vanilla", "幼なじみ", "お泊まり", "夜這い", "同棲"],
+        "beats": [
+            "泊まることになる（終電逃し/旅行/雨等）",
+            "一つ屋根の下で意識し合う",
+            "就寝後、眠れない夜",
+            "布団の中で手が触れる/寝返り",
+            "抑えきれず手を伸ばす",
+            "夜通し求め合う",
+        ],
+        "dialogue_evolution": "平静→意識→緊張→衝動→告白→貪欲",
+        "intensity_pattern": [1, 2, 2, 3, 4, 5],
+        "key_lines": {
+            "early": ["今日泊まってく？布団あるよ", "…起きてる？"],
+            "mid": ["寝たふり…してたでしょ", "ダメって分かってるのに…"],
+            "late": ["朝まで…離さないで♡", "もう一回…♡"],
+        },
+    },
+    "gratitude_repayment": {
+        "name": "恩返し→体で返す",
+        "applicable_themes": ["vanilla", "恩返し", "お礼", "助け", "借り"],
+        "beats": [
+            "大きな恩/助けを受ける",
+            "お礼をしたいが方法が見つからない",
+            "「体で返す」という発想/提案",
+            "最初は冗談のつもりが本気に",
+            "感謝が愛情に変わりながら身体を重ねる",
+            "恩返しを超えた関係に",
+        ],
+        "dialogue_evolution": "感謝→模索→提案→本気→情熱→愛",
+        "intensity_pattern": [1, 1, 2, 3, 4, 5],
+        "key_lines": {
+            "early": ["助けてくれて…ありがとう", "お礼…何でもする"],
+            "mid": ["冗談じゃなくて…本気だよ", "こんな形でしか…返せないから"],
+            "late": ["もうお礼とかじゃなくて…好き♡", "恩返し…まだ足りないかな♡"],
+        },
+    },
+    "reunion_ex": {
+        "name": "元カレ/元カノ再会",
+        "applicable_themes": ["netorare", "vanilla", "再会", "元カレ", "元カノ", "復縁"],
+        "beats": [
+            "偶然の再会で動揺",
+            "昔話をしながら距離が縮まる",
+            "今のパートナーへの後ろめたさ",
+            "「あの頃」の感覚が蘇る",
+            "理性を失い体を重ねる",
+            "罪悪感と快感の狭間",
+        ],
+        "dialogue_evolution": "動揺→懐古→葛藤→衝動→背徳→陶酔",
+        "intensity_pattern": [1, 2, 2, 3, 4, 5],
+        "key_lines": {
+            "early": ["久しぶり…変わったね", "あの頃よく来たよね…ここ"],
+            "mid": ["ダメ…今は彼氏いるし…", "分かってる…でも…止まらない"],
+            "late": ["やっぱり…あなたが一番…♡", "あの頃より…ずっといい…♡"],
+        },
+    },
+    "secret_relationship": {
+        "name": "秘密の関係（先生/上司）",
+        "applicable_themes": ["teacher_student", "OL", "上司", "先生", "秘密", "禁断"],
+        "beats": [
+            "立場上ありえない関係の認識",
+            "業務/授業中の偶然の接触で意識",
+            "二人きりの密室で緊張が高まる",
+            "「一度だけ」と理性を手放す",
+            "秘密の逢瀬が常態化",
+            "バレるスリルが快感を増幅",
+        ],
+        "dialogue_evolution": "警戒→意識→葛藤→決断→常習→スリル",
+        "intensity_pattern": [1, 2, 3, 4, 4, 5],
+        "key_lines": {
+            "early": ["先生と生徒なんだから…", "会社でこんなこと…"],
+            "mid": ["一度だけ…一度だけだから…", "ここじゃ…バレちゃう…"],
+            "late": ["もう隠すの…疲れちゃった♡", "バレても…やめられない♡"],
+        },
+    },
+    "aphrodisiac_effect": {
+        "name": "媚薬/薬効果",
+        "applicable_themes": ["corruption", "催眠", "媚薬", "薬", "aphrodisiac"],
+        "beats": [
+            "知らずに媚薬を摂取/飲まされる",
+            "体が熱くなり異変に気づく",
+            "抵抗しようとするが体が言うことを聞かない",
+            "快感が理性を上回る",
+            "自分から求め始める",
+            "効果が切れても体が忘れられない",
+        ],
+        "dialogue_evolution": "無自覚→異変→抵抗→屈服→渇望→依存",
+        "intensity_pattern": [1, 2, 3, 4, 5, 5],
+        "key_lines": {
+            "early": ["なんか…体熱い…", "変…なにこれ…"],
+            "mid": ["やだ…体が…勝手に…", "頭おかしくなっちゃう…"],
+            "late": ["もっと…もっとちょうだい…♡♡", "薬なくても…もう…♡"],
+        },
+    },
+    "dare_challenge": {
+        "name": "王様ゲーム/大胆チャレンジ",
+        "applicable_themes": ["harem", "vanilla", "王様ゲーム", "チャレンジ", "パーティー"],
+        "beats": [
+            "パーティーやノリで大胆なゲーム開始",
+            "序盤は軽いお題で盛り上がる",
+            "エスカレートして際どい命令",
+            "周囲の視線の中で恥ずかしい行為",
+            "二人きりになり歯止めが利かなくなる",
+            "ゲームの延長として最後まで",
+        ],
+        "dialogue_evolution": "楽しさ→動揺→羞恥→興奮→解放→没頭",
+        "intensity_pattern": [1, 1, 2, 3, 4, 5],
+        "key_lines": {
+            "early": ["王様の命令は絶対！", "えー…マジで…？"],
+            "mid": ["みんな見てる…恥ずかしい…", "命令だから…仕方ないし…"],
+            "late": ["もうゲーム関係ないでしょ…♡", "次の命令…自分で決めていい？♡"],
+        },
+    },
+    "rescue_gratitude": {
+        "name": "助けられた恩→好意→関係",
+        "applicable_themes": ["vanilla", "monster", "ファンタジー", "異世界", "助け"],
+        "beats": [
+            "危機的状況から助けられる",
+            "怪我の手当て/看病で距離が縮まる",
+            "恩人への好意が芽生える",
+            "感情を伝える/伝えられる",
+            "好意が恋愛感情に変わり結ばれる",
+            "守る/守られる関係で深まる",
+        ],
+        "dialogue_evolution": "恐怖→安堵→感謝→好意→告白→献身",
+        "intensity_pattern": [1, 1, 2, 3, 4, 5],
+        "key_lines": {
+            "early": ["助けてくれて…ありがとう", "怪我…大丈夫？見せて"],
+            "mid": ["あなたがいなかったら…私…", "守りたいんだ…お前のこと"],
+            "late": ["全部…あなたにあげる♡", "俺だけのものにしていいか"],
+        },
+    },
+    "peeping_discovered": {
+        "name": "覗き→発覚→共犯関係",
+        "applicable_themes": ["corruption", "覗き", "盗撮", "着替え", "風呂"],
+        "beats": [
+            "偶然or故意に覗いてしまう",
+            "覗きが発覚して修羅場",
+            "秘密にする条件を提示される",
+            "弱みを握られた関係が始まる",
+            "覗かれる側も意識し始める",
+            "共犯関係が恋愛/肉体関係に発展",
+        ],
+        "dialogue_evolution": "背徳→狼狽→交渉→服従→共犯→快楽",
+        "intensity_pattern": [2, 1, 2, 3, 4, 5],
+        "key_lines": {
+            "early": ["見てたでしょ…最低", "違う…偶然で…"],
+            "mid": ["黙っててあげるから…その代わり…", "分かった…何でもする…"],
+            "late": ["見られてると思うと…♡", "今日はわざと…見せてあげる♡"],
+        },
+    },
+}
+
+
+def select_story_pattern(theme: str, concept: str = "") -> dict | None:
+    """テーマ/コンセプトから最適なストーリーパターンを選択。
+    マッチしない場合はNoneを返す。"""
+    theme_lower = theme.lower() if theme else ""
+    concept_lower = concept.lower() if concept else ""
+    combined = f"{theme_lower} {concept_lower}"
+
+    best_match = None
+    best_score = 0
+
+    for key, pattern in STORY_PATTERN_LIBRARY.items():
+        score = 0
+        for kw in pattern["applicable_themes"]:
+            kw_lower = kw.lower()
+            if kw_lower in combined:
+                score += 2
+            elif kw_lower in theme_lower:
+                score += 1
+        if score > best_score:
+            best_score = score
+            best_match = pattern
+    return best_match if best_score >= 1 else None
+
+
+def get_pattern_key_lines(theme: str, concept: str = "", phase: str = "mid") -> list:
+    """パターンのフェーズに応じたkey_linesを返す。phase: early/mid/late"""
+    pattern = select_story_pattern(theme, concept)
+    if not pattern:
+        return []
+    return list(pattern.get("key_lines", {}).get(phase, []))

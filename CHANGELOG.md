@@ -1,5 +1,48 @@
 # Changelog
 
+## [3.9.0] - 2026-02-15
+
+### Added (ストーリーパターン学習データ + Wild Cardエクスポート)
+
+#### STORY_PATTERN_LIBRARY（エロ漫画頻出16パターン）
+- **ero_dialogue_pool.py**にストーリー展開パターンライブラリを新設
+- 各パターンに`beats`(展開ビート)、`dialogue_evolution`(セリフ進化)、`intensity_pattern`、`key_lines`(early/mid/late)を構造化
+- 収録パターン16種:
+  - `blackmail_corruption`(脅迫→堕落) / `childhood_friend`(幼なじみ再会) / `tutor_student`(家庭教師×教え子)
+  - `drunk_mistake`(酔った勢い) / `massage_escalation`(マッサージ→エスカレート) / `caught_masturbating`(自慰目撃)
+  - `bet_game`(賭け→罰ゲーム) / `bodyswap_possession`(入れ替わり/憑依) / `overnight_stay`(お泊まり→夜這い)
+  - `gratitude_repayment`(恩返し) / `reunion_ex`(元カレ/元カノ再会) / `secret_relationship`(秘密の関係)
+  - `aphrodisiac_effect`(媚薬/薬効果) / `dare_challenge`(王様ゲーム) / `rescue_gratitude`(助け→好意) / `peeping_discovered`(覗き→共犯)
+- **`select_story_pattern(theme, concept)`**: テーマ/コンセプトからBESTマッチのパターンを自動選択
+- **`get_pattern_key_lines(theme, concept, phase)`**: フェーズ別key_linesを返すユーティリティ
+
+#### generate_outline()パターン注入
+- アウトライン生成時に`select_story_pattern()`でマッチしたパターンのビート・セリフ進化・intensity展開を「参考ストーリーパターン」としてプロンプトに自動注入
+- あらすじの内容を優先しつつ、展開テンポや感情の流れの参考としてLLMに提示
+
+#### get_speech_pool()パターン連動
+- `concept`引数追加（後方互換維持）
+- intensity→phase推定（1-2=early, 3-4=mid, 5=late）でSTORY_PATTERN_LIBRARYのkey_linesをセリフプールに混合
+- 内部実装を`_get_speech_pool_core()`に分離してラップ
+
+#### Wild Cardエクスポート
+- **`export_wildcard()`新規**: 各シーンのSDプロンプトを1行1プロンプトで出力（SD Wild Cardの`__filename__`で参照可能）
+- ExportDialogに「Wild Card」フォーマット追加
+- 生成完了時の自動エクスポートにも追加（`wildcard_{timestamp}.txt`）
+
+### Changed
+
+#### CSVシーン番号付与
+- `export_csv()`の`sd_prompt`列末尾に`"シーンN"`をダブルクォート付きで自動付与
+- 空のsd_promptには付与しない
+- Wild CardファイルのSDプロンプトにも同様にシーン番号を付与
+
+### Performance
+- ero_dialogue_pool.py: v3.8→v3.9（+365行、STORY_PATTERN_LIBRARY 16パターン）
+- 品質スコア: リグレッションなし
+
+---
+
 ## [3.4.0] - 2026-02-14
 
 ### Added (コスト最適化 + 529耐障害性 + 品質自動修正強化)

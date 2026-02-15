@@ -4762,6 +4762,25 @@ def generate_outline(
         "}"
     )
 
+    # ストーリーパターン自動選択（エロ漫画定番パターンで整合性向上）
+    story_pattern_section = ""
+    try:
+        from ero_dialogue_pool import select_story_pattern
+        matched_pattern = select_story_pattern(theme, synopsis)
+        if matched_pattern:
+            beats_str = "\n".join(f"  {i+1}. {b}" for i, b in enumerate(matched_pattern["beats"]))
+            i_pattern = " → ".join(str(x) for x in matched_pattern["intensity_pattern"])
+            story_pattern_section = (
+                f"\n## 参考ストーリーパターン: {matched_pattern['name']}\n"
+                f"以下は参考用の定番展開ビートです。あらすじの内容を優先しつつ、"
+                f"展開のテンポや感情の流れを参考にしてください:\n"
+                f"{beats_str}\n"
+                f"セリフ進化: {matched_pattern['dialogue_evolution']}\n"
+                f"intensity展開の参考: {i_pattern}\n"
+            )
+    except ImportError:
+        pass
+
     prompt = f"""以下のストーリーあらすじを{num_scenes}シーンに分割し、各シーンの詳細をJSON配列で出力してください。
 
 ## ストーリーあらすじ（これに忠実に分割すること）
@@ -4775,6 +4794,7 @@ def generate_outline(
 - 重要な感情: {', '.join(key_emotions)}
 - ストーリー要素:
 {elements_str}
+{story_pattern_section}
 
 ## シーン配分（{num_scenes}シーン・エロ70%以上）
 - 第1幕・導入: {act1}シーン → intensity 1-2（最低限の状況設定。1ページで済ませる）
@@ -6510,10 +6530,15 @@ def export_csv(results: list, output_path: Path):
             if not bubbles:
                 bubbles = scene.get("dialogue", [])
             
+            # SDプロンプト末尾にシーン番号を付与
+            sd_raw = scene.get("sd_prompt", "")
+            sid = scene.get("scene_id", "")
+            sd_with_label = f'{sd_raw}, "シーン{sid}"' if sd_raw else ""
+
             if not bubbles:
                 # 吹き出しがない場合でもシーン情報を出力
                 writer.writerow({
-                    "scene_id": scene.get("scene_id", ""),
+                    "scene_id": sid,
                     "title": scene.get("title", ""),
                     "description": scene.get("description", ""),
                     "location_detail": scene.get("location_detail", ""),
@@ -6526,12 +6551,12 @@ def export_csv(results: list, output_path: Path):
                     "onomatopoeia": ono_str,
                     "direction": scene.get("direction", ""),
                     "story_flow": scene.get("story_flow", ""),
-                    "sd_prompt": scene.get("sd_prompt", "")
+                    "sd_prompt": sd_with_label
                 })
             else:
                 for idx, bubble in enumerate(bubbles):
                     writer.writerow({
-                        "scene_id": scene.get("scene_id", "") if idx == 0 else "",
+                        "scene_id": sid if idx == 0 else "",
                         "title": scene.get("title", "") if idx == 0 else "",
                         "description": scene.get("description", "") if idx == 0 else "",
                         "location_detail": scene.get("location_detail", "") if idx == 0 else "",
@@ -6544,7 +6569,7 @@ def export_csv(results: list, output_path: Path):
                         "onomatopoeia": ono_str if idx == 0 else "",
                         "direction": scene.get("direction", "") if idx == 0 else "",
                         "story_flow": scene.get("story_flow", "") if idx == 0 else "",
-                        "sd_prompt": scene.get("sd_prompt", "") if idx == 0 else ""
+                        "sd_prompt": sd_with_label if idx == 0 else ""
                     })
 
 
@@ -6680,6 +6705,19 @@ def export_sd_prompts(results: list, output_path: Path):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     log_message(f"SDプロンプト出力完了: {output_path}")
+
+
+def export_wildcard(results: list, output_path: Path):
+    """Wild Card形式エクスポート（1行1プロンプト、SD Wild Card対応）"""
+    lines = []
+    for scene in results:
+        sd = scene.get("sd_prompt", "").strip()
+        if sd:
+            sid = scene.get("scene_id", "")
+            lines.append(f'{sd}, "シーン{sid}"')
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    log_message(f"Wild Card出力完了: {output_path}（{len(lines)}行）")
 
 
 def export_dialogue_list(results: list, output_path: Path):
@@ -7804,6 +7842,7 @@ class ExportDialog(ctk.CTkToplevel):
         ("json", "JSON", "構造化データ（シーン+メタデータ+SDプロンプト）"),
         ("xlsx", "Excel", "折り返し表示対応（要openpyxl）"),
         ("sd_prompts", "SDプロンプト一括", "1行1プロンプト テキストファイル"),
+        ("wildcard", "Wild Card", "SD用1行1プロンプト（__filename__で参照）"),
         ("dialogue", "セリフ一覧", "話者・種類付きテキストファイル"),
         ("markdown", "マークダウン", "脚本全体の読みやすいビュー"),
     ]
@@ -7813,7 +7852,7 @@ class ExportDialog(ctk.CTkToplevel):
         self.results = results
         self.metadata = metadata
         self.title("エクスポート")
-        self.geometry("460x420")
+        self.geometry("460x450")
         self.resizable(False, False)
         self.transient(master)
         self.grab_set()
@@ -7951,6 +7990,10 @@ class ExportDialog(ctk.CTkToplevel):
                     p = EXPORTS_DIR / f"sd_prompts_{timestamp}.txt"
                     export_sd_prompts(self.results, p)
                     exported.append(f"SDプロンプト: {p.name}")
+                elif fmt == "wildcard":
+                    p = EXPORTS_DIR / f"wildcard_{timestamp}.txt"
+                    export_wildcard(self.results, p)
+                    exported.append(f"Wild Card: {p.name}")
                 elif fmt == "dialogue":
                     p = EXPORTS_DIR / f"dialogue_{timestamp}.txt"
                     export_dialogue_list(self.results, p)
@@ -9241,11 +9284,13 @@ class App(ctk.CTk):
             json_path = EXPORTS_DIR / f"script_{timestamp}.json"
             xlsx_path = EXPORTS_DIR / f"script_{timestamp}.xlsx"
             sd_path = EXPORTS_DIR / f"sd_prompts_{timestamp}.txt"
+            wc_path = EXPORTS_DIR / f"wildcard_{timestamp}.txt"
             dlg_path = EXPORTS_DIR / f"dialogue_{timestamp}.txt"
 
             export_csv(results, csv_path)
             export_json(results, json_path, metadata=pipeline_metadata)
             export_sd_prompts(results, sd_path)
+            export_wildcard(results, wc_path)
             export_dialogue_list(results, dlg_path)
 
             # Excel出力（openpyxlがある場合）
