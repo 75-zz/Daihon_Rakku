@@ -10,6 +10,7 @@ import json
 import csv
 import sys
 import time
+import random
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -27,6 +28,20 @@ try:
 except ImportError:
     OPENPYXL_AVAILABLE = False
 
+# PNG Info読み取り用（オプション）
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+
+# ドラッグ&ドロップ用（オプション）
+try:
+    import windnd
+    WINDND_AVAILABLE = True
+except ImportError:
+    WINDND_AVAILABLE = False
+
 try:
     import anthropic
 except ImportError:
@@ -43,6 +58,7 @@ from char_builder import (
 from schema_validator import (
     validate_context, validate_outline, validate_scene, validate_results
 )
+from concept_presets import CONCEPT_PRESETS
 
 # === Font Awesome 6 アイコンフォント ===
 FONTS_DIR = Path(__file__).parent / "fonts"
@@ -80,6 +96,8 @@ class Icons:
     CHEVRON_DOWN = "\uf078"
     DOWNLOAD = "\uf019"
     FILE_EXPORT = "\uf56e"
+    PALETTE = "\uf53f"
+    IMAGE = "\uf03e"
 
 
 def icon_text_label(parent, icon: str, text: str, icon_size: int = 14, text_size: int = 14,
@@ -105,73 +123,73 @@ def icon_text_label(parent, icon: str, text: str, icon_size: int = 14, text_size
 class MaterialColors:
     """
     Material You / M3 Dynamic Color System
-    Based on Google's Material Design 3 color guidelines
-    Adjusted for better visibility and contrast
+    Neutral Gray + Blue Accent palette
+    Clean, minimal, professional (Notion/Linear/Figma inspired)
     """
-    
-    # === M3 Tonal Palette (Purple seed) ===
-    # Primary
-    PRIMARY = "#6750A4"           # M3 reference primary
-    PRIMARY_CONTAINER = "#E8DBFF" # P-90
-    ON_PRIMARY = "#FFFFFF"        # P-100
-    ON_PRIMARY_CONTAINER = "#1C0055"  # P-10
-    
-    # Secondary  
-    SECONDARY = "#5A5370"         # S-40
-    SECONDARY_CONTAINER = "#DFD8F0"   # S-90 slightly deeper
+
+    # === M3 Tonal Palette (Neutral Gray seed + Blue accent) ===
+    # Primary — Clean blue for primary actions
+    PRIMARY = "#3B82F6"           # Blue-500
+    PRIMARY_CONTAINER = "#EFF6FF" # Blue-50
+    ON_PRIMARY = "#FFFFFF"
+    ON_PRIMARY_CONTAINER = "#1A1A1A"  # Near-black
+
+    # Secondary — Neutral gray
+    SECONDARY = "#5C5C5C"         # Medium gray
+    SECONDARY_CONTAINER = "#E0E0E0"   # Light gray
     ON_SECONDARY = "#FFFFFF"
-    ON_SECONDARY_CONTAINER = "#18122E"
-    
-    # Tertiary
-    TERTIARY = "#7D5260"          # T-40
-    TERTIARY_CONTAINER = "#FFD8E4"    # T-90
-    
+    ON_SECONDARY_CONTAINER = "#1C1C1C"  # Near-black
+
+    # Tertiary — Teal accent for variety
+    TERTIARY = "#0D9488"          # Teal-600
+    TERTIARY_CONTAINER = "#CCFBF1"    # Teal-100
+
     # Error
-    ERROR = "#B3261E"             # E-40
-    ERROR_CONTAINER = "#F9DEDC"   # E-90
+    ERROR = "#DC2626"             # Red-600
+    ERROR_CONTAINER = "#FEE2E2"   # Red-100
     ON_ERROR = "#FFFFFF"
-    
+
     # Success (Extended)
-    SUCCESS = "#1B6B32"
-    SUCCESS_CONTAINER = "#A8F5B4"
-    
-    # === Surface Tones (Neutral) - Wider spacing for clarity ===
-    BACKGROUND = "#FAF8FF"        # Very subtle cool tint
-    SURFACE = "#FAF8FF"           # Match background
-    SURFACE_DIM = "#CEC6D9"       # N-82 (darker dim)
-    SURFACE_BRIGHT = "#FAF8FF"    # N-99
-    SURFACE_CONTAINER_LOWEST = "#FFFFFF"   # N-100 Pure white
-    SURFACE_CONTAINER_LOW = "#F2EDFA"      # N-95 (clear purple tint)
-    SURFACE_CONTAINER = "#E8E1F2"          # N-90 (visible difference)
-    SURFACE_CONTAINER_HIGH = "#DCD4EA"     # N-85 (clearly darker)
-    SURFACE_CONTAINER_HIGHEST = "#D0C7E0"  # N-80 (strong contrast)
-    
-    # On Surface - Higher contrast text
-    ON_BACKGROUND = "#151318"     # Near black
-    ON_SURFACE = "#151318"        # Near black for readability
-    ON_SURFACE_VARIANT = "#49454F"    # NV-30 M3 reference
-    
-    # Outline - Stronger borders
-    OUTLINE = "#79747E"           # NV-50 M3 reference
-    OUTLINE_VARIANT = "#B0A8BF"   # NV-70 (more visible)
-    
+    SUCCESS = "#16A34A"           # Green-600
+    SUCCESS_CONTAINER = "#DCFCE7" # Green-100
+
+    # === Surface Tones (Pure Neutral R=G=B — zero color cast) ===
+    BACKGROUND = "#FAFAFA"        # Near-white warm neutral
+    SURFACE = "#FAFAFA"           # Match background
+    SURFACE_DIM = "#C2C2C2"       # Dimmed surface
+    SURFACE_BRIGHT = "#FAFAFA"
+    SURFACE_CONTAINER_LOWEST = "#FFFFFF"   # Pure white — cards, dialogs
+    SURFACE_CONTAINER_LOW = "#F5F5F5"      # Subtle elevation step
+    SURFACE_CONTAINER = "#EEEEEE"          # Medium elevation — input bg
+    SURFACE_CONTAINER_HIGH = "#E0E0E0"     # Higher elevation
+    SURFACE_CONTAINER_HIGHEST = "#D6D6D6"  # Highest — section headers
+
+    # On Surface — High contrast text
+    ON_BACKGROUND = "#1A1A1A"     # Near black
+    ON_SURFACE = "#1A1A1A"        # Near black for readability
+    ON_SURFACE_VARIANT = "#525252"    # Secondary/hint/placeholder (7.8:1 on white)
+
+    # Outline — WCAG 1.4.11 non-text contrast compliant
+    OUTLINE = "#757575"           # Input borders (4.6:1 on white)
+    OUTLINE_VARIANT = "#8E8E8E"   # Card borders, dividers (3.3:1 on white)
+
     # Inverse
-    INVERSE_SURFACE = "#313033"
-    INVERSE_ON_SURFACE = "#F4EFF4"
-    INVERSE_PRIMARY = "#D0BCFF"
-    
+    INVERSE_SURFACE = "#2D2D2D"   # Dark bg for snackbar, tooltips
+    INVERSE_ON_SURFACE = "#F0F0F0"
+    INVERSE_PRIMARY = "#93C5FD"   # Blue-300 for dark surface accent
+
     # Scrim & Shadow
     SCRIM = "#000000"
     SHADOW = "#000000"
-    
+
     # === Legacy aliases for compatibility ===
     SURFACE_VARIANT = SURFACE_CONTAINER
-    PRIMARY_VARIANT = "#7058B8"
+    PRIMARY_VARIANT = "#2563EB"   # Blue-600 (hover)
     PRIMARY_LIGHT = INVERSE_PRIMARY
     ACCENT = TERTIARY
-    ACCENT_VARIANT = "#9A7B8A"
-    ACCENT_DARK = "#633B48"
-    WARNING = "#F59E0B"
+    ACCENT_VARIANT = "#5EEAD4"    # Teal-300
+    ACCENT_DARK = "#0F766E"       # Teal-700
+    WARNING = "#D97706"           # Amber-600
     SURFACE_DARK = INVERSE_SURFACE
     ON_DARK = INVERSE_ON_SURFACE
     ON_ACCENT = ON_PRIMARY
@@ -239,7 +257,149 @@ THEME_OPTIONS = {
     "ハーレム": "harem",
     "女性優位・痴女": "femdom",
     "近親相姦": "incest",
+    "異世界・ファンタジー": "isekai",
+    "温泉・お風呂": "onsen",
+    "睡眠・夜這い": "sleep",
+    "輪姦・集団": "gangbang",
+    "医療・診察": "medical",
+    "水着・プール": "swimsuit",
+    "スポーツ・部活": "sports",
+    "アイドル・芸能": "idol",
+    "隣人・日常": "neighbor",
+    "風俗・パパ活": "prostitution",
+    "露出・盗撮": "voyeur",
+    "触手": "tentacle",
+    "逆レイプ": "reverse_rape",
+    "コスプレ・撮影": "cosplay",
 }
+_THEME_KEY_TO_JP = {v: k for k, v in THEME_OPTIONS.items() if v}
+
+# 男性キャラクター プリセット
+MALE_PRESETS = {
+    "おまかせ": "",
+    "筋肉質の青年": "muscular_male, young_man, short_hair, toned_body, 1boy",
+    "小太りの中年": "fat_man, middle_aged, chubby_male, ugly_man, 1boy",
+    "イケメン青年": "handsome, bishounen, young_man, slim, 1boy",
+    "強面のおじさん": "old_man, muscular_male, scar, stubble, intimidating, 1boy",
+    "ガリガリの陰キャ": "skinny_male, messy_hair, glasses, otaku, 1boy",
+    "黒人マッチョ": "dark-skinned_male, muscular_male, tall_male, abs, 1boy",
+    "太ったおじさん": "fat_man, old_man, hairy_male, bald, ugly_man, 1boy",
+    "普通体型の少年": "young_man, average_build, 1boy",
+}
+
+# 男性キャラ 髪型オプション
+MALE_HAIR_STYLE_OPTIONS = {
+    "おまかせ": "",
+    "短髪": "short_hair",
+    "長髪": "long_hair",
+    "はげ": "bald",
+    "坊主": "buzz_cut",
+    "オールバック": "slicked_back_hair",
+    "ボサボサ": "messy_hair",
+}
+
+# 男性キャラ 髪色オプション
+MALE_HAIR_COLOR_OPTIONS = {
+    "おまかせ": "",
+    "黒髪": "black_hair",
+    "茶髪": "brown_hair",
+    "金髪": "blonde_hair",
+    "白髪": "grey_hair",
+    "赤髪": "red_hair",
+}
+
+# 男性キャラ 肌色オプション
+MALE_SKIN_COLOR_OPTIONS = {
+    "おまかせ": "",
+    "色白": "pale_skin",
+    "普通": "",
+    "日焼け": "tanned, dark_skin",
+    "褐色": "dark-skinned_male",
+    "黒肌": "dark-skinned_male, very_dark_skin",
+}
+
+# 時間帯オプション
+TIME_OF_DAY_OPTIONS = {
+    "おまかせ": "",
+    "朝": "morning, sunrise, morning_light, warm_lighting",
+    "昼": "daytime, sunlight, bright, afternoon",
+    "夕方": "evening, sunset, orange_sky, golden_hour",
+    "夜": "night, moonlight, dark, dim_lighting",
+}
+
+# 場所タイプオプション
+LOCATION_TYPE_OPTIONS = {
+    "おまかせ": "",
+    "屋内": "indoors",
+    "屋外": "outdoors",
+}
+
+# 男性外見 日本語→SDタグ変換マップ
+MALE_TAG_MAP = {
+    "はげ": "bald",
+    "禿": "bald",
+    "坊主": "buzz_cut",
+    "小太り": "chubby_male",
+    "太った": "fat_man",
+    "デブ": "fat_man",
+    "肥満": "fat_man, obese",
+    "中年": "middle_aged",
+    "おじさん": "old_man",
+    "おっさん": "old_man",
+    "老人": "elderly",
+    "おじいちゃん": "old_man, grey_hair",
+    "筋肉": "muscular_male",
+    "マッチョ": "muscular_male, abs",
+    "ガリガリ": "skinny_male",
+    "痩せ": "skinny_male",
+    "長身": "tall_male",
+    "低身長": "short_male",
+    "イケメン": "handsome, bishounen",
+    "ブサイク": "ugly_man",
+    "キモい": "ugly_man",
+    "メガネ": "glasses",
+    "眼鏡": "glasses",
+    "ひげ": "beard",
+    "髭": "beard",
+    "無精ひげ": "stubble",
+    "黒人": "dark-skinned_male",
+    "白髪": "grey_hair",
+    "金髪": "blonde_hair",
+    "短髪": "short_hair",
+    "長髪": "long_hair",
+    "オールバック": "slicked_back_hair",
+    "スーツ": "business_suit",
+    "作業着": "work_clothes",
+    "裸": "nude_male, shirtless",
+    "タンクトップ": "tank_top",
+    "サラリーマン": "salaryman, business_suit",
+    "ヤンキー": "delinquent, pompadour",
+    "体毛": "hairy_male",
+    "傷": "scar",
+    "強面": "intimidating",
+    "優しい": "gentle_expression",
+    "怖い": "intimidating, menacing",
+    "少年": "young_man, shota",
+    "青年": "young_man",
+    "紳士": "gentleman, formal",
+}
+
+
+def parse_male_description(text: str) -> str:
+    """ユーザーの自由入力テキストからSDタグを生成する"""
+    if not text or not text.strip():
+        return ""
+    tags = set()
+    tags.add("1boy")
+    for keyword, sd_tags in MALE_TAG_MAP.items():
+        if keyword in text:
+            for t in sd_tags.split(", "):
+                tags.add(t.strip())
+    # マッチしなかった場合はデフォルト
+    if len(tags) <= 1:  # 1boyのみ
+        tags.add("1boy")
+    return ", ".join(sorted(tags))
+
 
 # ストーリー構成プリセット（プロローグ/本編/エピローグ %）
 STRUCTURE_PRESETS = {
@@ -376,8 +536,8 @@ THEME_GUIDES = {
         "use_heart": False,
         "sd_tags": "chikan, groping, public, train, crowded, molested",
         "sd_expressions": "embarrassed, trying_not_to_moan, biting_lip, conflicted",
-        "intensity_curve": "ascending",
-        "foreplay_ratio": 0.10,  # 前戯短め（触られて即感じる）
+        "intensity_curve": "wave",
+        "foreplay_ratio": 0.20,  # 痴漢: 触る→戸惑い→感じる の波を作る
         "intro_ratio": 0.05,
     },
     "office": {
@@ -548,8 +708,385 @@ THEME_GUIDES = {
         "intensity_curve": "valley",  # 日常→禁断→罪悪感で一旦引く→再び
         "foreplay_ratio": 0.25,
         "intro_ratio": 0.10,
-    }
+    },
+    "isekai": {
+        "name": "異世界・ファンタジー",
+        "story_arc": "召喚/転移→出会い→異文化交流→異世界の夜",
+        "key_emotions": ["驚き", "好奇心", "異文化への戸惑い", "特別な絆"],
+        "story_elements": [
+            "異世界の独自ルールや文化",
+            "種族差（エルフ/獣人/魔族など）",
+            "魔法や特殊能力の存在",
+            "「この世界では普通」という価値観の違い"
+        ],
+        "dialogue_tone": "ファンタジー風の言い回し、異文化のギャップ、冒険と興奮",
+        "use_heart": True,
+        "sd_tags": "fantasy, isekai, elf, magic, castle, medieval, adventurer, demon_girl",
+        "sd_expressions": "curious, amazed, blushing, excited, fantasy_glow",
+        "intensity_curve": "staircase",  # 異文化交流→段階的にエスカレート
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.10,
+    },
+    "onsen": {
+        "name": "温泉・お風呂",
+        "story_arc": "入浴→のぼせ/接近→肌の触れ合い→湯けむりの中で",
+        "key_emotions": ["リラックス", "羞恥", "開放感", "肌の密着感"],
+        "story_elements": [
+            "温泉や浴場のシチュエーション",
+            "裸の状態からのスタート",
+            "湯気や水音の演出",
+            "のぼせて判断力低下"
+        ],
+        "dialogue_tone": "リラックスした口調、恥じらい、湯に溶ける感覚",
+        "use_heart": True,
+        "sd_tags": "onsen, hot_spring, bathing, wet, steam, towel, nude, water",
+        "sd_expressions": "relaxed, flushed, steamy, embarrassed, dreamy",
+        "intensity_curve": "wave",  # リラックス→興奮の波
+        "foreplay_ratio": 0.25,
+        "intro_ratio": 0.10,
+    },
+    "sleep": {
+        "name": "睡眠・夜這い",
+        "story_arc": "就寝→忍び寄る→まどろみの中で→覚醒",
+        "key_emotions": ["無防備", "まどろみ", "夢か現実かの曖昧さ", "気づいた時の羞恥"],
+        "story_elements": [
+            "寝ている状態からの開始",
+            "夢うつつの曖昧な意識",
+            "「夢かと思った」反応",
+            "声を殺す緊張感"
+        ],
+        "dialogue_tone": "寝ぼけた声、小声、曖昧な反応、覚醒後の動揺",
+        "use_heart": False,
+        "sd_tags": "sleeping, night_crawling, bed, nightgown, pajamas, dark_room, blanket",
+        "sd_expressions": "sleeping, half_asleep, drowsy, confused, surprised",
+        "intensity_curve": "staircase",  # 寝ている間→半覚醒→完全覚醒の段階
+        "foreplay_ratio": 0.30,
+        "intro_ratio": 0.05,
+    },
+    "gangbang": {
+        "name": "輪姦・集団",
+        "story_arc": "囲まれる→抵抗→連続→意識朦朧",
+        "key_emotions": ["恐怖", "圧倒", "逃げ場のなさ", "快感の波状攻撃"],
+        "story_elements": [
+            "複数の男性による同時攻め",
+            "一人では対処できない状況",
+            "交代で休みなく続く",
+            "意識が飛びそうになる"
+        ],
+        "dialogue_tone": "懇願、悲鳴、もう無理という限界、複数からの声",
+        "use_heart": False,
+        "sd_tags": "gangbang, group_sex, multiple_boys, surrounded, double_penetration",
+        "sd_expressions": "overwhelmed, crying, exhausted, ahegao, drooling",
+        "intensity_curve": "two_stage",  # 1回目→休息→2回目の2段階
+        "foreplay_ratio": 0.10,
+        "intro_ratio": 0.05,
+    },
+    "medical": {
+        "name": "医療・診察",
+        "story_arc": "受診→診察→特別な処置→堕ちる",
+        "key_emotions": ["不安", "羞恥", "信頼の裏切り", "逆らえない立場"],
+        "story_elements": [
+            "医師/看護師と患者の関係",
+            "診察の名目で触れる",
+            "医療器具の利用",
+            "「治療のためだから」という口実"
+        ],
+        "dialogue_tone": "専門用語混じり、冷静な口調と羞恥、命令的な指示",
+        "use_heart": False,
+        "sd_tags": "medical, doctor, nurse, hospital, examination, stethoscope, lab_coat",
+        "sd_expressions": "nervous, embarrassed, clinical, vulnerable, exposed",
+        "intensity_curve": "staircase",  # 検査→触診→処置の段階的エスカレーション
+        "foreplay_ratio": 0.25,
+        "intro_ratio": 0.10,
+    },
+    "swimsuit": {
+        "name": "水着・プール",
+        "story_arc": "水遊び→接近→水着のまま→開放的に",
+        "key_emotions": ["開放感", "眩しさ", "日差しと熱さ", "夏の高揚感"],
+        "story_elements": [
+            "プールや海辺のシチュエーション",
+            "水着姿の露出度",
+            "水に濡れた肌の描写",
+            "更衣室やシャワールームへの移動"
+        ],
+        "dialogue_tone": "明るく開放的、恥ずかしがり、夏の雰囲気",
+        "use_heart": True,
+        "sd_tags": "swimsuit, bikini, pool, beach, wet, sunlight, summer, ocean",
+        "sd_expressions": "cheerful, embarrassed, wet, flushed, playful",
+        "intensity_curve": "ascending",  # 水遊び→徐々にエスカレート
+        "foreplay_ratio": 0.25,
+        "intro_ratio": 0.10,
+    },
+    "sports": {
+        "name": "スポーツ・部活",
+        "story_arc": "練習→二人きり→汗だく→体育倉庫で",
+        "key_emotions": ["競争心", "汗の匂い", "仲間意識からの逸脱", "若さの衝動"],
+        "story_elements": [
+            "部活や運動後のシチュエーション",
+            "汗だくの体の描写",
+            "体育倉庫/更衣室/部室",
+            "先輩後輩の上下関係"
+        ],
+        "dialogue_tone": "元気で体育会系、先輩後輩の口調、汗と興奮",
+        "use_heart": True,
+        "sd_tags": "sports, gym_uniform, bloomers, sweat, locker_room, sporty, athletic",
+        "sd_expressions": "sweaty, energetic, competitive, embarrassed, panting",
+        "intensity_curve": "ascending",  # 運動の延長→そのまま上昇
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.10,
+    },
+    "idol": {
+        "name": "アイドル・芸能",
+        "story_arc": "華やかな表舞台→裏の顔→秘密の関係→堕ちる",
+        "key_emotions": ["表と裏のギャップ", "禁止された恋愛", "スキャンダルの恐怖", "本当の自分"],
+        "story_elements": [
+            "アイドルや芸能人の設定",
+            "恋愛禁止のルール",
+            "マネージャーやプロデューサーとの関係",
+            "バレたら終わりの緊張感"
+        ],
+        "dialogue_tone": "表向きのアイドル口調と本音、ギャップ萌え、秘密の関係",
+        "use_heart": True,
+        "sd_tags": "idol, stage, microphone, costume, backstage, dressing_room, celebrity",
+        "sd_expressions": "stage_smile, nervous, secretive, gap_moe, blushing",
+        "intensity_curve": "valley",  # 表舞台→裏→葛藤で一旦引く→本音解放
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.10,
+    },
+    "neighbor": {
+        "name": "隣人・日常",
+        "story_arc": "日常の接点→距離が縮まる→一線を越える→秘密の関係",
+        "key_emotions": ["親しみ", "日常の延長", "近すぎる距離", "ご近所バレの恐怖"],
+        "story_elements": [
+            "隣の部屋/隣の家の住人",
+            "日常的な接点（回覧板、ゴミ出し等）",
+            "壁が薄い/声が漏れる",
+            "顔を合わせる気まずさ"
+        ],
+        "dialogue_tone": "日常会話からの逸脱、親しみ、声を抑える、ご近所トーク",
+        "use_heart": True,
+        "sd_tags": "neighbor, apartment, casual_clothes, domestic, everyday, next_door",
+        "sd_expressions": "friendly, nervous, secretive, blushing, trying_to_be_quiet",
+        "intensity_curve": "wave",  # 日常→興奮→冷静→再燃の波
+        "foreplay_ratio": 0.25,
+        "intro_ratio": 0.10,
+    },
+    "prostitution": {
+        "name": "風俗・パパ活",
+        "story_arc": "交渉→サービス→本番→リピーター",
+        "key_emotions": ["割り切り", "プロ意識", "本気と演技の境目", "金銭と快楽"],
+        "story_elements": [
+            "金銭的な関係が前提",
+            "サービスのプロフェッショナル感",
+            "「仕事だから」と割り切る態度",
+            "徐々に本気になる/させる"
+        ],
+        "dialogue_tone": "営業トーク、割り切った態度、徐々に本音が漏れる",
+        "use_heart": False,
+        "sd_tags": "prostitution, escort, hotel_room, lingerie, money, transaction",
+        "sd_expressions": "professional, seductive, calculating, genuine_pleasure",
+        "intensity_curve": "ascending",  # サービス→本番→本気の上昇
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.08,
+    },
+    "voyeur": {
+        "name": "露出・盗撮",
+        "story_arc": "覗き/露出→バレそうな瞬間→興奮→暴走",
+        "key_emotions": ["スリル", "背徳感", "バレる恐怖と興奮", "見られる快感"],
+        "story_elements": [
+            "人目を気にする状況",
+            "覗き/盗撮/露出のシチュエーション",
+            "バレそうでバレないギリギリ",
+            "見られている興奮"
+        ],
+        "dialogue_tone": "小声、ドキドキ、「誰かに見られたら」、スリルと興奮",
+        "use_heart": False,
+        "sd_tags": "voyeurism, exhibitionism, peeping, hidden_camera, outdoors, public",
+        "sd_expressions": "thrilled, nervous, excited, peeking, exposed",
+        "intensity_curve": "wave",  # スリル→安堵→再びスリルの波
+        "foreplay_ratio": 0.20,
+        "intro_ratio": 0.08,
+    },
+    "tentacle": {
+        "name": "触手",
+        "story_arc": "遭遇→拘束→同時多点攻め→快楽堕ち",
+        "key_emotions": ["恐怖", "嫌悪感", "抵抗できない", "人外の快感"],
+        "story_elements": [
+            "触手による全身拘束",
+            "複数箇所同時の刺激",
+            "粘液や吸盤の異物感",
+            "「こんなもので感じるなんて」という屈辱"
+        ],
+        "dialogue_tone": "恐怖と嫌悪、拘束への抵抗、異物感からの快楽、堕ちていく絶望",
+        "use_heart": False,
+        "sd_tags": "tentacles, tentacle_sex, restrained, slime, monster, bondage, multiple_insertions",
+        "sd_expressions": "scared, disgusted, struggling, overwhelmed, ahegao, crying",
+        "intensity_curve": "staircase",  # 拘束→挿入→増殖の段階
+        "foreplay_ratio": 0.10,
+        "intro_ratio": 0.05,
+    },
+    "reverse_rape": {
+        "name": "逆レイプ",
+        "story_arc": "出会い→主導権奪取→男を押し倒す→搾り取る",
+        "key_emotions": ["支配欲", "攻撃的な欲望", "男の困惑", "容赦ない快楽"],
+        "story_elements": [
+            "女性が完全に主導権を握る",
+            "男性の抵抗を無視/楽しむ",
+            "一方的に押し倒す/跨る",
+            "「逃がさない」「もっと出して」"
+        ],
+        "dialogue_tone": "攻撃的、命令口調、男の抵抗を嘲笑う、容赦ない搾取",
+        "use_heart": False,
+        "sd_tags": "reverse_rape, femdom, aggressive, pinning_down, cowgirl_position, straddling",
+        "sd_expressions": "aggressive, predatory, smirk, wild, dominant, crazed",
+        "intensity_curve": "ascending",  # 一方的にエスカレート
+        "foreplay_ratio": 0.15,
+        "intro_ratio": 0.08,
+    },
+    "cosplay": {
+        "name": "コスプレ・撮影",
+        "story_arc": "撮影会→ポーズ指示→過激に→そのままの衣装で",
+        "key_emotions": ["なりきり", "露出の恥じらい", "カメラへの意識", "キャラと自分の境界"],
+        "story_elements": [
+            "コスプレ衣装を着た状態",
+            "カメラマンとの関係",
+            "ポーズ指示が徐々にエスカレート",
+            "衣装のまま/半脱ぎの興奮"
+        ],
+        "dialogue_tone": "キャラなりきり口調、恥ずかしがり、カメラを意識した言動",
+        "use_heart": True,
+        "sd_tags": "cosplay, costume, photoshoot, camera, posing, dressing_up, roleplay",
+        "sd_expressions": "posing, embarrassed, in_character, blushing, camera_aware",
+        "intensity_curve": "ascending",  # ポーズ→過激に→そのまま行為へ
+        "foreplay_ratio": 0.25,
+        "intro_ratio": 0.10,
+    },
 }
+
+# テーマ自動推定用キーワードマップ
+THEME_KEYWORD_MAP = {
+    "netorare": ["寝取", "NTR", "ntr", "彼氏持ち", "人妻", "不倫", "浮気", "他の男"],
+    "humiliation": ["凌辱", "屈辱", "辱め", "恥辱", "陵辱"],
+    "forced": ["強制", "無理やり", "レイプ", "rape", "暴行", "襲", "犯す"],
+    "love": ["純愛", "ラブラブ", "恋人", "恋愛", "両想い", "甘々", "いちゃいちゃ"],
+    "vanilla": ["和姦", "合意", "普通", "ノーマル"],
+    "corruption": ["堕ち", "調教", "堕落", "快楽堕ち", "洗脳堕ち", "開発"],
+    "chikan": ["痴漢", "電車", "満員", "公共", "バス"],
+    "office": ["上司", "OL", "オフィス", "職場", "部下", "同僚", "社長"],
+    "teacher_student": ["先生", "教師", "生徒", "教え子", "塾", "家庭教師", "教授"],
+    "maid": ["メイド", "ご主人様", "執事", "使用人", "お嬢様"],
+    "hypnosis": ["催眠", "洗脳", "暗示", "マインドコントロール", "操り"],
+    "monster": ["異種", "モンスター", "オーク", "ゴブリン", "魔物", "獣"],
+    "time_stop": ["時間停止", "時止め", "時を止め", "フリーズ"],
+    "harem": ["ハーレム", "複数", "全員", "3P", "4P"],
+    "femdom": ["痴女", "女性優位", "逆転", "女王様", "M男", "ドS"],
+    "incest": ["近親", "兄妹", "姉弟", "母子", "父娘", "義妹", "義姉", "義母"],
+    "isekai": ["異世界", "ファンタジー", "勇者", "魔王", "エルフ", "転生", "召喚"],
+    "onsen": ["温泉", "お風呂", "入浴", "混浴", "銭湯", "露天風呂"],
+    "sleep": ["夜這い", "寝て", "睡眠", "眠って", "就寝", "添い寝", "寝込み"],
+    "gangbang": ["輪姦", "集団", "輪姦す", "大勢", "ぶっかけ", "連続"],
+    "medical": ["医者", "診察", "病院", "ナース", "看護師", "検診", "治療"],
+    "swimsuit": ["水着", "プール", "海", "ビーチ", "ビキニ", "スク水"],
+    "sports": ["部活", "スポーツ", "体操", "ブルマ", "運動", "体育", "マネージャー"],
+    "idol": ["アイドル", "芸能", "ライブ", "プロデューサー", "地下アイドル", "配信者"],
+    "neighbor": ["隣人", "隣の", "お隣", "マンション", "アパート", "ご近所"],
+    "prostitution": ["風俗", "パパ活", "援助", "デリヘル", "ソープ", "キャバ", "ホテヘル"],
+    "voyeur": ["露出", "盗撮", "覗き", "見せつけ", "野外", "見られ"],
+    "tentacle": ["触手", "tentacle"],
+    "reverse_rape": ["逆レイプ", "逆レ", "押し倒す", "搾り取", "逆襲"],
+    "cosplay": ["コスプレ", "撮影会", "レイヤー", "コス", "衣装"],
+}
+
+
+def _infer_theme_from_concept(concept: str) -> str:
+    """コンセプト文からテーマを自動推定する。
+
+    THEME_KEYWORD_MAPのキーワードとコンセプトを照合し、
+    最もマッチ数が多いテーマを返す。マッチなしなら空文字。
+    """
+    if not concept:
+        return ""
+    scores = {}
+    for theme_key, keywords in THEME_KEYWORD_MAP.items():
+        score = sum(1 for kw in keywords if kw in concept)
+        if score > 0:
+            scores[theme_key] = score
+    if not scores:
+        return ""
+    return max(scores, key=scores.get)
+
+
+def _build_dynamic_theme_guide(concept: str) -> dict:
+    """テーマガイドが見つからない場合に、コンセプトからミニマルなガイドを生成する。
+
+    コンセプトのトーンを検出して合理的なデフォルト値を返す。
+    """
+    # トーン検出
+    dark_keywords = ["強制", "凌辱", "暴行", "レイプ", "堕", "調教", "犯", "脅"]
+    sweet_keywords = ["恋", "愛", "甘", "ラブ", "好き", "告白", "デート"]
+    comedic_keywords = ["ギャグ", "コメディ", "ドジ", "ラッキースケベ", "間違い"]
+
+    dark_score = sum(1 for kw in dark_keywords if kw in concept)
+    sweet_score = sum(1 for kw in sweet_keywords if kw in concept)
+    comedic_score = sum(1 for kw in comedic_keywords if kw in concept)
+
+    if dark_score > sweet_score and dark_score > comedic_score:
+        return {
+            "name": "ダーク系",
+            "story_arc": "導入→支配→エスカレート→堕ちる",
+            "key_emotions": ["恐怖", "抵抗", "屈服", "快楽堕ち"],
+            "story_elements": ["力関係の差", "抵抗と屈服", "徐々に体が反応"],
+            "dialogue_tone": "抵抗、懇願、やがて快感に負ける",
+            "use_heart": False,
+            "sd_tags": "forced, reluctant, dark",
+            "sd_expressions": "crying, fearful, reluctant, ahegao",
+            "intensity_curve": "ascending",
+            "foreplay_ratio": 0.15,
+            "intro_ratio": 0.05,
+        }
+    elif sweet_score > dark_score:
+        return {
+            "name": "甘々系",
+            "story_arc": "出会い→親密→告白→結ばれる",
+            "key_emotions": ["恥じらい", "愛情", "幸福感", "一体感"],
+            "story_elements": ["両想い", "恥じらい", "愛情表現"],
+            "dialogue_tone": "甘い、恥ずかしがり、愛情たっぷり",
+            "use_heart": True,
+            "sd_tags": "romantic, loving, gentle, consensual",
+            "sd_expressions": "blushing, happy, loving, content",
+            "intensity_curve": "wave",
+            "foreplay_ratio": 0.30,
+            "intro_ratio": 0.10,
+        }
+    elif comedic_score > 0:
+        return {
+            "name": "コミカル系",
+            "story_arc": "ハプニング→巻き込まれ→流されて→楽しむ",
+            "key_emotions": ["驚き", "戸惑い", "照れ", "楽しさ"],
+            "story_elements": ["偶然の状況", "ドジやハプニング", "ノリと勢い"],
+            "dialogue_tone": "ツッコミ、驚き、流される、楽しむ",
+            "use_heart": True,
+            "sd_tags": "comedic, surprised, accidental, happy",
+            "sd_expressions": "surprised, embarrassed, laughing, happy",
+            "intensity_curve": "ascending",
+            "foreplay_ratio": 0.20,
+            "intro_ratio": 0.10,
+        }
+    else:
+        return {
+            "name": "汎用",
+            "story_arc": "出会い→接近→行為→余韻",
+            "key_emotions": ["期待", "興奮", "快感", "満足"],
+            "story_elements": ["自然な展開", "段階的なエスカレーション"],
+            "dialogue_tone": "自然、感情豊か",
+            "use_heart": True,
+            "sd_tags": "consensual, enjoying",
+            "sd_expressions": "blushing, moaning, satisfied",
+            "intensity_curve": "ascending",
+            "foreplay_ratio": 0.20,
+            "intro_ratio": 0.08,
+        }
+
 
 DEFAULT_NEGATIVE_PROMPT = "worst_quality, low_quality, lowres, bad_anatomy, bad_hands, missing_fingers, extra_fingers, mutated_hands, poorly_drawn_face, ugly, deformed, blurry, text, watermark, signature, censored, mosaic_censoring, loli, shota, child"
 
@@ -718,6 +1255,34 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                     problems.append(f"男性「{speaker}」がmoan(喘ぎ)タイプ: 「{txt}」")
                 if any(k in txt for k in ["ぃ", "ぉ", "きもち", "もっとぉ", "すきぃ"]):
                     problems.append(f"男性「{speaker}」に甘え語尾: 「{txt}」")
+                # 男性セリフ観察実況チェック（「～だな」系）
+                import re as _re_val
+                _clean_txt = txt.rstrip("…♡♥")
+                if _re_val.search(r".{4,}(?:だな|してるな|だろうな)$", _clean_txt):
+                    problems.append(f"男性「{speaker}」観察型: 「{txt}」")
+
+        # thought部位ラベル冒頭チェック
+        _BODY_PART_CHECK = ["胸…", "太もも…", "お尻…", "首筋…", "耳…", "唇…",
+                            "舌…", "脚…", "背中…", "髪…", "うなじ…", "乳首…",
+                            "おっぱい…", "ふともも…", "おしり…"]
+        for b in bubbles:
+            if b.get("type") == "thought":
+                txt = b.get("text", "")
+                if any(txt.startswith(bp) for bp in _BODY_PART_CHECK):
+                    problems.append(f"thought部位ラベル冒頭: 「{txt}」")
+
+        # 設備名混入チェック（location_detailの設備名がセリフに漏れている）
+        _FIXTURE_WORDS = ["便器", "便座", "手洗い台", "手洗い鏡", "トイレットペーパー"]
+        for b in bubbles:
+            txt = b.get("text", "")
+            if not txt:
+                continue
+            # 「肉便器」はエロ漫画スラングなので除外
+            check_txt = txt.replace("肉便器", "")
+            for fw in _FIXTURE_WORDS:
+                if fw in check_txt:
+                    problems.append(f"設備名混入「{fw}」検出: 「{txt}」")
+                    break
 
         # 不自然表現チェック（書き言葉・医学用語・過剰敬語の検出）
         _UNNATURAL_WORDS = [
@@ -990,6 +1555,49 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             scene_issues.setdefault(scene_id, []).append(
                 f"title長すぎ({len(title)}字): 「{title[:30]}...」")
 
+    # --- クロスシーン: title品質チェック（句点混入・location混入） ---
+    _TITLE_LOCATION_KW = [
+        "トイレ", "個室", "便所", "教室", "部室", "保健室", "屋上", "体育館",
+        "プール", "更衣室", "シャワー室", "ベッドルーム", "リビング", "キッチン",
+        "浴室", "風呂", "脱衣所", "車内", "電車内", "バス内", "駐車場",
+        "エレベーター", "階段", "廊下", "倉庫", "物置", "地下室", "ホテル",
+        "旅館", "カラオケ", "ネカフェ", "漫喫", "オフィス", "会議室",
+    ]
+    for i, scene in enumerate(results):
+        title = scene.get("title", "")
+        scene_id = scene.get("scene_id", i + 1)
+        if not title:
+            continue
+        # 句点チェック（タイトルに「。」は不適）
+        if "。" in title:
+            scene_issues.setdefault(scene_id, []).append(
+                f"titleに句点混入: 「{title}」")
+        # location混入チェック（場所名がtitleに含まれる）
+        loc = scene.get("location_detail", scene.get("location", ""))
+        if loc and len(loc) >= 4 and loc in title:
+            scene_issues.setdefault(scene_id, []).append(
+                f"titleにlocation混入: 「{title}」（location: {loc}）")
+        # 場所キーワードが支配的なタイトル（場所KWが2つ以上）
+        loc_kw_count = sum(1 for kw in _TITLE_LOCATION_KW if kw in title)
+        if loc_kw_count >= 2:
+            scene_issues.setdefault(scene_id, []).append(
+                f"titleが場所名の羅列: 「{title}」（場所KW{loc_kw_count}個）")
+        # description断片混入チェック（助詞「の」で始まる/名詞で途切れる不完全title）
+        desc = scene.get("description", "")
+        if desc and len(title) >= 6:
+            # titleがdescriptionの部分文字列（10文字以上の断片）
+            if len(title) >= 10 and title in desc:
+                scene_issues.setdefault(scene_id, []).append(
+                    f"titleにdescription断片混入: 「{title}」")
+            # 「の」で始まるtitle（文の途中から切り取られた形跡）
+            elif title.startswith("の") or title.startswith("と"):
+                scene_issues.setdefault(scene_id, []).append(
+                    f"title不完全（助詞で開始）: 「{title}」")
+            # 「張」「れ」等の送り仮名で終わる（文の途中で途切れた形跡）
+            elif len(title) >= 8 and title[-1] in "張貼掛掲載映写":
+                scene_issues.setdefault(scene_id, []).append(
+                    f"title不完全（途中で途切れ）: 「{title}」")
+
     # --- クロスシーン: title重複チェック ---
     seen_titles = {}  # title -> scene_id
     for i, scene in enumerate(results):
@@ -1005,8 +1613,9 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
 
     # --- クロスシーン: titleキーワード過剰使用チェック ---
     _title_kw_count = {}
-    _TITLE_CHECK_KW = ["膣奥", "理性", "崩壊", "限界", "快感", "堕ち", "抵抗",
-                        "連続", "激突", "責め", "声", "最後"]
+    _TITLE_CHECK_KW = ["膣奥", "膣", "理性", "崩壊", "限界", "快感", "堕ち", "抵抗",
+                        "連続", "激突", "責め", "声", "最後", "扉", "壁", "視線",
+                        "奥", "腰", "廊下"]
     for scene in results:
         title = scene.get("title", "")
         for kw in _TITLE_CHECK_KW:
@@ -1108,10 +1717,24 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             if prefix:
                 thought_prefix_counter.setdefault(prefix, []).append((sid, text))
     for prefix, entries in thought_prefix_counter.items():
-        if len(entries) >= 6:
+        if len(entries) >= 4:
             scene_ids_str = ",".join(str(e[0]) for e in entries[:6])
             scene_issues.setdefault("global", []).append(
                 f"thought先頭「{prefix}」が{len(entries)}回反復（シーン{scene_ids_str}）")
+
+    # --- クロスシーン: thoughtテキスト内キーワード頻度チェック ---
+    _THOUGHT_CONTENT_KW = ["だめ", "声", "やめて", "おく", "なか", "廊下", "聞こえ"]
+    _thought_kw_count = {}
+    for sid, text in all_thought_texts:
+        for kw in _THOUGHT_CONTENT_KW:
+            if kw in text:
+                _thought_kw_count[kw] = _thought_kw_count.get(kw, 0) + 1
+    _thought_total = max(1, len(all_thought_texts))
+    for kw, cnt in _thought_kw_count.items():
+        # 全thoughtの25%以上で同一キーワードが出現したら警告
+        if cnt >= max(4, _thought_total // 4):
+            scene_issues.setdefault("global", []).append(
+                f"thoughtキーワード過剰: 「{kw}」が{cnt}/{_thought_total}回出現（25%超過）")
 
     # --- クロスシーン: 男性セリフ長文チェック（15文字超え） ---
     for i, scene in enumerate(results):
@@ -1126,6 +1749,48 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                 if len(core) > 15:
                     scene_issues.setdefault(scene_id, []).append(
                         f"男性セリフ長文({len(core)}字): 「{txt}」")
+
+    # --- クロスシーン: 男性セリフ末尾フレーズ反復チェック（「最高だ」等が3回以上） ---
+    _male_speech_suffix_counter = {}  # suffix -> [(scene_id, full_text)]
+    _MALE_SUFFIX_CHECK_LEN = 4  # 末尾N文字で比較
+    _MALE_SUFFIX_THRESHOLD = max(3, len(results) // 15)  # 15シーンに1回まで許容
+    for i, scene in enumerate(results):
+        scene_id = scene.get("scene_id", i + 1)
+        for b in scene.get("bubbles", []):
+            speaker = b.get("speaker", "")
+            is_male = speaker and heroine_names and speaker not in heroine_names
+            if is_male and b.get("type") == "speech":
+                txt = b.get("text", "")
+                if not txt or len(txt) < 3:
+                    continue
+                # 装飾除去して末尾フレーズを抽出
+                core = txt.replace("…", "").replace("♡", "").replace("っ", "").replace("♥", "").strip()
+                if len(core) < 3:
+                    continue
+                suffix = core[-_MALE_SUFFIX_CHECK_LEN:] if len(core) >= _MALE_SUFFIX_CHECK_LEN else core
+                _male_speech_suffix_counter.setdefault(suffix, []).append((scene_id, txt))
+    for suffix, entries in _male_speech_suffix_counter.items():
+        if len(entries) >= _MALE_SUFFIX_THRESHOLD:
+            scene_ids_str = ",".join(str(e[0]) for e in entries[:6])
+            scene_issues.setdefault("global", []).append(
+                f"男性セリフ末尾「{suffix}」が{len(entries)}回反復（シーン{scene_ids_str}）")
+
+    # --- クロスシーン: 男性セリフ多様性スコア（ユニーク率50%未満で警告） ---
+    _all_male_speeches = []
+    for scene in results:
+        for b in scene.get("bubbles", []):
+            speaker = b.get("speaker", "")
+            is_male = speaker and heroine_names and speaker not in heroine_names
+            if is_male and b.get("type") == "speech":
+                txt = b.get("text", "")
+                if txt:
+                    _all_male_speeches.append(txt)
+    if len(_all_male_speeches) >= 5:
+        _unique_male = len(set(_all_male_speeches))
+        _diversity_pct = _unique_male * 100 // len(_all_male_speeches)
+        if _diversity_pct < 50:
+            scene_issues.setdefault("global", []).append(
+                f"男性セリフ多様性低: {_unique_male}/{len(_all_male_speeches)}({_diversity_pct}%ユニーク)")
 
     # --- クロスシーン: 不自然表現チェック（「らめ」「括弧」「一人称ブレ」） ---
     for i, scene in enumerate(results):
@@ -1197,6 +1862,58 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         "positions_used": sorted(unique_positions),
         "distribution": position_counter,
     }
+
+    # --- v7.1: intensity不一致検出 ---
+    _LOW_I_MOANS = _re.compile(r"[あんはぁ]っ|んほ|あへ|んっ|あぁ|はぁ")
+    for i, scene in enumerate(results):
+        sid = scene.get("scene_id", i + 1)
+        intensity = scene.get("intensity", 3)
+        for bubble in scene.get("bubbles", []):
+            txt = bubble.get("text", "")
+            btype = bubble.get("type", "")
+            if not txt:
+                continue
+            if intensity <= 2:
+                if "♡" in txt:
+                    scene_issues.setdefault(sid, []).append(
+                        f"intensity{intensity}に♡: 「{txt[:20]}」")
+                if btype in ("speech", "thought") and _LOW_I_MOANS.search(txt):
+                    scene_issues.setdefault(sid, []).append(
+                        f"intensity{intensity}に喘ぎ表現: 「{txt[:20]}」")
+            if intensity >= 4:
+                if btype in ("speech", "thought"):
+                    for polite in ("です", "ます", "ください"):
+                        if polite in txt:
+                            scene_issues.setdefault(sid, []).append(
+                                f"intensity{intensity}に丁寧語「{polite}」: 「{txt[:20]}」")
+                            break
+
+    # --- v7.1: 語尾パターン反復検出（3連続以上） ---
+    _suffix_seq = []  # [(scene_id, suffix)]
+    for i, scene in enumerate(results):
+        sid = scene.get("scene_id", i + 1)
+        for bubble in scene.get("bubbles", []):
+            txt = bubble.get("text", "").rstrip()
+            if len(txt) >= 3:
+                _suffix_seq.append((sid, txt[-3:]))
+    for idx in range(len(_suffix_seq) - 2):
+        s1 = _suffix_seq[idx][1]
+        if s1 == _suffix_seq[idx + 1][1] == _suffix_seq[idx + 2][1]:
+            if idx > 0 and _suffix_seq[idx - 1][1] == s1:
+                continue
+            sid = _suffix_seq[idx][0]
+            scene_issues.setdefault(sid, []).append(
+                f"語尾パターン3連続「{s1}」")
+
+    # --- v7.1: thought長さチェック（20文字超=ナレーション化） ---
+    for i, scene in enumerate(results):
+        sid = scene.get("scene_id", i + 1)
+        for bubble in scene.get("bubbles", []):
+            if bubble.get("type") == "thought":
+                txt = bubble.get("text", "")
+                if len(txt) > 20:
+                    scene_issues.setdefault(sid, []).append(
+                        f"thought長すぎ({len(txt)}文字): 「{txt[:25]}…」")
 
     n_issues = sum(len(v) for v in scene_issues.values()) + len(repeated_moans) + len(repeated_onom)
     score = max(0, 100 - n_issues * 5)
@@ -1311,7 +2028,9 @@ def _analyze_scene_context(scene: dict) -> str:
 
     # 事後シーン
     aftermath_kw = ["事後", "余韻", "虚脱", "罪悪感", "後悔", "戻って", "帰る",
-                    "眠り", "崩れ落ち"]
+                    "眠り", "崩れ落ち", "終えた", "身繕い", "動けない", "虚ろ",
+                    "後片付け", "放心", "脱力", "ぐったり", "呆然", "立てない",
+                    "意識が戻", "我に返", "現実に戻"]
     if any(k in desc for k in aftermath_kw):
         return "aftermath"
 
@@ -1393,6 +2112,13 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
     _personality_type = _detect_personality_type(char_profiles) if char_profiles else ""
     _pool_mix = _PERSONALITY_POOL_MIX.get(_personality_type, {}) if _personality_type else {}
 
+    # キャラ固有プール読み込み
+    _dedup_char_pool = {}
+    if char_profiles:
+        _cp0 = char_profiles[0]
+        _cp_id = generate_char_id(_cp0.get("work_title", ""), _cp0.get("character_name", ""))
+        _dedup_char_pool = load_character_pool(_cp_id)
+
     def _is_male_speaker(speaker: str) -> bool:
         if not speaker:
             return False
@@ -1404,7 +2130,12 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
     def _get_male_pool_for_theme(theme_str: str, intensity: int) -> list:
         t = theme_str.lower() if theme_str else ""
         pool = []
-        if any(k in t for k in ["ntr", "寝取", "夜這", "村", "レイプ", "陵辱", "調教", "奴隷"]):
+        if any(k in t for k in ["痴漢", "chikan", "公共", "public", "電車", "train", "トイレ"]):
+            pool.extend(SPEECH_MALE_POOL.get("chikan", []))
+            pool.extend(SPEECH_MALE_POOL.get("taunt", []))
+            pool.extend(SPEECH_MALE_POOL.get("public", []))
+            pool.extend(SPEECH_MALE_POOL.get("command", []))
+        elif any(k in t for k in ["ntr", "寝取", "夜這", "村", "レイプ", "陵辱", "調教", "奴隷"]):
             pool.extend(SPEECH_MALE_POOL.get("command", []))
             pool.extend(SPEECH_MALE_POOL.get("dirty", []))
         elif any(k in t for k in ["純愛", "ラブ", "恋人", "カップル"]):
@@ -1441,14 +2172,35 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
 
         # エロシーンの通常ロジック
         if btype == "moan":
-            return get_moan_pool(intensity)
+            pool = []
+            if _dedup_char_pool and "moan" in _dedup_char_pool:
+                pool.extend(_dedup_char_pool["moan"].get(str(intensity), []))
+            pool.extend(get_moan_pool(intensity))
+            return pool
         elif btype == "thought":
-            return get_speech_pool("thought", theme, intensity)
+            pool = []
+            if _dedup_char_pool and "thought" in _dedup_char_pool:
+                # フェーズ推定で適切なthoughtを混合
+                try:
+                    from ero_dialogue_pool import infer_phase as _inf_ph
+                    _ph = _inf_ph(intensity, 0, 1)  # 推定（dedup時はscene_index不定）
+                    pool.extend(_dedup_char_pool["thought"].get(_ph, []))
+                except (ImportError, Exception):
+                    pass
+            pool.extend(get_speech_pool("thought", theme, intensity))
+            return pool
         elif is_male:
             return _get_male_pool_for_theme(theme, intensity)
         else:
-            # 女性speech: 性格タイプ優先 → intensity連動フォールバック
+            # 女性speech: キャラ固有プール優先 → 性格タイプ → intensity連動フォールバック
             pool = []
+            if _dedup_char_pool and "speech" in _dedup_char_pool:
+                try:
+                    from ero_dialogue_pool import infer_phase as _inf_ph2
+                    _ph2 = _inf_ph2(intensity, 0, 1)
+                    pool.extend(_dedup_char_pool["speech"].get(_ph2, []))
+                except (ImportError, Exception):
+                    pass
             if _pool_mix:
                 # 性格別プール混合: primary(2倍) + secondary(1倍)
                 for cat in _pool_mix.get("primary", []):
@@ -1493,6 +2245,10 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
     # thought先頭パターン追跡（「だめ…」「やだ…」等の同一先頭3文字反復防止）
     thought_prefix_counter = {}  # prefix3 -> count
     _THOUGHT_PREFIX_LIMIT = 4  # 同一先頭パターンの上限
+    # thoughtテキスト内キーワード頻度追跡（「だめ」「声」等の過剰使用防止）
+    _thought_kw_counter = {}  # kw -> count
+    _THOUGHT_CONTENT_KW = ["だめ", "声", "やめて", "おく", "なか", "廊下", "聞こえ"]
+    _THOUGHT_KW_LIMIT = 4  # 同一キーワードの上限
 
     replace_count = 0
 
@@ -1526,6 +2282,18 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
         prefix = _get_thought_prefix(text)
         if prefix:
             thought_prefix_counter[prefix] = thought_prefix_counter.get(prefix, 0) + 1
+
+    def _check_thought_kw_limit(text: str) -> bool:
+        """thoughtテキスト内のキーワードが上限を超えていたらTrue"""
+        for kw in _THOUGHT_CONTENT_KW:
+            if kw in text and _thought_kw_counter.get(kw, 0) >= _THOUGHT_KW_LIMIT:
+                return True
+        return False
+
+    def _register_thought_kw(text: str):
+        for kw in _THOUGHT_CONTENT_KW:
+            if kw in text:
+                _thought_kw_counter[kw] = _thought_kw_counter.get(kw, 0) + 1
 
     def _check_pattern_limit(text: str) -> bool:
         """表現パターンが上限（全体で2回）を超えていたらTrue"""
@@ -1583,6 +2351,13 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 elif any(_is_similar_bubble(text, prev) for prev in used_moan_raw):
                     need_replace = True
                     reason = "類似"
+                # 部分一致チェック: 正規化後2文字以上の共通中核が3回以上出現
+                elif not need_replace and len(norm) >= 2:
+                    core = norm[:3] if len(norm) >= 3 else norm
+                    _moan_core_hits = sum(1 for prev in used_moan_texts if core in prev)
+                    if _moan_core_hits >= 2:
+                        need_replace = True
+                        reason = f"部分一致({core}系{_moan_core_hits+1}回)"
                 # 非エロシーンで喘ぎは文脈不整合
                 if ctx == "non_sexual":
                     need_replace = True
@@ -1602,6 +2377,9 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 elif _check_thought_prefix_limit(text):
                     need_replace = True
                     reason = f"先頭反復({_get_thought_prefix(text)})"
+                elif _check_thought_kw_limit(text):
+                    need_replace = True
+                    reason = "キーワード過剰"
 
             elif btype == "speech":
                 norm = _normalize_bubble_text(text)
@@ -1611,6 +2389,15 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 elif any(_is_similar_bubble(text, prev) for prev in used_speech_raw):
                     need_replace = True
                     reason = "類似"
+                # 部分一致チェック（末尾5文字 or 先頭5文字の一致）
+                elif len(norm) >= 5 and not need_replace:
+                    norm_suffix = norm[-5:]
+                    norm_prefix = norm[:5]
+                    for prev in used_speech_texts:
+                        if len(prev) >= 5 and (prev[-5:] == norm_suffix or prev[:5] == norm_prefix):
+                            need_replace = True
+                            reason = "部分一致"
+                            break
                 # 非エロシーンで♡付きセリフは文脈不整合
                 if ctx == "non_sexual" and ("♡" in text or "♥" in text):
                     need_replace = True
@@ -1624,6 +2411,15 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                         reason = "非エロ文脈でエロ語"
 
             # 長文判定は廃止（セリフの長さを制限しない）
+
+            # 事後シーンの文脈不整合チェック（エロ語・戦闘語が混入していたら置換）
+            if ctx == "aftermath" and not need_replace:
+                _aftermath_bad_kw = ["逃げ", "戦", "攻撃", "殺", "来るな", "来んな",
+                                     "奥", "イく", "イっ", "締まる", "入って", "もっと",
+                                     "感じ", "濡れ", "♡", "♥"]
+                if any(k in text for k in _aftermath_bad_kw):
+                    need_replace = True
+                    reason = "事後文脈で不適切セリフ"
 
             # === 置換実行 ===
             if need_replace and has_pool:
@@ -1652,6 +2448,7 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 used_thought_texts.add(_normalize_bubble_text(final_text))
                 _register_patterns(final_text)
                 _register_thought_prefix(final_text)
+                _register_thought_kw(final_text)
             elif btype == "speech":
                 used_speech_raw.add(final_text)
                 used_speech_texts.add(_normalize_bubble_text(final_text))
@@ -1760,6 +2557,15 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 continue
             correct_names.append(name)
 
+    # === キャラ固有セリフプールの読み込み ===
+    _char_pool = {}
+    if char_profiles:
+        _cp0 = char_profiles[0]
+        _cp_id = generate_char_id(_cp0.get("work_title", ""), _cp0.get("character_name", ""))
+        _char_pool = load_character_pool(_cp_id)
+        if _char_pool:
+            log_message(f"キャラ固有プール読み込み: {_cp_id}")
+
     # テキストフィールド一覧
     text_fields = ["description", "location_detail", "direction", "story_flow", "title"]
 
@@ -1825,17 +2631,24 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
 
     # 4.5. 男性セリフ自動修正（♡除去、moan→speech変換、長文短縮）
     heroine_name_set = set(correct_names) if correct_names else set()
-    try:
-        from ero_dialogue_pool import shorten_male_speech, SPEECH_MALE_POOL as _MALE_POOL
-        _has_male_shorten = True
-    except ImportError:
-        _has_male_shorten = False
-    _male_shorten_count = 0
+    # 男性speaker名フォールバック（heroine_name_set空時に使用）
+    _MALE_SPEAKER_NAMES = frozenset([
+        "男", "男性", "おじさん", "おっさん", "先生", "上司", "彼",
+        "男の子", "少年", "青年", "紳士", "客", "店長", "先輩", "後輩",
+        "兄", "弟", "父", "義父", "義兄", "master", "男A", "男B",
+    ])
+    def _is_male_by_name(speaker: str) -> bool:
+        """heroine_name_set空時のフォールバック男性判定"""
+        if not speaker:
+            return False
+        if heroine_name_set:
+            return speaker not in heroine_name_set and not any(h in speaker for h in heroine_name_set)
+        return speaker in _MALE_SPEAKER_NAMES or any(m in speaker for m in _MALE_SPEAKER_NAMES)
     for scene in results:
         if "bubbles" in scene:
             for bubble in scene["bubbles"]:
                 speaker = bubble.get("speaker", "")
-                is_male = speaker and heroine_name_set and speaker not in heroine_name_set
+                is_male = speaker and _is_male_by_name(speaker)
                 if is_male:
                     # ♡♥を除去
                     txt = bubble.get("text", "")
@@ -1845,15 +2658,229 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                     # moan→speech変換
                     if bubble.get("type") == "moan":
                         bubble["type"] = "speech"
-                    # 長文短縮（15文字超え→辞書短縮のみ）
-                    if _has_male_shorten and len(txt) > 15:
-                        shortened = shorten_male_speech(txt, max_len=15)
-                        if shortened != txt:
-                            log_message(f"  男性セリフ短縮: 「{txt}」→「{shortened}」")
-                            bubble["text"] = shortened
-                            _male_shorten_count += 1
-    if _male_shorten_count > 0:
-        log_message(f"  男性セリフ短縮: {_male_shorten_count}件")
+
+    # 4.52. description内「主人公」→ヒロイン名置換（男性参照時のみ）
+    _MALE_ACTION_KEYWORDS = {"挿入", "腰を振", "攻め", "抱き", "犯", "掴", "押し倒", "射精", "突い", "責め", "脱がせ", "握り", "引き寄せ", "覆いかぶさ"}
+    _protagonist_fix_count = 0
+    heroine_label = correct_names[0] if correct_names else "ヒロイン"
+    for scene in results:
+        for field in ["description", "story_flow", "direction"]:
+            text = scene.get(field, "")
+            if not text or "主人公" not in text:
+                continue
+            # 「主人公が+男性的動作」パターンを検出→「彼」に置換（男性を指す場合）
+            for kw in _MALE_ACTION_KEYWORDS:
+                if kw in text and "主人公" in text:
+                    text = text.replace("主人公", "彼")
+                    scene[field] = text
+                    _protagonist_fix_count += 1
+                    break
+            else:
+                # 男性動作なし→女性を指している可能性→ヒロイン名に置換
+                if "主人公" in text:
+                    text = text.replace("主人公", heroine_label)
+                    scene[field] = text
+                    _protagonist_fix_count += 1
+    if _protagonist_fix_count > 0:
+        log_message(f"  主人公呼称修正: {_protagonist_fix_count}件")
+
+    # お嬢様口調崩壊マップ（intensity 4-5で適用）
+    _OJOUSAMA_BREAKDOWN_MAP = {
+        "ですの": "…の…♡",
+        "ですわ": "…♡",
+        "ですこと": "…♡",
+        "でございます": "…♡",
+        "なさいませ": "…て…♡",
+        "いたしますわ": "ちゃう…♡",
+        "くださいませ": "…♡",
+        "ましてよ": "…♡",
+        "おほほ": "あっ♡",
+        "ごきげんよう": "",
+        "わたくし": "あたし",
+        "いけませんわ": "だめ…♡",
+        "よろしくてよ": "いい…♡",
+        "存じません": "しらない…",
+        "困りますわ": "やだ…♡",
+        "お許しください": "ゆるして…♡",
+        "なりませんわ": "だめ…♡",
+        "ございませんの": "ない…♡",
+        "いたしません": "しない…♡",
+        "差し上げます": "あげる…♡",
+    }
+
+    # 4.52b. お嬢様口調崩壊処理（intensity 4-5で丁寧語を崩す）
+    _ojousama_fix_count = 0
+    for scene in results:
+        intensity = scene.get("intensity", 2)
+        if intensity < 4:
+            continue
+        if "bubbles" not in scene:
+            continue
+        for bubble in scene["bubbles"]:
+            speaker = bubble.get("speaker", "")
+            # 男性セリフはスキップ
+            if speaker and _is_male_by_name(speaker):
+                continue
+            txt = bubble.get("text", "")
+            if not txt:
+                continue
+            original = txt
+            for formal, broken in _OJOUSAMA_BREAKDOWN_MAP.items():
+                if formal in txt:
+                    txt = txt.replace(formal, broken)
+            # intensity 5: 残った「です」も崩す
+            if intensity >= 5 and "です" in txt:
+                txt = txt.replace("です", "…♡")
+            if txt != original:
+                bubble["text"] = txt
+                _ojousama_fix_count += 1
+                log_message(f"  お嬢様口調崩壊: 「{original}」→「{txt}」")
+    if _ojousama_fix_count > 0:
+        log_message(f"  お嬢様口調崩壊: {_ojousama_fix_count}件修正")
+
+    # 4.55. 男性セリフ末尾フレーズ反復修正（「最高だ」問題対策）
+    # LLMが同一末尾フレーズの男性セリフを繰り返す問題を検出→SPEECH_MALE_POOLから代替置換
+    _MALE_SUFFIX_FIX_THRESHOLD = 3  # 同一末尾フレーズ3回以上で修正
+    _male_suffix_map = {}  # suffix -> [(scene_idx, bubble_idx, full_text)]
+    for si, scene in enumerate(results):
+        if "bubbles" not in scene:
+            continue
+        for bi, bubble in enumerate(scene["bubbles"]):
+            speaker = bubble.get("speaker", "")
+            is_male = speaker and heroine_name_set and speaker not in heroine_name_set
+            if is_male and bubble.get("type") == "speech":
+                txt = bubble.get("text", "")
+                if not txt or len(txt) < 3:
+                    continue
+                core = txt.replace("…", "").replace("♡", "").replace("っ", "").replace("♥", "").strip()
+                if len(core) < 3:
+                    continue
+                suffix = core[-4:] if len(core) >= 4 else core
+                _male_suffix_map.setdefault(suffix, []).append((si, bi, txt))
+    _male_suffix_fix_count = 0
+    try:
+        from ero_dialogue_pool import SPEECH_MALE_POOL as _MALE_POOL_CHECK
+        _has_male_pool = True
+    except ImportError:
+        _has_male_pool = False
+    if _has_male_pool:
+        _used_male_texts = set()
+        # 先に全ての男性セリフを使用済みとして登録
+        for scene in results:
+            for b in scene.get("bubbles", []):
+                sp = b.get("speaker", "")
+                if sp and heroine_name_set and sp not in heroine_name_set and b.get("type") == "speech":
+                    _used_male_texts.add(b.get("text", ""))
+        for suffix, entries in _male_suffix_map.items():
+            if len(entries) < _MALE_SUFFIX_FIX_THRESHOLD:
+                continue
+            # 最初の2件は残し、3件目以降を置換
+            for si, bi, old_txt in entries[2:]:
+                intensity = results[si].get("intensity", 3)
+                # テーマに応じた男性プールを取得
+                try:
+                    from ero_dialogue_pool import get_male_speech_pool_for_theme, SPEECH_MALE_POOL as _MSP
+                    _pool = get_male_speech_pool_for_theme(theme, intensity)
+                except (ImportError, AttributeError):
+                    _pool = []
+                    try:
+                        from ero_dialogue_pool import SPEECH_MALE_POOL as _MSP
+                        for cat_entries in _MSP.values():
+                            _pool.extend(cat_entries)
+                    except ImportError:
+                        break
+                # 使用済みテキストを除外して代替を選択
+                candidates = [t for t in _pool if t not in _used_male_texts and t != old_txt]
+                if candidates:
+                    import random as _rng_male
+                    replacement = _rng_male.choice(candidates)
+                    results[si]["bubbles"][bi]["text"] = replacement
+                    _used_male_texts.add(replacement)
+                    _male_suffix_fix_count += 1
+                    log_message(f"  S{results[si].get('scene_id','?')}: 男性セリフ反復修正「{old_txt}」→「{replacement}」")
+    if _male_suffix_fix_count > 0:
+        log_message(f"  男性セリフ反復修正: {_male_suffix_fix_count}件")
+
+    # 4.56. 男性セリフ末尾フレーズ反復修正（ハードコード代替辞書版 - プール置換漏れの補完）
+    _MALE_SUFFIX_ALTERNATIVES = {
+        "最高だ": ["たまんねえ", "いい反応だ", "堕ちたな", "もう戻れねえ", "感じてんだろ",
+                    "締まるな", "素直だな", "いい顔だな", "我慢すんなよ", "ほら声出せ"],
+        "おくだ": ["もっとだ", "逃がさねえ", "そのままだ", "力抜けよ", "震えてんぞ",
+                    "声漏れてる", "もう無理だろ", "欲しいんだろ", "体は正直だ", "いいぞ"],
+        "もっと": ["まだだ", "止まんな", "そのまま", "いけるだろ", "ほらもう一回"],
+    }
+    _suffix_counts = {}  # suffix -> count seen so far
+    _suffix_fix_count = 0
+    for scene in results:
+        if "bubbles" not in scene:
+            continue
+        for bubble in scene["bubbles"]:
+            speaker = bubble.get("speaker", "")
+            is_male = speaker and heroine_name_set and speaker not in heroine_name_set
+            if not is_male:
+                continue
+            txt = bubble.get("text", "")
+            if not txt:
+                continue
+            for suffix, alts in _MALE_SUFFIX_ALTERNATIVES.items():
+                if txt.rstrip("…♡").endswith(suffix) or suffix in txt:
+                    _suffix_counts[suffix] = _suffix_counts.get(suffix, 0) + 1
+                    if _suffix_counts[suffix] > 2:  # 3回目以降は置換
+                        import random as _rng
+                        alt = _rng.choice(alts)
+                        old_txt = txt
+                        bubble["text"] = alt
+                        log_message(f"  男性セリフ反復修正: 「{old_txt}」→「{alt}」")
+                        _suffix_fix_count += 1
+                    break
+    if _suffix_fix_count > 0:
+        log_message(f"  男性セリフ反復修正(辞書): {_suffix_fix_count}件")
+
+    # 4.58. 男性セリフ頻度制限（全体の35%以下に抑制）
+    total_scenes = len(results)
+    max_male_scenes = max(2, int(total_scenes * 0.35))
+    scenes_with_male = []
+    for idx, scene in enumerate(results):
+        if "bubbles" not in scene:
+            continue
+        for bubble in scene["bubbles"]:
+            speaker = bubble.get("speaker", "")
+            if speaker and _is_male_by_name(speaker):
+                scenes_with_male.append(idx)
+                break
+    if len(scenes_with_male) > max_male_scenes:
+        # 保持するシーン: intensity 5のシーン + 最初の男性登場シーン + 等間隔
+        keep_indices = set()
+        # intensity 5は必ず保持
+        for idx in scenes_with_male:
+            if results[idx].get("intensity", 0) >= 5:
+                keep_indices.add(idx)
+        # 最初の男性登場も保持
+        if scenes_with_male:
+            keep_indices.add(scenes_with_male[0])
+        # 残り枠を等間隔で配分
+        remaining_slots = max_male_scenes - len(keep_indices)
+        if remaining_slots > 0:
+            candidates = [i for i in scenes_with_male if i not in keep_indices]
+            if candidates:
+                step = max(1, len(candidates) // remaining_slots)
+                for j in range(0, len(candidates), step):
+                    if len(keep_indices) >= max_male_scenes:
+                        break
+                    keep_indices.add(candidates[j])
+        # 不要な男性セリフを削除
+        _male_freq_removed = 0
+        for idx in scenes_with_male:
+            if idx in keep_indices:
+                continue
+            scene = results[idx]
+            scene["bubbles"] = [
+                b for b in scene["bubbles"]
+                if not (b.get("speaker", "") and _is_male_by_name(b.get("speaker", "")))
+            ]
+            _male_freq_removed += 1
+        if _male_freq_removed > 0:
+            log_message(f"  男性セリフ頻度制限: {_male_freq_removed}シーンから男性セリフ除去（{len(scenes_with_male)}→{len(scenes_with_male)-_male_freq_removed}シーン）")
 
     # 4.6. 括弧除去・「らめ」修正・一人称ブレ修正・タイトル長制限
     _46_fix_count = 0
@@ -1866,11 +2893,29 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
             if cn and fp:
                 _first_person_map[cn] = fp
     for scene in results:
-        # タイトル長制限（25文字超え→先頭25文字に切り詰め）
+        # タイトル品質修正（長制限 + location混入 + 句点 + 重複）
         title = scene.get("title", "")
+        # 句点を含むタイトルは不正（descriptionの混入）
+        if "。" in title:
+            title = title.split("。")[0].strip()
+            scene["title"] = title
+            log_message(f"  S{scene.get('scene_id','?')}: タイトル句点除去")
+            _46_fix_count += 1
+        # location名がタイトルに混入している場合、除去
+        _loc_keywords = ["トイレ個室", "の駅の", "教室内", "部屋の中"]
+        for lk in _loc_keywords:
+            if lk in title and len(title) > 15:
+                parts = title.split(lk)
+                cleaned = parts[0].strip().rstrip("の")
+                if len(cleaned) >= 3:
+                    scene["title"] = cleaned
+                    title = cleaned
+                    log_message(f"  S{scene.get('scene_id','?')}: タイトルlocation除去「{cleaned}」")
+                    _46_fix_count += 1
+                break
         if len(title) > 25:
             scene["title"] = title[:25].rstrip("。、…")
-            log_message(f"  S{scene.get('scene_id','?')}: タイトル短縮「{title[:30]}...」→「{scene['title']}」")
+            log_message(f"  S{scene.get('scene_id','?')}: タイトル短縮")
             _46_fix_count += 1
         if "bubbles" not in scene:
             continue
@@ -1976,6 +3021,61 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         # 2回戦
         "再び挿入される": "また…♡♡",
         "感度が上がって": "さっきより…♡♡",
+        # --- v7.0追加: 拘束/SM系 ---
+        "拘束されている": "にげらんない…",
+        "縛られたまま": "うごけない…",
+        "目隠しをされ": "みえない…こわい…",
+        "自由を奪われ": "からだ…うごかない…",
+        # --- v7.0追加: 義父/近親系 ---
+        "お義父さんに": "パパに…",
+        "義理の父に": "パパに…",
+        "血のつながりはない": "かぞく…なのに…",
+        # --- v7.0追加: フェラ/口 ---
+        "口腔内に": "くちのなか…",
+        "咥えさせられ": "くわえて…",
+        "嚥下する": "ごくん…♡",
+        "口内射精": "おくちに…♡",
+        # --- v7.0追加: 小説的→CG集 ---
+        "彼に抱かれて": "だかれ…♡",
+        "快感の波が": "きもち…やば…♡",
+        "理性の糸が切れる": "きれ…ちゃう…♡",
+        "限界が近い": "もう…むり…♡",
+        "喘ぎ声が漏れる": "あ…声…♡",
+        "息が荒くなって": "はぁはぁ…",
+        "涙が頬を伝う": "なみだ…とまんない…",
+        "最後の一線を越え": "こえちゃ…う…♡",
+        "快楽に溺れる": "おぼれ…ちゃう…♡",
+        "体が震えて": "ふるえてる…",
+        "愛おしい気持ちが溢れ": "すき…すき…♡",
+        "激しく腰を振られ": "はげし…♡♡",
+        # --- v7.0追加: 硬い接続詞 ---
+        "しかしながら": "でも…",
+        "それにもかかわらず": "なのに…",
+        "したがって": "",
+        "なぜならば": "",
+        # --- v7.1追加: お嬢様口調→CG集 ---
+        "でございますの": "…の…♡",
+        "いたしますわ": "ちゃう…♡",
+        "くださいませ": "…♡",
+        "よろしくてよ": "いい…♡",
+        # --- v7.1追加: さらなる書き言葉→話し言葉 ---
+        "胸が苦しい": "くるしい…",
+        "涙が止まらない": "なみだ…",
+        "全身が震える": "ふるえ…てる…",
+        "頭がおかしくなりそう": "おかしく…なる…",
+        "逃げ出したい": "にげたい…",
+        "声を殺して": "んっ…っ",
+        "目を背けたい": "みたくない…",
+        "許してほしい": "ゆるして…",
+        "もう一度してほしい": "もっかい…♡",
+        "気が狂いそう": "おかしく…なっちゃう…",
+        "体が言うことを聞かない": "からだ…かって…に…",
+        "耐えられない": "むりぃ…♡",
+        "苦しいくらいに気持ちいい": "くるし…きもちぃ…♡",
+        "何度もイかされて": "またイ…っちゃ…♡♡",
+        "お腹の中が熱い": "おなか…あつい…♡",
+        "頭の中が真っ白": "しろ…い…",
+        "我を忘れて": "もう…なにも…",
     }
     # 男性セリフの不自然表現修正（heroine_name_setが必要なので判定付き）
     _MALE_SPEECH_REPLACEMENTS = {
@@ -2003,6 +3103,23 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         "中": "なか",
         "熱い": "あつい",
         "深い": "ふかい",
+        # v7.0追加
+        "痛い": "いたい",
+        "汚い": "きたない",
+        "苦しい": "くるしい",
+        "太い": "ふとい",
+        "硬い": "かたい",
+        "強い": "つよい",
+        "早い": "はやい",
+        "速い": "はやい",
+        "壊れる": "こわれる",
+        "溶ける": "とける",
+        "出来ない": "できない",
+        # v7.1追加
+        "嫌い": "きらい",
+        "遅い": "おそい",
+        "重い": "おもい",
+        "狭い": "せまい",
     }
     _fix_count = 0
     for scene in results:
@@ -2023,6 +3140,24 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 for ng, ok in _MALE_SPEECH_REPLACEMENTS.items():
                     if ng in txt:
                         txt = txt.replace(ng, ok)
+            # 設備名混入の部分置換（便器→こんなとこ 等）
+            # 「肉便器」はエロ漫画スラングなので保護
+            _has_niku = "肉便器" in txt
+            _FIXTURE_SUBS = {
+                "便器": "こんなとこ",
+                "便座": "ここ",
+                "手洗い台": "ここ",
+                "手洗い鏡": "鏡",
+                "トイレットペーパー": "",
+            }
+            for fw, repl in _FIXTURE_SUBS.items():
+                if fw in txt:
+                    if fw == "便器" and _has_niku:
+                        continue  # 肉便器は保護
+                    txt = txt.replace(fw, repl)
+            # 置換で生じた空の「…」連続を整理
+            while "……" in txt:
+                txt = txt.replace("……", "…")
             # 不自然表現を話し言葉に変換
             for ng, ok in _UNNATURAL_REPLACEMENTS.items():
                 if ng in txt:
@@ -2052,14 +3187,14 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     # 6. 3シーン連続同一locationの自動修正
     _fix_consecutive_locations(results)
 
-    # 7. 吹き出し数上限トリミング（3個以下: 主人公1-2 + 男性0-1）
+    # 7. 吹き出し数上限トリミング（3個以下: ヒロイン1-2 + 男性0-1）
     for scene in results:
         bubbles = scene.get("bubbles", [])
         if len(bubbles) > 3:
-            # 主人公セリフ最大2個 + 男性セリフ0-1個に絞る
+            # ヒロインセリフ最大2個 + 男性セリフ0-1個に絞る
             heroine_b = [b for b in bubbles if b.get("speaker", "") != "男"]
             male_b = [b for b in bubbles if b.get("speaker", "") == "男"]
-            # 主人公: moan > thought > speech の優先度で2個選択
+            # ヒロイン: moan > thought > speech の優先度で2個選択
             def _bubble_priority(b):
                 btype = b.get("type", "")
                 if btype == "moan":
@@ -2087,10 +3222,36 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     ])
     try:
         from ero_dialogue_pool import (get_moan_pool, get_speech_pool,
-                                       pick_replacement)
+                                       pick_replacement, infer_phase)
         _has_pool = True
     except ImportError:
         _has_pool = False
+
+    def _get_moan_pool_with_char(intensity: int) -> list:
+        """get_moan_poolにキャラ固有プールを優先混合"""
+        pool = []
+        if _char_pool and "moan" in _char_pool:
+            char_moans = _char_pool["moan"].get(str(intensity), [])
+            pool.extend(char_moans)
+        pool.extend(get_moan_pool(intensity))
+        return pool
+
+    def _get_speech_pool_with_char(btype: str, theme_: str, intensity: int,
+                                    scene_idx: int = 0, total: int = 1) -> list:
+        """get_speech_poolにキャラ固有プールを優先混合"""
+        phase = ""
+        if _has_pool:
+            try:
+                phase = infer_phase(intensity, scene_idx, total)
+            except Exception:
+                pass
+        pool = []
+        if _char_pool and btype in _char_pool:
+            if phase and isinstance(_char_pool[btype], dict):
+                char_lines = _char_pool[btype].get(phase, [])
+                pool.extend(char_lines)
+        pool.extend(get_speech_pool(btype, theme_, intensity, phase=phase))
+        return pool
 
     _moan_fix_count = 0
     _used_moan_for_fix = set()
@@ -2108,7 +3269,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                            or stripped in _NON_MOAN_WORDS
                            or txt in _NON_MOAN_WORDS)
             if is_non_moan and _has_pool:
-                pool = get_moan_pool(intensity)
+                pool = _get_moan_pool_with_char(intensity)
                 replacement = pick_replacement(pool, _used_moan_for_fix, _normalize_bubble_text)
                 if replacement:
                     log_message(f"  moan内容修正: 「{txt}」→「{replacement}」")
@@ -2117,6 +3278,37 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                     _moan_fix_count += 1
     if _moan_fix_count > 0:
         log_message(f"  moanタイプ内容修正: {_moan_fix_count}件")
+
+    # 8b. MOAN_POOL非含有moanの強制プール置換
+    # 根拠: LLMが生成する「ふあひっ」「ん゛お゛っ」等の不自然な濁点組み合わせは
+    #   Step 8の漢字/助詞チェックでは検出できないが、MOAN_POOLの400エントリには存在しない。
+    #   正規化後にプール内に見つからないmoanは全て強制置換する。
+    _moan_pool_fix_count = 0
+    try:
+        from ero_dialogue_pool import get_all_moan_normalized
+        _all_moan_norms = get_all_moan_normalized()
+    except ImportError:
+        _all_moan_norms = None
+    if _all_moan_norms and _has_pool:
+        for scene in results:
+            intensity = scene.get("intensity", 3)
+            for b in scene.get("bubbles", []):
+                if b.get("type") != "moan":
+                    continue
+                txt = b.get("text", "")
+                if not txt:
+                    continue
+                norm = _normalize_bubble_text(txt)
+                if norm and norm not in _all_moan_norms:
+                    pool = _get_moan_pool_with_char(intensity)
+                    replacement = pick_replacement(pool, _used_moan_for_fix, _normalize_bubble_text)
+                    if replacement:
+                        log_message(f"  moanプール外修正: 「{txt}」→「{replacement}」")
+                        b["text"] = replacement
+                        _used_moan_for_fix.add(replacement)
+                        _moan_pool_fix_count += 1
+        if _moan_pool_fix_count > 0:
+            log_message(f"  MOANプール外強制置換: {_moan_pool_fix_count}件")
 
     # 9. speechタイプ身体状況報告修正（intensity>=3のアクションシーン）
     # 根拠: CG集のspeechは感情的反応。身体状態の客観報告はナレーションでありセリフ不適。
@@ -2149,7 +3341,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 theme = "vanilla"
             if theme:
                 log_message(f"  テーマ自動検出: {theme}")
-        for scene in results:
+        _total_scenes = len(results)
+        for _si, scene in enumerate(results):
             intensity = scene.get("intensity", 3)
             if intensity < 3:
                 continue
@@ -2161,7 +3354,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                     continue
                 is_body_report = any(kw in txt for kw in _BODY_REPORT_KW)
                 if is_body_report:
-                    pool = get_speech_pool(b["type"], theme, intensity)
+                    pool = _get_speech_pool_with_char(b["type"], theme, intensity, _si, _total_scenes)
                     # プールから身体状況報告を除外（循環置換防止）
                     pool = [t for t in pool
                             if not any(kw in t for kw in _BODY_REPORT_KW)]
@@ -2175,10 +3368,109 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     if _body_fix_count > 0:
         log_message(f"  身体状況報告修正: {_body_fix_count}件")
 
+    # 9a. 男性セリフ観察実況修正（「～だな」「～してるな」→ 命令/挑発型に置換）
+    _MALE_OBSERVATION_PATTERNS = {
+        "いい声だな": "もっと鳴け",
+        "敏感だな": "もっと感じろ",
+        "いい反応だな": "素直になれよ",
+        "いい体だな": "脱げ",
+        "いい体してんな": "脱げ",
+        "エロい体だな": "もっと見せろ",
+        "体は正直だな": "隠すなよ",
+        "感じやすいな": "もう我慢すんな",
+        "素直になったな": "もっとくれ",
+        "とろとろだな": "もっと締めろ",
+        "ここも敏感だな": "ここも好きだろ",
+        "いい顔だな": "もっとくれ",
+        "かわいい顔だな": "かわいい",
+        "いい表情だな": "もっと見せろ",
+        "たまらん顔だな": "たまんねぇ",
+        "極上だな": "最高だ",
+        "見事だな": "最高だ",
+    }
+    import re as _re_autofix
+    # 「～だな」「～してるな」「～だろうな」で終わる観察型パターン検出
+    _MALE_OBS_RE = _re_autofix.compile(r".{4,}(?:だな|するな|してるな|だろうな|てるな)$")
+    _male_obs_fix_count = 0
+    _used_male_obs_fix = set()
+    for scene in results:
+        for b in scene.get("bubbles", []):
+            speaker = b.get("speaker", "")
+            if not (speaker and _is_male_by_name(speaker)):
+                continue
+            if b.get("type") != "speech":
+                continue
+            txt = b.get("text", "").strip()
+            if not txt:
+                continue
+            # 1. 辞書マッチ
+            replaced = False
+            for obs_pattern, obs_replacement in _MALE_OBSERVATION_PATTERNS.items():
+                if obs_pattern in txt:
+                    old_txt = txt
+                    b["text"] = obs_replacement
+                    log_message(f"  男性観察型修正: 「{old_txt}」→「{obs_replacement}」")
+                    _male_obs_fix_count += 1
+                    replaced = True
+                    break
+            if replaced:
+                continue
+            # 2. 正規表現マッチ（「～だな」系で終わる4文字以上）
+            clean = txt.rstrip("…♡♥")
+            if _MALE_OBS_RE.match(clean):
+                intensity = scene.get("intensity", 3)
+                pool = _get_male_pool_for_theme(theme if theme else "", intensity)
+                # 観察型を除外
+                pool = [p for p in pool if not _MALE_OBS_RE.match(p.rstrip("…♡♥"))]
+                replacement = pick_replacement(pool, _used_male_obs_fix, _normalize_bubble_text)
+                if replacement:
+                    log_message(f"  男性観察型修正(regex): 「{txt}」→「{replacement}」")
+                    b["text"] = replacement
+                    _used_male_obs_fix.add(replacement)
+                    _male_obs_fix_count += 1
+    if _male_obs_fix_count > 0:
+        log_message(f"  男性観察型セリフ修正: {_male_obs_fix_count}件")
+
+    # 9b. thought部位ラベル冒頭修正（「胸…」「太もも…」等の部位名冒頭を感覚型に置換）
+    _BODY_PART_LABELS = [
+        "胸", "太もも", "お尻", "首筋", "耳", "唇", "舌", "指", "脚", "腕",
+        "背中", "お腹", "腰", "膝", "肩", "足", "髪", "うなじ", "乳首", "クリ",
+        "おっぱい", "おしり", "ふともも", "くちびる", "みみ",
+    ]
+    _BODY_PART_RE = _re_autofix.compile(
+        r"^(" + "|".join(_re_autofix.escape(bp) for bp in _BODY_PART_LABELS) + r")…"
+    )
+    _thought_body_fix_count = 0
+    if _has_pool:
+        _used_thought_fix = set()
+        for _si_tb, scene in enumerate(results):
+            intensity = scene.get("intensity", 3)
+            for b in scene.get("bubbles", []):
+                if b.get("type") != "thought":
+                    continue
+                txt = b.get("text", "")
+                if not txt:
+                    continue
+                m = _BODY_PART_RE.match(txt)
+                if m:
+                    pool = _get_speech_pool_with_char("thought", theme if theme else "",
+                                                      intensity, _si_tb, len(results))
+                    # 部位ラベル冒頭を除外
+                    pool = [t for t in pool if not _BODY_PART_RE.match(t)]
+                    replacement = pick_replacement(pool, _used_thought_fix, _normalize_bubble_text)
+                    if replacement:
+                        log_message(f"  thought部位ラベル修正: 「{txt}」→「{replacement}」")
+                        b["text"] = replacement
+                        _used_thought_fix.add(replacement)
+                        _thought_body_fix_count += 1
+    if _thought_body_fix_count > 0:
+        log_message(f"  thought部位ラベル冒頭修正: {_thought_body_fix_count}件")
+
     # 10. 同一シーン内テキスト重複修正
     _intra_dup_count = 0
     if _has_pool:
-        for scene in results:
+        _total_s10 = len(results)
+        for _si10, scene in enumerate(results):
             intensity = scene.get("intensity", 3)
             bubbles = scene.get("bubbles", [])
             seen_texts = set()
@@ -2189,11 +3481,11 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 if txt in seen_texts:
                     btype = b.get("type", "speech")
                     if btype == "moan":
-                        pool = get_moan_pool(intensity)
+                        pool = _get_moan_pool_with_char(intensity)
                         repl = pick_replacement(pool, _used_moan_for_fix,
                                                 _normalize_bubble_text)
                     else:
-                        pool = get_speech_pool(btype, theme, intensity)
+                        pool = _get_speech_pool_with_char(btype, theme, intensity, _si10, _total_s10)
                         repl = pick_replacement(pool, _used_speech_for_fix,
                                                 _normalize_bubble_text)
                     if repl:
@@ -2654,6 +3946,69 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     if _desc_sim_fix > 0:
         log_message(f"  description連続類似修正: {_desc_sim_fix}件")
 
+    # 16c. title品質修正（句点除去・location混入修正・description混入修正）
+    _TITLE_MOOD_WORDS = [
+        "背徳", "快楽", "陶酔", "絶望", "衝動", "狂気", "恍惚", "堕落",
+        "覚醒", "屈辱", "暴走", "服従", "解放", "執着", "欲望", "情欲",
+    ]
+    _title_quality_fix = 0
+    for scene in results:
+        title = scene.get("title", "")
+        if not title:
+            continue
+        sid = scene.get("scene_id", "?")
+        old_title = title
+        need_regenerate = False
+
+        # 句点「。」除去
+        if "。" in title:
+            title = title.replace("。", "").strip()
+
+        # location混入チェック: locationテキストがtitleに含まれる場合は除去
+        loc = scene.get("location_detail", scene.get("location", ""))
+        if loc and len(loc) >= 4 and loc in title:
+            title = title.replace(loc, "")
+            # 連続する助詞の整理（「のの」「のでの」等）
+            title = re.sub(r'([のでにてへ])\1+', r'\1', title)
+            title = re.sub(r'の(で|に|て|へ)の', r'\1', title)
+            title = title.strip("のでにてへ、 ")
+            if len(title) < 3:
+                need_regenerate = True
+
+        # description混入チェック: titleの先頭10字がdescriptionに含まれる場合
+        desc = scene.get("description", "")
+        if desc and len(title) >= 10:
+            title_head = title[:10]
+            if title_head in desc:
+                need_regenerate = True
+        # 文体チェック: タイトルが文末表現で終わる→description的な文が混入
+        if len(title) >= 6 and re.search(
+                r'(された|されて|ながら|ている|ていく|ていた|かれて|かれた|声が|体が)$', title):
+            need_regenerate = True
+        # 助詞で開始するtitle（文の途中から切り取られた形跡）
+        if title and title[0] in "のとがをでにへはも":
+            need_regenerate = True
+        # 送り仮名・漢字の途中で途切れるtitle
+        if len(title) >= 8 and title[-1] in "張貼掛掲載映写薄汚":
+            need_regenerate = True
+
+        # titleが3文字未満or再生成フラグ → mood+intensityベースで再生成
+        if need_regenerate or len(title) < 3:
+            mood = scene.get("mood", "")
+            intensity = scene.get("intensity", 3)
+            mood_word = _TITLE_MOOD_WORDS[(int(sid) if isinstance(sid, int) else 0) % len(_TITLE_MOOD_WORDS)]
+            if mood and len(mood) >= 2:
+                title = f"{mood_word}の{mood[:8]}"
+            else:
+                title = f"{mood_word}のシーン{sid}"
+
+        if title != old_title:
+            scene["title"] = title
+            _title_quality_fix += 1
+            log_message(f"  S{sid}: title品質修正「{old_title}」→「{title}」")
+    if _title_quality_fix > 0:
+        log_message(f"  title品質修正: {_title_quality_fix}件")
+
     # 17. title重複修正（同一titleの2回目以降を場所+状況で差し替え）
     _seen_titles_af = set()
     _title_fix_af = 0
@@ -2696,22 +4051,50 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 scene["title"] = new_title
                 log_message(f"  S{sid}: titleキーワード過剰修正「{old_title}」→「{new_title}」")
 
-    # 19. title長制限（最終ステップ: Step 17-18で生成されたtitleも含め25文字以内に）
+    # 19. title長制限（Step 17-18で生成されたtitleも含め25文字以内に）
     for scene in results:
         title = scene.get("title", "")
         if len(title) > 25:
             scene["title"] = title[:25].rstrip("。、…")
 
+    # 20. intensity不一致自動修正（♡除去/丁寧語短縮）
+    _intensity_fix_count = 0
+    for scene in results:
+        intensity = scene.get("intensity", 3)
+        for bubble in scene.get("bubbles", []):
+            txt = bubble.get("text", "")
+            if not txt:
+                continue
+            orig = txt
+            if intensity <= 2 and "♡" in txt:
+                txt = txt.replace("♡", "")
+            if intensity >= 4 and bubble.get("type") in ("speech", "thought"):
+                txt = txt.replace("です", "")
+                txt = txt.replace("ます", "")
+                txt = txt.replace("ください", "…♡")
+            # 空になった場合は元に戻す
+            stripped = txt.replace("…", "").replace("♡", "").strip()
+            if not stripped:
+                txt = orig
+            if txt != orig:
+                bubble["text"] = txt
+                _intensity_fix_count += 1
+    if _intensity_fix_count > 0:
+        log_message(f"  intensity不一致修正: {_intensity_fix_count}件")
+
     return results
 
 
 def _fix_consecutive_locations(results: list) -> None:
-    """3シーン連続同一locationの自動修正（中央シーンに変化を付加）。
-
-    3連続を検出したら中央シーン(2番目)のlocation_detailに
-    場所の詳細バリエーションを追加し、sd_promptに対応タグを追加する。
-    """
-    # 場所バリエーションの付加語（位置変更で同一場所を差分化）
+    """location多様性の自動修正。3連続同一 + 全体70%以上同一に対応。"""
+    # 場所内位置バリエーション（単一ロケーションシナリオ用）
+    _MICRO_LOCATIONS = {
+        "トイレ": ["洗面台の前", "入口付近の壁際", "隣の個室", "清掃用具入れの奥", "手洗い場の鏡前"],
+        "教室": ["教卓の前", "窓際の席", "ロッカーの陰", "教室の隅", "廊下に面した壁際"],
+        "寝室": ["ベッドの上", "窓際", "クローゼットの前", "ドア付近", "鏡台の前"],
+        "浴室": ["浴槽の中", "洗い場", "脱衣所", "シャワーの下", "浴室の壁際"],
+        "オフィス": ["デスクの上", "応接ソファ", "給湯室", "会議室", "コピー機の裏"],
+    }
     _LOC_VARIATIONS = [
         ("窓際", "near_window, window"),
         ("隅", "corner"),
@@ -2729,25 +4112,51 @@ def _fix_consecutive_locations(results: list) -> None:
         loc = scene.get("location_detail", scene.get("location", ""))
         locations_list.append(loc.strip().lower() if loc else "")
 
+    # --- 全体の同一location率チェック ---
+    if len(locations_list) >= 10:
+        from collections import Counter as _Counter
+        loc_counter = _Counter(l for l in locations_list if l)
+        if loc_counter:
+            most_common_loc, most_common_count = loc_counter.most_common(1)[0]
+            ratio = most_common_count / len(locations_list)
+            if ratio > 0.70:  # 70%以上が同一location
+                # micro-locationで分散させる
+                micro_pool = None
+                for key, micros in _MICRO_LOCATIONS.items():
+                    if key.lower() in most_common_loc or key in most_common_loc:
+                        micro_pool = micros
+                        break
+                if not micro_pool:
+                    micro_pool = [v[0] for v in _LOC_VARIATIONS]
+
+                micro_idx = 0
+                fix_micro = 0
+                for k, scene in enumerate(results):
+                    loc = locations_list[k]
+                    if loc == most_common_loc and k % 3 == 1:  # 3シーンに1つ変化
+                        new_micro = micro_pool[micro_idx % len(micro_pool)]
+                        orig_loc_detail = scene.get("location_detail", scene.get("location", ""))
+                        scene["location_detail"] = f"{orig_loc_detail}（{new_micro}）"
+                        locations_list[k] = scene["location_detail"].strip().lower()
+                        micro_idx += 1
+                        fix_micro += 1
+                if fix_micro > 0:
+                    log_message(f"  location同一率{ratio:.0%}→micro-location分散: {fix_micro}件")
+
+    # --- 3シーン連続同一locationの修正（既存ロジック維持） ---
     fix_count = 0
     for k in range(2, len(locations_list)):
         if (locations_list[k]
                 and locations_list[k] == locations_list[k-1] == locations_list[k-2]):
-            # 中央シーン(k-1)のlocation_detailに変化を付加
             mid = results[k - 1]
             orig_loc = mid.get("location_detail", mid.get("location", ""))
             if not orig_loc:
                 continue
-
-            # 既に修正済みなら重複付加を避ける
             if any(v[0] in orig_loc for v in _LOC_VARIATIONS):
                 continue
-
             var_jp, var_tags = _rng.choice(_LOC_VARIATIONS)
             new_loc = f"{orig_loc}の{var_jp}"
             mid["location_detail"] = new_loc
-
-            # sd_promptにも対応タグを追加
             sd = mid.get("sd_prompt", "")
             if sd:
                 existing = {t.strip().lower().replace(" ", "_") for t in sd.split(",") if t.strip()}
@@ -2758,8 +4167,6 @@ def _fix_consecutive_locations(results: list) -> None:
                         added.append(nt)
                 if added:
                     mid["sd_prompt"] = sd.rstrip(", ") + ", " + ", ".join(added)
-
-            # 正規化リストも更新（後続の比較に使用）
             locations_list[k - 1] = new_loc.strip().lower()
             fix_count += 1
 
@@ -2934,7 +4341,12 @@ def _detect_setting_style(concept: str) -> Optional[dict]:
 
 
 def enhance_sd_prompts(results: list, char_profiles: list = None,
-                       setting_style: Optional[dict] = None) -> list:
+                       setting_style: Optional[dict] = None,
+                       male_tags: str = "", time_tags: str = "",
+                       location_type: str = "",
+                       sd_quality_tags: str = "",
+                       sd_prefix_tags: str = "",
+                       sd_suffix_tags: str = "") -> list:
     """全シーンのSDプロンプトを後処理で最適化（APIコスト不要）。
 
     - 日本語タグ除去
@@ -2966,36 +4378,47 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
 
     # intensity別 表情・身体反応タグ自動注入マップ
     _INTENSITY_EXPRESSION_MAP = {
+        1: ["calm", "closed_mouth", "looking_away", "embarrassed"],
+        2: ["blush", "looking_down", "covering_face", "shy",
+            "averting_eyes", "fidgeting"],
         3: ["blush", "parted_lips", "panting", "nervous", "heavy_breathing",
-            "light_sweat"],
+            "light_sweat", "clenched_teeth", "biting_lip"],
         4: ["open_mouth", "moaning", "tears", "sweating", "head_back",
             "arched_back", "clenched_fists", "trembling",
-            "sweat_drops", "sweaty_body", "flushed_skin"],
+            "sweat_drops", "sweaty_body", "flushed_skin",
+            "spread_legs", "gripping_sheets", "messy_hair"],
         5: ["ahegao", "rolling_eyes", "tongue_out", "drooling", "head_back",
             "arched_back", "toes_curling", "full_body_arch", "tears",
-            "sweat_drops", "sweaty_body", "sweat_glistening", "skin_glistening"],
+            "sweat_drops", "sweaty_body", "sweat_glistening", "skin_glistening",
+            "heart_pupils", "cross-eyed", "saliva_drip", "fucked_silly"],
     }
 
     # intensity別 衣装状態エスカレーション
     CLOTHING_ESCALATION = {
         1: [],  # 通常衣装（変更なし）
-        2: ["clothes_pull", "skirt_lift"],
+        2: ["clothes_pull", "skirt_lift", "loosened_tie"],
         3: ["partially_undressed", "shirt_lift", "bra_visible",
-            "one_shoulder_exposed", "disheveled_clothes"],
+            "one_shoulder_exposed", "disheveled_clothes",
+            "unbuttoned_shirt", "skirt_around_waist"],
         4: ["topless", "panties_only", "torn_clothes", "clothes_around_ankles",
-            "open_shirt", "naked_shirt"],
-        5: ["completely_nude", "nude", "naked", "clothes_scattered"],
+            "open_shirt", "naked_shirt", "panties_aside",
+            "bra_removed", "stockings_only"],
+        5: ["completely_nude", "nude", "naked", "clothes_scattered",
+            "torn_panties", "clothes_removed"],
     }
 
     # intensity別 体液進行タグ
     FLUID_PROGRESSION = {
         1: [],
-        2: [],
-        3: ["light_blush", "pussy_juice", "wet"],
+        2: ["light_blush"],
+        3: ["light_blush", "pussy_juice", "wet", "love_juice"],
         4: ["pussy_juice", "wet", "saliva", "saliva_trail",
-            "wet_skin", "sweat_stain"],
+            "wet_skin", "sweat_stain", "dripping_wet",
+            "precum", "mixed_fluids"],
         5: ["cum", "cum_on_body", "cum_drip", "overflow",
-            "dripping", "saliva_trail", "wet_skin"],
+            "dripping", "saliva_trail", "wet_skin",
+            "cum_in_pussy", "cum_pool", "cum_string",
+            "excessive_cum", "body_fluids"],
     }
 
     _prev_scene_positions = set()  # 前シーンの体位タグ（重複防止用）
@@ -3026,10 +4449,23 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             if "open_air_bath" not in " ".join(tags).lower():
                 tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in _rm_out]
 
+        # 1.7. ユーザー指定の場所タイプ強制
+        if location_type:
+            _existing_lower_17 = {t.strip().lower().replace(" ", "_") for t in tags}
+            if location_type == "indoors":
+                tags = [t for t in tags if t.strip().lower() not in {"outdoors"}]
+                if "indoors" not in _existing_lower_17:
+                    tags.insert(min(2, len(tags)), "indoors")
+            elif location_type == "outdoors":
+                tags = [t for t in tags if t.strip().lower() not in {"indoors"}]
+                if "outdoors" not in _existing_lower_17:
+                    tags.insert(min(2, len(tags)), "outdoors")
+
         # 2. quality tags先頭確保
         quality_found = any("masterpiece" in t.lower() or "best_quality" in t.lower() for t in tags)
         if not quality_found:
-            tags.insert(0, QUALITY_POSITIVE_TAGS)
+            effective_quality = sd_quality_tags if sd_quality_tags else QUALITY_POSITIVE_TAGS
+            tags.insert(0, effective_quality)
 
         # 3. キャラタグ補完（上位タグが欠落していれば追加）
         if char_danbooru:
@@ -3052,6 +4488,20 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 tags.append("warm_lighting")
             else:
                 tags.append("natural_lighting")
+
+        # 4.3. ユーザー指定の時間帯タグ注入
+        if time_tags:
+            _time_related = {"morning", "sunrise", "morning_light", "daytime", "sunlight",
+                             "afternoon", "evening", "sunset", "golden_hour", "night",
+                             "moonlight", "dim_lighting", "bright"}
+            _existing_lower_43 = {t.strip().lower().replace(" ", "_") for t in tags}
+            tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in _time_related]
+            _existing_lower_43 -= _time_related
+            for tt in time_tags.split(","):
+                tt = tt.strip()
+                if tt and tt.lower() not in _existing_lower_43:
+                    tags.append(tt)
+                    _existing_lower_43.add(tt.lower())
 
         # 4.2. 背景タグ保証（sd_promptに背景系タグが無い場合、locationから補完）
         _bg_kw = {
@@ -3162,17 +4612,28 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 if not _added:
                     tags.append("indoors")
 
-        # 4.5. intensity≥3のシーンにfaceless_male自動付与
+        # 4.5. intensity≥3のシーンに男性タグ注入
         intensity = scene.get("intensity", 0)
         if intensity >= 3:
             existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
+            # faceless_male は常に付与（どんな男性タイプでも顔なし）
             for male_tag in ["1boy", "faceless_male"]:
                 if male_tag not in existing_lower:
                     tags.append(male_tag)
                     existing_lower.add(male_tag)
+            if male_tags:
+                # ユーザー指定の男性体型タグを高重要度で注入
+                for mt in male_tags.split(","):
+                    mt = mt.strip()
+                    if mt and mt.lower().replace(" ", "_") not in existing_lower:
+                        if mt.lower() in ("1boy", "faceless_male"):
+                            continue  # 既に付与済み
+                        weighted_mt = f"({mt}:1.3)"
+                        tags.append(weighted_mt)
+                        existing_lower.add(mt.lower().replace(" ", "_"))
 
-        # 4.55. intensity≥3のシーンに男性体型タグ自動注入（1boyがある場合）
-        if intensity >= 3 and "1boy" in existing_lower:
+        # 4.55. 男性体型タグ（ユーザー指定がある場合はスキップ）
+        if not male_tags and intensity >= 3 and "1boy" in existing_lower:
             _male_body_defaults = ["muscular_male", "veiny_arms"]
             for mt in _male_body_defaults:
                 if mt not in existing_lower:
@@ -3241,6 +4702,51 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     tags.append(at)
                     existing_norm.add(at.lower().replace(" ", "_"))
 
+        # 5.5. 矛盾する体位/行為タグの相互排他チェック
+        # 同時に成立しない行為の組み合わせを検出し、descriptionに近い方を残す
+        _CONTRADICTORY_PAIRS = [
+            # (グループA, グループB): A+Bが同時に存在したらBを除去
+            ({"blowjob", "fellatio", "deepthroat", "oral"}, {"sitting_on_lap", "cowgirl_position", "reverse_cowgirl", "missionary", "vaginal"}),
+            ({"paizuri"}, {"doggy_style", "from_behind", "all_fours", "missionary", "standing_sex"}),
+            ({"handjob"}, {"vaginal", "penetration", "sex"}),
+            # v7.0追加
+            ({"anal", "anal_sex"}, {"vaginal", "pussy"}),
+            ({"sleeping", "asleep"}, {"standing", "standing_sex", "walking"}),
+            ({"bondage", "tied_up", "restrained"}, {"hugging", "holding_hands", "hand_on_hip"}),
+            ({"clothed_sex"}, {"completely_nude", "nude", "naked"}),
+            ({"underwater"}, {"indoors", "bedroom", "classroom"}),
+        ]
+        _tags_lower_set = {t.strip().lower().replace(" ", "_") for t in tags}
+        for group_a, group_b in _CONTRADICTORY_PAIRS:
+            has_a = _tags_lower_set & group_a
+            has_b = _tags_lower_set & group_b
+            if has_a and has_b:
+                # グループAの行為が明示的にある場合、矛盾するグループBを除去
+                desc_lower = scene.get("description", "").lower()
+                a_in_desc = any(k in desc_lower for k in ["フェラ", "口", "咥", "パイズリ", "手コキ", "blowjob", "oral", "paizuri"])
+                if a_in_desc or len(has_a) >= len(has_b):
+                    tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in has_b]
+                else:
+                    tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in has_a]
+
+        # 5.6. aftermathシーンのSDタグ整合性チェック
+        _desc_for_ctx = (scene.get("description", "") + " " + scene.get("title", "")
+                         + " " + scene.get("mood", "")).lower()
+        _aftermath_ctx_kw = ["事後", "余韻", "虚脱", "終えた", "身繕い", "動けない", "虚ろ",
+                             "後片付け", "放心", "脱力", "ぐったり", "呆然", "立てない",
+                             "aftermath", "afterglow"]
+        if any(k in _desc_for_ctx for k in _aftermath_ctx_kw):
+            # 事後シーンからsex/penetration等のアクティブな行為タグを除去
+            _sex_tags_to_remove = {"sex", "vaginal", "penetration", "thrusting",
+                                   "piston", "hip_thrust", "grabbing_hips"}
+            tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in _sex_tags_to_remove]
+            # aftermath固有タグを追加
+            _existing = {t.strip().lower().replace(" ", "_") for t in tags}
+            for at_tag in ["exhausted", "dazed", "afterglow"]:
+                if at_tag not in _existing:
+                    tags.append(at_tag)
+                    _existing.add(at_tag)
+
         # 6. 重要タグにウェイト付加（未ウェイトのもののみ）
         weighted = []
         for tag in tags:
@@ -3291,7 +4797,15 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         weighted = adjusted
         _prev_scene_positions = _cur_positions
 
-        scene["sd_prompt"] = deduplicate_sd_tags(", ".join(weighted))
+        main_prompt = deduplicate_sd_tags(", ".join(weighted))
+        # prefix/suffix注入（LoRAタグ等はdeduplicateに通さない）
+        parts = []
+        if sd_prefix_tags:
+            parts.append(sd_prefix_tags)
+        parts.append(main_prompt)
+        if sd_suffix_tags:
+            parts.append(sd_suffix_tags)
+        scene["sd_prompt"] = ", ".join(parts)
 
     # 8. 体位分布リバランス（spread_legsが40%超過→一部を代替体位に自動置換）
     import re as _re8
@@ -3528,6 +5042,19 @@ _THEME_SKILL_MAP = {
     "corruption":  "ero_serihu_ohogoe",
     "gangbang":    "ero_serihu_ohogoe",
     "chikan":      "ero_serihu_ohogoe",
+    "isekai":        "ero_serihu_nomal",
+    "onsen":         "ero_serihu_jyunai",
+    "sleep":         "ero_serihu_ohogoe",
+    "medical":       "ero_serihu_nomal",
+    "swimsuit":      "ero_serihu_jyunai",
+    "sports":        "ero_serihu_nomal",
+    "idol":          "ero_serihu_nomal",
+    "neighbor":      "ero_serihu_jyunai",
+    "prostitution":  "ero_serihu_nomal",
+    "voyeur":        "ero_serihu_ohogoe",
+    "tentacle":      "ero_serihu_ohogoe",
+    "reverse_rape":  "ero_serihu_tundere",
+    "cosplay":       "ero_serihu_nomal",
 }
 
 
@@ -3694,18 +5221,17 @@ class CostTracker:
 
 def estimate_cost(num_scenes: int, use_sonnet_polish: bool = True) -> dict:
     """生成前にコストを予測（Prompt Caching反映版）
-    haiku_fast=圧縮/あらすじのみ, haiku=アウトライン+シーン, sonnet=クライマックス"""
-    hf_cost = COSTS.get(MODELS["haiku_fast"], {"input": 0.25, "output": 1.25})
+    haiku=圧縮/あらすじ/アウトライン+低intensityシーン, sonnet=i4以上シーン"""
     h_cost = COSTS.get(MODELS["haiku"], {"input": 1.00, "output": 5.00})
     s_cost = COSTS.get(MODELS["sonnet"], {"input": 3.00, "output": 15.00})
 
-    # Phase 1: コンテキスト圧縮 + あらすじ (haiku_fast: テキスト要約のみ)
+    # Phase 1: コンテキスト圧縮 + あらすじ (haiku 4.5)
     fast_input = 500 + 600
     fast_output = 150 + 800
 
     # Phase 3: アウトライン (haiku: 全ケース)
-    haiku_input = 0
-    haiku_output = 0
+    haiku_input = fast_input  # Phase 1-2もhaiku
+    haiku_output = fast_output
     if num_scenes <= 12:
         haiku_input += 2000
         haiku_output += num_scenes * 300
@@ -3714,9 +5240,9 @@ def estimate_cost(num_scenes: int, use_sonnet_polish: bool = True) -> dict:
         haiku_input += chunks * 3000
         haiku_output += chunks * 2000
 
-    # シーン生成（intensity分布推定: 80% i1-4→haiku, 20% i5→sonnet）
-    haiku_scenes = int(num_scenes * 0.80)  # intensity 1-4 → haiku
-    sonnet_scenes = num_scenes - haiku_scenes  # intensity 5 → sonnet
+    # シーン生成（intensity分布推定: 40% i1-3→haiku, 60% i4-5→sonnet）
+    haiku_scenes = int(num_scenes * 0.40)  # intensity 1-3 → haiku
+    sonnet_scenes = num_scenes - haiku_scenes  # intensity 4-5 → sonnet
 
     # Prompt Caching効果: system prompt ~16000tokはキャッシュされる
     # 初回のみcache_creation(1.25x)、以降はcache_read(0.1x)
@@ -3738,8 +5264,6 @@ def estimate_cost(num_scenes: int, use_sonnet_polish: bool = True) -> dict:
     sonnet_output = sonnet_scenes * 700
 
     estimated_usd = (
-        (fast_input / 1_000_000) * hf_cost["input"] +
-        (fast_output / 1_000_000) * hf_cost["output"] +
         (haiku_input / 1_000_000) * h_cost["input"] +
         (haiku_output / 1_000_000) * h_cost["output"] +
         haiku_cache_create_cost + haiku_cache_read_cost +
@@ -3749,7 +5273,6 @@ def estimate_cost(num_scenes: int, use_sonnet_polish: bool = True) -> dict:
     )
 
     return {
-        "haiku_fast_tokens": fast_input + fast_output,
         "haiku_tokens": haiku_input + haiku_output,
         "sonnet_tokens": sonnet_input + sonnet_output,
         "estimated_usd": estimated_usd,
@@ -3791,6 +5314,246 @@ def load_config() -> dict:
 def save_config(config: dict):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=4)
+
+
+def _decode_exif_user_comment(value) -> str:
+    """EXIF UserComment (0x9286) を文字列にデコード。
+
+    SD WebUI(piexif)は b"UNICODE\\x00" + utf-16-le で書き込む。
+    Pillowバージョンにより bytes or str(latin-1誤デコード) で返る。
+    """
+    if not value:
+        return ""
+    # str型: Pillowが自動デコード済み or latin-1誤デコードの可能性
+    if isinstance(value, str):
+        # エンコーディングプレフィックスやNULLバイトが含まれている場合は
+        # latin-1で誤デコードされたバイト列 → bytesに戻して再デコード
+        if "\x00" in value or value.startswith(("UNICODE", "ASCII", "JIS")):
+            try:
+                value = value.encode("latin-1")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                # latin-1に戻せない場合はNULLバイトだけ除去して返す
+                return value.replace("\x00", "").strip()
+        else:
+            return value.strip()
+    # bytes型: エンコーディング識別子を解析して適切にデコード
+    if isinstance(value, bytes):
+        header = value[:8] if len(value) >= 8 else value
+        body = value[8:] if len(value) > 8 else value
+        # piexif: b"UNICODE\x00" + utf-16-le encoded body
+        if header.startswith(b"UNICODE"):
+            for enc in ("utf-16-le", "utf-16-be", "utf-8"):
+                try:
+                    decoded = body.decode(enc).strip("\x00").strip()
+                    if decoded:
+                        return decoded
+                except (UnicodeDecodeError, ValueError):
+                    continue
+        # ASCII prefix or undefined (\x00 * 8)
+        if header.startswith(b"ASCII") or header == b"\x00" * 8:
+            try:
+                return body.decode("ascii", errors="ignore").strip("\x00").strip()
+            except Exception:
+                pass
+        # JIS prefix
+        if header.startswith(b"JIS"):
+            try:
+                return body.decode("shift_jis", errors="ignore").strip("\x00").strip()
+            except Exception:
+                pass
+        # フォールバック: プレフィックスなしで全体をutf-8試行
+        try:
+            return value.decode("utf-8", errors="ignore").strip("\x00").strip()
+        except Exception:
+            return ""
+    return str(value).strip()
+
+
+def _try_decode_bytes(data: bytes) -> str:
+    """バイト列をSD生成パラメータ文字列としてデコード（複数エンコーディング試行）。"""
+    if not data:
+        return ""
+    # エンコーディングプレフィックス付きの場合は _decode_exif_user_comment に委譲
+    if len(data) >= 8:
+        hdr = data[:8]
+        if hdr.startswith((b"UNICODE", b"ASCII", b"JIS")) or hdr == b"\x00" * 8:
+            return _decode_exif_user_comment(data)
+    # UTF-8 → UTF-16-LE → shift_jis → latin-1 の順で試行
+    for enc in ("utf-8", "utf-16-le", "utf-16-be", "shift_jis", "latin-1"):
+        try:
+            decoded = data.decode(enc).strip("\x00").strip()
+            # SD prompt らしいかチェック（英数字タグが含まれるか）
+            if decoded and any(c.isalpha() for c in decoded[:50]):
+                # UTF-16誤検出防止: NULLバイトだらけなら不採用
+                if "\x00" not in decoded:
+                    return decoded
+        except (UnicodeDecodeError, ValueError):
+            continue
+    # 最終フォールバック
+    return data.decode("utf-8", errors="replace").replace("\x00", "").strip()
+
+
+def _extract_sd_params_from_bytes(file_bytes: bytes) -> str:
+    """ファイルのrawバイトからSD WebUIパラメータ文字列を直接探索（最終フォールバック）。"""
+    import re as _re
+    # SD WebUI形式: "Steps: NN, Sampler: ..., CFG scale: ..."
+    # このパターンを末尾側から探してパラメータ文字列を逆引き
+    markers = [b"Steps: ", b"steps: "]
+    for marker in markers:
+        idx = file_bytes.rfind(marker)
+        if idx < 0:
+            continue
+        # marker前方1024バイト〜marker後方512バイトを切り出し
+        start = max(0, idx - 4096)
+        end = min(len(file_bytes), idx + 1024)
+        chunk = file_bytes[start:end]
+        # テキスト部分だけ抽出（NULLバイト除去して複数エンコーディング試行）
+        for enc in ("utf-8", "latin-1"):
+            try:
+                text = chunk.decode(enc, errors="ignore")
+                text = text.replace("\x00", "")
+                # "Steps: " を含む行を探し、その前のテキストも含めて返す
+                m = _re.search(r'([\x20-\x7e,\(\)\n:.<>_\-\w]{10,}Steps:\s*\d+[^\x00]*)', text)
+                if m:
+                    candidate = m.group(1).strip()
+                    # プロンプトの開始位置を推定（最初の改行ブロックの前か、印刷可能文字の始まり）
+                    # 前方にゴミバイナリが混ざっている可能性があるので、有効な先頭を探す
+                    for ci, ch in enumerate(candidate):
+                        if ch.isalpha() or ch == '(':
+                            return candidate[ci:].strip()
+                    return candidate
+            except Exception:
+                continue
+    return ""
+
+
+def parse_png_info(file_path: str) -> dict:
+    """画像ファイルからSD生成パラメータを解析（PNG/JPEG/WebP対応）。
+
+    Returns:
+        {"positive": str, "negative": str, "parameters": str, "raw": str}
+        or {"error": str}
+    """
+    if not PIL_AVAILABLE:
+        return {"error": "Pillowがインストールされていません。\npip install Pillow で追加してください。"}
+    try:
+        img = Image.open(file_path)
+        raw = ""
+        source = ""
+
+        # 1. PNG: img.info にtEXt/iTXtチャンクが格納される
+        if img.format == "PNG":
+            raw = img.info.get("parameters", "")
+            if raw:
+                source = "PNG tEXt[parameters]"
+            else:
+                for key in ("prompt", "Comment", "Description"):
+                    if key in img.info:
+                        raw = img.info[key]
+                        source = f"PNG tEXt[{key}]"
+                        break
+
+        # 2. EXIF sub-IFD → UserComment (SD WebUI A1111/Forge標準)
+        if not raw:
+            try:
+                exif_data = img.getexif()
+                if exif_data:
+                    try:
+                        exif_ifd = exif_data.get_ifd(0x8769)
+                        if exif_ifd:
+                            uc = exif_ifd.get(0x9286, "")
+                            if uc:
+                                raw = _decode_exif_user_comment(uc)
+                                if raw:
+                                    source = "EXIF sub-IFD UserComment"
+                    except Exception:
+                        pass
+                    # 2b. root IFD → UserComment (一部ツール)
+                    if not raw:
+                        uc_root = exif_data.get(0x9286, "")
+                        if uc_root:
+                            raw = _decode_exif_user_comment(uc_root)
+                            if raw:
+                                source = "EXIF root UserComment"
+                    # 2c. root IFD → ImageDescription
+                    if not raw:
+                        desc = exif_data.get(0x010E, "")
+                        if desc:
+                            raw = _decode_exif_user_comment(desc) if isinstance(desc, bytes) else str(desc).strip()
+                            if raw:
+                                source = "EXIF ImageDescription"
+            except Exception:
+                pass
+
+        # 3. raw EXIF bytes から直接パース（Pillow解析が失敗した場合のフォールバック）
+        if not raw:
+            exif_raw = img.info.get("exif", b"")
+            if isinstance(exif_raw, bytes) and len(exif_raw) > 100:
+                raw = _extract_sd_params_from_bytes(exif_raw)
+                if raw:
+                    source = "EXIF raw bytes scan"
+
+        # 4. JPEG COM marker (img.info["comment"])
+        if not raw:
+            comment = img.info.get("comment", b"")
+            if comment:
+                raw = _try_decode_bytes(comment) if isinstance(comment, bytes) else str(comment).strip()
+                if raw:
+                    source = "JPEG COM marker"
+
+        # 5. フォーマット問わず img.info のフォールバック
+        if not raw:
+            for key in ("parameters", "prompt", "Comment", "Description"):
+                val = img.info.get(key, "")
+                if val:
+                    if isinstance(val, bytes):
+                        raw = _try_decode_bytes(val)
+                    else:
+                        raw = str(val).strip()
+                    if raw:
+                        source = f"img.info[{key}]"
+                        break
+
+        # 6. ファイル全体のrawバイトスキャン（最終フォールバック）
+        if not raw:
+            try:
+                with open(file_path, "rb") as fb:
+                    file_bytes = fb.read()
+                raw = _extract_sd_params_from_bytes(file_bytes)
+                if raw:
+                    source = "file bytes scan"
+            except Exception:
+                pass
+
+        if not raw:
+            log_message(f"PNG Info: 生成情報なし format={img.format} info_keys={list(img.info.keys())}")
+            return {"error": "生成情報が見つかりません。\nSD WebUI / ComfyUI 等で生成した画像を使用してください。"}
+
+        log_message(f"PNG Info: 読取成功 source={source} len={len(raw)}")
+
+        # 最終クリーンアップ: NULLバイトやエンコーディング残骸を除去
+        raw = raw.replace("\x00", "").strip()
+
+        # パラメータ文字列をpositive / negative / params に分離
+        positive = raw
+        negative = ""
+        params = ""
+        neg_idx = raw.find("Negative prompt:")
+        steps_idx = raw.find("\nSteps:")
+        if neg_idx >= 0:
+            positive = raw[:neg_idx].strip()
+            if steps_idx >= 0 and steps_idx > neg_idx:
+                negative = raw[neg_idx + len("Negative prompt:"):steps_idx].strip()
+                params = raw[steps_idx + 1:].strip()
+            else:
+                negative = raw[neg_idx + len("Negative prompt:"):].strip()
+        elif steps_idx >= 0:
+            positive = raw[:steps_idx].strip()
+            params = raw[steps_idx + 1:].strip()
+
+        return {"positive": positive, "negative": negative, "parameters": params, "raw": raw}
+    except Exception as e:
+        return {"error": f"画像読み取りエラー: {e}"}
 
 
 # === プロファイル管理 ===
@@ -4092,7 +5855,7 @@ def compact_context(
         callback("[PACK]コンテキスト圧縮中...")
 
     response = _call_api(
-        client, MODELS["haiku_fast"],
+        client, MODELS["haiku"],
         skill if skill else "You compress prompts to save tokens. Output only JSON.",
         prompt, cost_tracker, 1024, callback
     )
@@ -4174,7 +5937,8 @@ def generate_synopsis(
     num_scenes: int,
     theme: str,
     cost_tracker: CostTracker,
-    callback: Optional[Callable] = None
+    callback: Optional[Callable] = None,
+    male_description: str = "",
 ) -> str:
     """コンセプトから短い一本のストーリーあらすじを生成（Haiku API 1回）"""
     theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
@@ -4204,7 +5968,7 @@ def generate_synopsis(
 
 ## 登場キャラクター
 {char_info}
-## テーマ: {theme_name}
+{f"## 男性キャラクター外見{chr(10)}{male_description}{chr(10)}※ あらすじにおける男性の描写はこの外見設定を反映すること{chr(10)}" if male_description else ""}## テーマ: {theme_name}
 - ストーリーの流れ: {story_arc}
 - 重要な感情: {emotions_str}
 - ストーリー要素:
@@ -4223,12 +5987,13 @@ def generate_synopsis(
 8. コンセプトにない極端な展開は絶対に追加しないこと（コンセプトの範囲内で物語を展開する）
 9. **同じ行為の繰り返し禁止**: 本番パートで最低5種の異なる展開（体位変更/場所移動/行為変更/主導権交代等）を含めること
 10. **展開バリエーション例**: 愛撫→口淫→正常位→体位変更→騎乗位→バック→絶頂のように行為を変化させエスカレートすること
+11. **視点**: あらすじは女性キャラ（ヒロイン）視点で書くこと。男性は「相手の男」「彼」と呼び、「主人公」と呼ばないこと
 
 あらすじの文章のみ出力してください。JSON不要。"""
 
     try:
         response = _call_api(
-            client, MODELS["haiku_fast"],
+            client, MODELS["haiku"],
             f"FANZA同人CG集の脚本家です。ユーザーのコンセプトに基づき、エロ同人作品の完全なストーリーあらすじを作成します。成人向けコンテンツを忠実に生成します。",
             prompt, cost_tracker, 2048, callback
         )
@@ -4328,7 +6093,7 @@ def generate_scene_batch(
 {char_guide if char_guide else "（キャラ設定なし）"}
 
 ## CG集フォーマット補足
-CG画像1枚 + 吹き出し1-3個（主人公1-2+男0-1） + SE 0-4個。画像がメイン。
+CG画像1枚 + 吹き出し1-3個（ヒロイン1-2+男0-1） + SE 0-4個。画像がメイン。
 moan=喘ぎ声のみ(説明文禁止) / speech=感情的反応のみ / story_flow=各シーン固有(コピペ禁止)
 
 {f'''
@@ -4476,7 +6241,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 ## ルール
 1. 必ず{len(scenes)}シーン分のJSON配列を出力
 2. 各シーンのscene_idは指定通りに
-3. **bubblesは1-3個**（主人公1-2個 + 男性0-1個。セリフの長さは自由）
+3. **bubblesは1-3個**（ヒロイン1-2個 + 男性0-1個。セリフの長さは自由）
 4. sd_promptは「{QUALITY_POSITIVE_TAGS} + キャラ外見 + ポーズ + 表情 + 場所・背景」の順
 5. **sd_promptにオノマトペ・日本語テキストを含めない**（英語のDanbooruタグのみ）
 6. タグは重複なくカンマ区切り
@@ -4485,6 +6250,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 9. **同じセリフ・オノマトペを複数シーンで繰り返さない**
 10. **type="moan"には喘ぎ声・声漏れのみ**。「そうなんだ」「汗すごい」等の説明文は絶対禁止
 11. **type="speech"は感情的反応のみ**。「汗すごい」「震えてる」等の身体状態報告はナレーションであり禁止
+13. **セリフに設備・家具の名前を入れない**。「便器」「便座」「手洗い台」等の設備名称はlocation_detailに書くもの。セリフでは「こんなとこで…」「ここで…」等の感情的な言い回しに置き換える
 12. **story_flowは各シーン固有の展開**を書け。前シーンのコピペ禁止
 
 JSON配列のみ出力。""")
@@ -4695,7 +6461,13 @@ def _get_intensity_curve_instruction(theme_guide: dict) -> str:
             "高原部分では体位・アングルの変化で単調さを防ぐこと。"
         )
     # ascending（デフォルト）
-    return ""
+    return (
+        "\n## intensity展開パターン: 上昇型（基本）\n"
+        "基本は1→2→3→4→5の上昇型だが、単調な右肩上がりにしないこと。\n"
+        "本番パート（intensity 4）の中にも緩急をつけること:\n"
+        "例: 1→2→3→4→3→4→4→5→4→3→4→5→4（中盤に小さな谷を作る）\n"
+        "intensity 4が5シーン以上連続する場合は、間にintensity 3のシーンを1つ挟むこと。"
+    )
 
 
 def generate_outline(
@@ -4706,7 +6478,8 @@ def generate_outline(
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None,
     synopsis: str = "",
-    story_structure: dict = None
+    story_structure: dict = None,
+    male_description: str = "",
 ) -> list:
     """あらすじをシーン分割してアウトライン生成（Haiku API 1回）"""
     theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
@@ -4781,6 +6554,19 @@ def generate_outline(
     except ImportError:
         pass
 
+    # 大量シーン時の追加指示
+    long_script_section = ""
+    if num_scenes >= 25:
+        long_script_section = f"""
+## ⚠️ 大量シーン（{num_scenes}シーン）追加ルール
+
+1. **本番パートにmini-arc**: {act3}シーンの本番パートは、3-4個のmini-arc（小さな起承転結）に分割せよ。各mini-arcは「新しい行為/体位で開始→エスカレート→小さなクライマックス→次への転換」で構成
+2. **intensity 4の連続上限5**: intensity 4が5シーン以上連続する場合、必ず間にintensity 3のシーン（休憩/体位変更/心理描写）を1つ挟むこと
+3. **男性セリフ多様性**: 男性のセリフは5パターン（脅迫/挑発/命令/嘲笑/独白）を均等に使え。同じ意味のセリフの連続禁止。末尾フレーズの重複は最大2回まで。観察実況（「～だな」「～してるな」）禁止
+4. **locationの位置変化**: 同じ場所が続く場合も「場所内の位置」を変えよ（例: 便座→壁際→洗面台→床）
+5. **titleルール**: titleは4-12文字、行為/体位/感情を反映。location名（「トイレ」「教室」等）をtitleに含めてはならない
+"""
+
     prompt = f"""以下のストーリーあらすじを{num_scenes}シーンに分割し、各シーンの詳細をJSON配列で出力してください。
 
 ## ストーリーあらすじ（これに忠実に分割すること）
@@ -4788,7 +6574,7 @@ def generate_outline(
 
 ## 登場キャラクター
 {', '.join(char_names)}
-
+{f"{chr(10)}## 男性キャラクター外見: {male_description}{chr(10)}※ situationやbeatsに男性が登場する場合、この外見設定を反映すること{chr(10)}※ 男性はfaceless male（顔なし）。顔の特徴は描写しない{chr(10)}" if male_description else ""}
 ## テーマ: {theme_name}
 - ストーリーアーク: {story_arc}
 - 重要な感情: {', '.join(key_emotions)}
@@ -4803,6 +6589,7 @@ def generate_outline(
 - 第4幕・余韻: {act4}シーン → intensity 3-4（事後・余韻。エロの余韻を残す）
 ※ FANZA CG集は読者がエロを求めて購入する。導入は短く、エロシーンを手厚く。
 {_get_intensity_curve_instruction(theme_guide)}
+{long_script_section}
 
 {output_format_section}
 
@@ -4817,6 +6604,7 @@ def generate_outline(
 8. **locationは3シーン連続で同じ場所にしてはならない**。場所を変えてストーリーを進めること。例: 部屋→廊下→浴室、教室→体育館倉庫→屋上
 9. intensity 5は最大2シーンまで。残りの本番はintensity 4にして、緩急をつけること
 10. intensity 1の次にintensity 3以上は禁止。必ずintensity 2を挟むこと（1→2→3→4→5の段階的上昇）
+11. **視点**: situationは女性キャラ視点で記述。男性の行動ではなく、女性の体験・反応・感情を中心に書く
 
 ## ⚠️⚠️ 体位・行為バリエーション強制ルール（最重要・違反即不合格）
 
@@ -5235,7 +7023,8 @@ def generate_scene_draft(
     callback: Optional[Callable] = None,
     story_so_far: str = "",
     synopsis: str = "",
-    outline_roadmap: str = ""
+    outline_roadmap: str = "",
+    male_description: str = "",
 ) -> dict:
     skill = load_skill("low_cost_pipeline")
 
@@ -5372,6 +7161,20 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
                 break
         char_short_names.append(short)
 
+    # キャラ固有セリフプールからfew-shot例を注入
+    char_pool_section = ""
+    if char_profiles:
+        _cp0 = char_profiles[0]
+        _cp_id = generate_char_id(_cp0.get("work_title", ""), _cp0.get("character_name", ""))
+        _scene_char_pool = load_character_pool(_cp_id)
+        if _scene_char_pool:
+            sample_lines = []
+            for _ph in ["foreplay", "penetration", "climax"]:
+                phase_speech = _scene_char_pool.get("speech", {}).get(_ph, [])[:2]
+                sample_lines.extend(phase_speech)
+            if sample_lines:
+                char_pool_section = "\n## キャラ固有セリフ例（このトーンで書け）\n" + "\n".join(f"・{l}" for l in sample_lines)
+
     # ♡使用のルール（テーマ別）
     heart_instruction = ""
     if use_heart:
@@ -5412,8 +7215,8 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 【吹き出し指針（1-3個）】
 ・女: 絶頂系の喘ぎ1-2個（★セリフ品質ガイドの【段階4】から選べ。自作するな。前シーンと被らないこと）
-・男: 言葉責め0-1個
-  例: 「中に出すぞ」「全部受けろ」「イケ」
+・男: 言葉責め0-1個（5パターンを均等に使え: 脅迫/挑発/命令/嘲笑/独白。前シーンと同じ意味のセリフ禁止）
+  例: 「中に出すぞ」「全部受けろ」「イケ」「もう逃がさねえ」「もっと鳴け」
 
 【オノマトペ指針（3-4個・辞書から選べ）】
 ・射精系+反応系+抽送系を組み合わせる
@@ -5441,8 +7244,8 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 【吹き出し指針（1-3個）】
 ・女: 喘ぎ1-2個（★セリフ品質ガイドの【段階3】から選べ。自作するな。前シーンと被らないこと）
-・男: 言葉責め0-1個
-  例: 「いい声だな」「もっと鳴け」「感じてんだろ？」「締まりいいな」
+・男: 言葉責め0-1個（5パターンを均等に使え: 脅迫/挑発/命令/嘲笑/独白。前シーンと同じ意味のセリフ禁止）
+  例: 「もっと鳴け」「逃がさねぇぞ」「欲しいんだろ」「もう我慢すんな」
 
 【オノマトペ指針（2-3個・辞書から選べ）】
 ・挿入系+抽送系+濡れ系を組み合わせる
@@ -5464,8 +7267,8 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 【吹き出し指針（1-3個）】
 ・女: ドキドキ感のある反応1-2個（★セリフ品質ガイドの【段階2】から選べ）
-・男: 煽りor会話0-1個
-  例: 「おとなしくしろ」「いい体してんな」「脱げ」
+・男: 煽りor会話0-1個（前シーンと同じ意味のセリフ禁止。脅迫/挑発/命令/嘲笑/独白の5パターンを使い分けろ）
+  例: 「おとなしくしろ」「脱げ」「正直になれよ」
 
 【オノマトペ指針（1-2個）】
 ・愛撫系+心音系: サワッ, チュッ, ゾクッ, ドキドキ, ペロッ, スルッ
@@ -5530,9 +7333,20 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 {char_guide if char_guide else "（キャラ設定なし）"}
 
+{char_pool_section}
+{f"""
+## 男性キャラクター外見設定
+**外見: {male_description}**
+- descriptionに男性が登場する場合、必ずこの外見設定を反映した描写にすること
+- 男性はfaceless male（顔なし）として扱う。男性の顔の特徴（目・鼻・口・表情）は一切描写しない
+- 描写例: 「{male_description}の男に押し倒され…」「背後から{male_description}に覆いかぶさられ…」
+""" if male_description else """
+## 男性キャラクター
+- 男性はfaceless male（顔なし）として扱う。男性の顔の特徴（目・鼻・口・表情）は一切描写しない
+"""}
 ## FANZA同人CG集フォーマット
 「セリフ付きCG集」＝1枚絵に吹き出し+オノマトペ。**画像がメイン、テキストはサブ**。
-各ページ: CG画像1枚 + 吹き出し1-3個（主人公1-2+男0-1） + SE 0-4個
+各ページ: CG画像1枚 + 吹き出し1-3個（ヒロイン1-2+男0-1） + SE 0-4個
 
 ## ⚠️ 追加厳守ルール（上記吹き出しスキルに加えて）
 
@@ -5545,7 +7359,8 @@ story_so_farのセリフ・SEと同一・類似は絶対禁止。毎シーン辞
 ### セリフ内容整合性
 - moan=喘ぎ声のみ。説明文禁止（❌「そうなんだ」「汗すごい」）
 - speech=感情的反応のみ。身体報告禁止（❌「震えてる」「目が回る」）
-- thought=感情断片のみ。ナレーション禁止（❌「こんなことをしている自分が…」）
+- thought=感情断片のみ。ナレーション禁止（❌「こんなことをしている自分が…」）。部位ラベル冒頭禁止（❌「胸…こんなに…」「太もも…そんな…」→✅「熱い…」「ゾクって…」）
+- 男性speech=命令/挑発/独白のみ。観察実況禁止（❌「いい声だな」「敏感だな」「ここも感じるんだな」→✅「もっと鳴け」「欲しいんだろ」「逃がさねぇ」）
 - descriptionと吹き出しの内容が**論理的に一致**すること
 
 ### story_flowの書き方
@@ -5553,6 +7368,10 @@ story_so_farのセリフ・SEと同一・類似は絶対禁止。毎シーン辞
 
 ### thought先頭パターン反復禁止
 同じ書き出し（先頭2文字）を3シーン以内で再使用するな。バリエーションが生命線。
+同一構文（X…Yが…Z…）の3連続も禁止。構文パターンを変えろ（疑問/自嘲/矛盾/驚き/諦め/感覚）。
+感情は恐怖/羞恥/快感否定の3種だけでなく、怒り/諦め/自嘲/混乱/背徳感も使え。
+❌禁止: thoughtで「胸…」「太もも…」「耳…」等、部位名を冒頭に置く説明型（「胸…こんなに…」）。部位を主語にするな。感覚・感情を主語にしろ（「熱い…」「ゾクって…」「やばい…」）。
+同じキーワード（「だめ」「声」等）は全シーン中4回まで。
 
 ## オノマトペ辞書（同じ組み合わせの連続禁止）
 ・挿入: ズブッ, ヌプッ, ズリュッ, ヌルッ, ズンッ ・抽送: パンパン, グチュグチュ, ヌチュヌチュ
@@ -5781,7 +7600,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 
 1. descriptionは必ず100字程度で詳しく書く。**具体的な体位・行為・身体の状態・表情**を書け。「囲まれている」「溺れている」のような抽象表現のみは不可
 2. character_feelingsで心情を明確に。前シーンと異なる感情変化を示すこと
-3. **bubblesは1-3個**（主人公1-2個 + 男性0-1個。セリフの長さは自由）
+3. **bubblesは1-3個**（ヒロイン1-2個 + 男性0-1個。セリフの長さは自由）。男性セリフは全体の25-35%のシーンにのみ入れること（20シーンなら5-7シーンのみ）
 4. typeはspeech/moan/thoughtの3種。intensity 4-5はmoanメイン。**moanには喘ぎ声のみ（説明文禁止）**
 5. **onomatopoeiaは場面に合った効果音**（intensity 1-2はなし〜1個、3は1-2個、4-5は2-4個）
 6. sd_promptは「{QUALITY_POSITIVE_TAGS}」の後にカンマで区切り「キャラ外見 + ポーズ + 表情 + 場所・背景 + 照明」を続ける。quality括弧の中にはmasterpiece, best_qualityのみ入れる。キャラ名やheadphones等の外見タグは括弧外に書くこと
@@ -5792,7 +7611,9 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 11. **descriptionは全て日本語で書くこと**（英語タグはsd_promptのみ）
 12. **titleに「○回戦」「続き」等の安易な表現禁止**。具体的な行為・状況を反映した簡潔なタイトルにすること
 13. **キャラ名**: 初出時はフルネーム「{', '.join(char_names) if char_names else 'ヒロイン'}」を使用。同じdescription内の2回目以降は姓「{', '.join(char_short_names) if char_short_names else 'ヒロイン'}」でよい。表記ブレ厳禁（他の呼び方は禁止）
-14. **descriptionに具体的な行為・体位を必ず書け**。「囲まれる」「溺れる」だけの抽象表現は禁止。何をどうされているか書くこと"""
+14. **descriptionに具体的な行為・体位を必ず書け**。「囲まれる」「溺れる」だけの抽象表現は禁止。何をどうされているか書くこと
+15. **視点**: descriptionは女性キャラ視点で書くこと。男性を「主人公」と呼ばない。男性は「彼」「相手の男」「男性」と表記
+16. **お嬢様口調のintensity対応**: intensity 4-5ではお嬢様口調（ですの/ですわ等）は崩壊させること。理性が飛んだ状態で丁寧語は不自然。「ですの」→「…の…♡」「ですわ」→「…♡」に崩す"""
 
     # 重複禁止の最終警告（user promptの末尾に配置 = モデルが最も注目する位置）
     dedup_warning = ""
@@ -5810,8 +7631,9 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 - 男性キャラのセリフに♡が含まれている → 即座に削除しろ
 - 男性キャラが喘いでいる(moanタイプ) → speechに変更し男性的な短い台詞に書き換えろ
 - ヒロインの一人称・語尾がキャラ設定と食い違っている → 修正しろ
-- bubblesが4個以上ある → 主人公1-2個+男性0-1個の最大3個に絞れ
+- bubblesが4個以上ある → ヒロイン1-2個+男性0-1個の最大3個に絞れ
 - 男性セリフに「私たち」「いいよ」「ね」等の女性的表現がある → 「俺たち」「いいぞ」「な」に直せ
+- 男性セリフが全体の40%以上のシーンに含まれている → 5-7シーンのみに男性セリフを入れ、残りは削除しろ
 - descriptionが歩行・食事・帰宅等の非エロ場面なのにbubblesに喘ぎ・♡がある → 場面に合った普通のセリフに直せ
 - 「初めて」「彼のこと忘れ」等の同じフレーズを全体で3回以上使っている → 別の表現にしろ
 - type="moan"の吹き出しに説明文・会話文が入っている → 喘ぎ声に書き換えろ（「そうなんだ」「汗すごい」等は禁止）
@@ -5822,10 +7644,10 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
     prompt = prompt + dedup_warning + "\n\nJSONのみ出力。"
 
     # モデル自動選択: intensity別にコスト最適化
-    # intensity 5 → Sonnet（最重要クライマックス）
-    # intensity 1-4 → Haiku 4.5（全シーン生成はHaiku4.5以上必須）
+    # intensity 4-5 → Sonnet（本番+クライマックス: セリフ品質が最重要）
+    # intensity 1-3 → Haiku 4.5（導入・前戯シーン）
     # ※ Haiku3(fast)はシーン生成に不適: キャラ名化け・NSFW品質不足
-    if intensity >= 5:
+    if intensity >= 4:
         model = MODELS["sonnet"]
         model_name = "Sonnet"
     else:
@@ -5897,11 +7719,11 @@ def polish_scene(
 ## CG集の清書ルール
 
 【吹き出し改善】
-1. 1ページ = 主人公のセリフ1-2個 + 男性セリフ0-1個（最大3個）
+1. 1ページ = ヒロインのセリフ1-2個 + 男性セリフ0-1個（最大3個）
 2. 説明的→感情的に（「嬉しい気持ちです」→「嬉しい…♡」）
 3. 文章→断片に（主語・目的語を削除）
 4. 一人称・語尾を徹底チェック
-5. 4個以上の吹き出しがあれば主人公1-2個+男性0-1個に絞る
+5. 4個以上の吹き出しがあればヒロイン1-2個+男性0-1個に絞る
 
 【エロシーン改善】
 - 「気持ちいいです」→「きもちぃ…♡」
@@ -5914,7 +7736,7 @@ def polish_scene(
 - 数は適切か（intensity 1-2: 0-1個、3: 1-2個、4-5: 2-4個）
 
 【禁止】
-❌ 4個以上の吹き出し（主人公1-2 + 男性0-1 = 最大3個）
+❌ 4個以上の吹き出し（ヒロイン1-2 + 男性0-1 = 最大3個）
 ❌ 説明調のテキスト
 ❌ キャラの一人称・語尾の不一致
 
@@ -5927,7 +7749,7 @@ Output JSON only."""
 上記の下書きを清書してください：
 
 1. 各吹き出しをキャラの口調に合わせる
-2. 吹き出しを最大3個に絞る（主人公1-2 + 男性0-1）
+2. 吹き出しを最大3個に絞る（ヒロイン1-2 + 男性0-1）
 3. descriptionをより詳細に（100字程度）
 4. character_feelingsをより感情的に
 5. onomatopoeiaが場面に合っているか確認
@@ -6028,6 +7850,13 @@ def generate_pipeline(
     callback: Optional[Callable] = None,
     skip_quality_check: bool = True,
     story_structure: dict = None,
+    male_tags: str = "",
+    time_tags: str = "",
+    location_type: str = "",
+    male_description: str = "",
+    sd_quality_tags: str = "",
+    sd_prefix_tags: str = "",
+    sd_suffix_tags: str = "",
 ) -> tuple[list, CostTracker]:
     client = anthropic.Anthropic(api_key=api_key)
     log_message("Claude (Anthropic) バックエンドで生成開始")
@@ -6090,8 +7919,16 @@ def generate_pipeline(
         if callback:
             callback("[WARN]キャラ設定なし（汎用設定で生成）")
 
+    # テーマ自動推定
+    if not theme:
+        theme = _infer_theme_from_concept(concept)
+        if theme:
+            log_message(f"テーマ自動推定: {THEME_GUIDES.get(theme, {}).get('name', theme)}")
+
     # テーマ情報
     theme_guide = THEME_GUIDES.get(theme, {})
+    if not theme_guide:
+        theme_guide = _build_dynamic_theme_guide(concept)
     theme_name = theme_guide.get("name", "指定なし")
     if theme and theme_guide:
         log_message(f"テーマ適用: {theme_name} (arc: {theme_guide.get('story_arc', '')})")
@@ -6135,7 +7972,7 @@ def generate_pipeline(
         callback("🔧 Phase 2: ストーリー原案作成")
 
     try:
-        synopsis = generate_synopsis(client, concept, context, num_scenes, theme, cost_tracker, callback)
+        synopsis = generate_synopsis(client, concept, context, num_scenes, theme, cost_tracker, callback, male_description=male_description)
         log_message(f"あらすじ生成完了: {len(synopsis)}文字")
 
         # あらすじをファイルに保存
@@ -6160,7 +7997,7 @@ def generate_pipeline(
         callback("🔧 Phase 3: シーン分割")
 
     try:
-        outline = generate_outline(client, context, num_scenes, theme, cost_tracker, callback, synopsis=synopsis, story_structure=story_structure)
+        outline = generate_outline(client, context, num_scenes, theme, cost_tracker, callback, synopsis=synopsis, story_structure=story_structure, male_description=male_description)
         log_message(f"アウトライン生成完了: {len(outline)}シーン")
         
         intensity_counts = {}
@@ -6212,13 +8049,12 @@ def generate_pipeline(
         callback(f"[OK]シーン分割完成: {len(outline)}シーン（Haiku4.5×{_haiku_n} + Sonnet×{_high_n}）")
 
     # コスト見積もり（Prompt Caching反映版）
-    haiku_count = sum(1 for s in outline if s.get("intensity", 3) <= 4)
-    high_count = sum(1 for s in outline if s.get("intensity", 3) >= 5)
-    hf_cost = COSTS.get(MODELS["haiku_fast"], {"input": 0.25, "output": 1.25})
+    haiku_count = sum(1 for s in outline if s.get("intensity", 3) <= 3)
+    high_count = sum(1 for s in outline if s.get("intensity", 3) >= 4)
     h_cost = COSTS.get(MODELS["haiku"], {"input": 1.00, "output": 5.00})
     s_cost = COSTS.get(MODELS["sonnet"], {"input": 3.00, "output": 15.00})
-    # あらすじ+アウトライン → haiku_fast
-    overhead_cost = 2 * (2000 / 1_000_000 * hf_cost["input"] + 2000 / 1_000_000 * hf_cost["output"])
+    # あらすじ+アウトライン → haiku 4.5
+    overhead_cost = 2 * (2000 / 1_000_000 * h_cost["input"] + 2000 / 1_000_000 * h_cost["output"])
     # シーン生成（Prompt Caching: systemは1回cache_create + (N-1)回cache_read）
     cached_sys = 16000  # systemプロンプト推定トークン数
     avg_user = 3000  # 平均user prompt
@@ -6259,7 +8095,7 @@ def generate_pipeline(
 
     for i, scene in enumerate(outline):
         intensity = scene.get("intensity", 3)
-        model_type = "Sonnet" if intensity >= 5 else "Haiku(4.5)"
+        model_type = "Sonnet" if intensity >= 4 else "Haiku(4.5)"
 
         # story_so_far を構築（スライディングウィンドウ方式）
         # 直近2シーン=フル, 3-5前=圧縮, 6以前=1行
@@ -6291,7 +8127,8 @@ def generate_pipeline(
                 cost_tracker, theme, char_profiles, callback,
                 story_so_far=story_so_far,
                 synopsis=synopsis,
-                outline_roadmap=current_roadmap
+                outline_roadmap=current_roadmap,
+                male_description=male_description,
             )
 
             draft["intensity"] = intensity
@@ -6457,7 +8294,12 @@ def generate_pipeline(
         log_message(f"設定スタイル検出: {setting_style.get('prompt_hint', '')[:40]}...")
         if callback:
             callback(f"🏠 設定スタイル適用: {setting_style.get('prompt_hint', '')[:30]}...")
-    results = enhance_sd_prompts(results, char_profiles, setting_style=setting_style)
+    results = enhance_sd_prompts(results, char_profiles, setting_style=setting_style,
+                                    male_tags=male_tags, time_tags=time_tags,
+                                    location_type=location_type,
+                                    sd_quality_tags=sd_quality_tags,
+                                    sd_prefix_tags=sd_prefix_tags,
+                                    sd_suffix_tags=sd_suffix_tags)
     log_message("SDプロンプト最適化完了")
     if callback:
         callback("[OK]SDプロンプト最適化完了")
@@ -6707,14 +8549,20 @@ def export_sd_prompts(results: list, output_path: Path):
     log_message(f"SDプロンプト出力完了: {output_path}")
 
 
-def export_wildcard(results: list, output_path: Path):
+def export_wildcard(results: list, output_path: Path,
+                    male_tags: str = "", time_tags: str = "",
+                    location_type: str = ""):
     """Wild Card形式エクスポート（1行1プロンプト、SD Wild Card対応）"""
     lines = []
+    # 設定コメントヘッダ追加
+    if male_tags or time_tags or location_type:
+        header = f"# Male: {male_tags or 'auto'} | Time: {time_tags or 'auto'} | Location: {location_type or 'auto'}"
+        lines.append(header)
     for scene in results:
         sd = scene.get("sd_prompt", "").strip()
         if sd:
             sid = scene.get("scene_id", "")
-            lines.append(f'{sd}, "シーン{sid}"')
+            lines.append(f'{sd}, "シーン{sid}",')
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     log_message(f"Wild Card出力完了: {output_path}（{len(lines)}行）")
@@ -7119,6 +8967,167 @@ commands:
     return skill_content
 
 
+
+def load_character_pool(char_id: str) -> dict:
+    """キャラ固有プールを読み込み。なければ空dictを返す"""
+    pool_path = CHARACTERS_DIR / f"{char_id}_pool.json"
+    if pool_path.exists():
+        with open(pool_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    # プリセットチェック
+    preset_path = PRESET_CHARS_DIR / f"{char_id}_pool.json"
+    if preset_path.exists():
+        with open(preset_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def generate_character_pool(
+    client, char_id: str, bible: dict,
+    cost_tracker: CostTracker, callback=None
+) -> dict:
+    """キャラプロファイルから専用セリフプールをAPI 1回で生成。
+    moan(intensity 1-5)×各8個 + speech(6フェーズ)×各5個 + thought(6フェーズ)×各5個 = 約100個/キャラ"""
+
+    char_name = bible.get("character_name", "ヒロイン")
+    speech = bible.get("speech_pattern", {})
+    emotional = bible.get("emotional_speech", {})
+    erotic = bible.get("erotic_speech_guide", {})
+
+    if callback:
+        callback(f"[INFO]Step 4/4: {char_name}専用セリフプール生成中...")
+
+    # SCENE_PHASE_SPEECH_MAPからfew-shot例を取得
+    try:
+        from ero_dialogue_pool import SCENE_PHASE_SPEECH_MAP
+        few_shot_examples = {}
+        for phase in ["foreplay", "penetration", "climax"]:
+            phase_data = SCENE_PHASE_SPEECH_MAP.get(phase, {})
+            few_shot_examples[phase] = {
+                "speech": phase_data.get("speech", [])[:3],
+                "thought": phase_data.get("thought", [])[:3],
+                "moan": phase_data.get("moan", [])[:3],
+            }
+    except ImportError:
+        few_shot_examples = {}
+
+    few_shot_str = ""
+    if few_shot_examples:
+        few_shot_str = "\n## 汎用セリフ例（参考。このトーンをキャラの口調に変換せよ）\n"
+        for phase, examples in few_shot_examples.items():
+            few_shot_str += f"### {phase}\n"
+            for btype, lines in examples.items():
+                if lines:
+                    few_shot_str += f"  {btype}: {', '.join(lines)}\n"
+
+    system_prompt = f"""あなたはエロ漫画・CG集のセリフ専門ライターです。
+キャラクターの口調設定に基づき、そのキャラ固有のセリフプールをJSON形式で生成します。
+
+【キャラクター口調設定】
+・名前: {char_name}
+・一人称: {speech.get('first_person', '私')}
+・語尾: {', '.join(speech.get('sentence_endings', ['〜よ', '〜ね']))}
+・間投詞: {', '.join(speech.get('fillers', ['あっ', 'んっ']))}
+・照れた時: {emotional.get('when_embarrassed', '言葉に詰まる')}
+・感じてる時: {emotional.get('when_aroused', '声が震える')}
+・絶頂時: {emotional.get('when_climax', '理性が飛ぶ')}
+・エロ中の口癖: {erotic.get('verbal_during_sex', '特になし')}
+・恥ずかしがり度: {erotic.get('shyness_level', '3')}/5
+
+{few_shot_str}
+
+【出力ルール】
+- moanは喘ぎ声のみ（「あっ」「んっ」系）。漢字・助詞禁止。♡はintensity3以上で使用可
+- speechは感情的反応の短文（1-10文字）。キャラの語尾・一人称を反映
+- thoughtは心の声（1-15文字）。「…」で区切る断片的な表現
+- 各フェーズの感情段階を正確に反映すること
+- JSONのみ出力"""
+
+    prompt = f"""以下の構造でJSON出力してください。
+
+{{
+    "character_name": "{char_name}",
+    "char_id": "{char_id}",
+    "moan": {{
+        "1": ["（intensity1: 微かな息遣い8個）"],
+        "2": ["（intensity2: 小さな喘ぎ8個）"],
+        "3": ["（intensity3: 本格的な喘ぎ8個。♡使用可）"],
+        "4": ["（intensity4: 激しい喘ぎ8個。♡♡使用可）"],
+        "5": ["（intensity5: 絶頂の喘ぎ8個。♡♡♡使用可）"]
+    }},
+    "speech": {{
+        "intro": ["（導入: 日常会話5個。キャラ語尾反映）"],
+        "approach": ["（接近: 戸惑い5個）"],
+        "foreplay": ["（前戯: 恥ずかしさ・感じ始め5個）"],
+        "penetration": ["（挿入: 挿入リアクション5個）"],
+        "climax": ["（絶頂: 絶頂セリフ5個。♡♡使用）"],
+        "afterglow": ["（余韻: 事後セリフ5個）"]
+    }},
+    "thought": {{
+        "intro": ["（導入: 緊張5個）"],
+        "approach": ["（接近: 期待と不安5個）"],
+        "foreplay": ["（前戯: 体の反応への驚き5個）"],
+        "penetration": ["（挿入: 充足感5個）"],
+        "climax": ["（絶頂: 理性崩壊5個。♡使用可）"],
+        "afterglow": ["（余韻: 振り返り5個）"]
+    }}
+}}
+
+【重要】
+- {char_name}の口調（一人称={speech.get('first_person', '私')}、語尾={', '.join(speech.get('sentence_endings', [])[:3])}）を全セリフに反映
+- 汎用的な喘ぎではなく、このキャラの性格・話し方が伝わる喘ぎ・セリフにすること
+- JSONのみ出力。説明文不要"""
+
+    response = _call_api(
+        client, MODELS["sonnet"],
+        system_prompt, prompt, cost_tracker, 4096, callback
+    )
+
+    pool = parse_json_response(response)
+
+    if callback:
+        # 生成数カウント
+        moan_count = sum(len(v) for v in pool.get("moan", {}).values() if isinstance(v, list))
+        speech_count = sum(len(v) for v in pool.get("speech", {}).values() if isinstance(v, list))
+        thought_count = sum(len(v) for v in pool.get("thought", {}).values() if isinstance(v, list))
+        callback(f"[OK]キャラプール生成完了: moan={moan_count}, speech={speech_count}, thought={thought_count}")
+
+    return pool
+
+
+def upgrade_character_pool_api(
+    client, char_id: str, bible: dict,
+    cost_tracker: CostTracker, callback=None,
+    upgrade_types: list = None,
+) -> dict:
+    """既存ローカルプールのspeech+thoughtのみAPIで補正。moanはローカル維持。
+    upgrade_types: デフォルト ["speech", "thought"]
+    """
+    if upgrade_types is None:
+        upgrade_types = ["speech", "thought"]
+
+    # 既存プール読み込み
+    existing_pool = load_character_pool(char_id)
+
+    # API版フル生成
+    api_pool = generate_character_pool(client, char_id, bible, cost_tracker, callback)
+
+    # 指定タイプのみAPIで上書き、それ以外はローカル維持
+    merged = dict(existing_pool) if existing_pool else dict(api_pool)
+    for utype in upgrade_types:
+        if utype in api_pool:
+            merged[utype] = api_pool[utype]
+
+    # ソース情報追記
+    source_detail = {}
+    for key in ["moan", "speech", "thought"]:
+        source_detail[key] = "api" if key in upgrade_types else "local"
+    merged["source"] = "hybrid"
+    merged["source_detail"] = source_detail
+
+    return merged
+
+
 def build_character(
     api_key: str,
     work_title: str,
@@ -7133,6 +9142,7 @@ def build_character(
     char_id = generate_char_id(work_title, char_name)
     bible_path = CHARACTERS_DIR / f"{char_id}.json"
     skill_path = CHAR_SKILLS_DIR / f"{char_id}.skill.md"
+    pool_path = CHARACTERS_DIR / f"{char_id}_pool.json"
 
     # プリセットチェック（API不要）
     preset_path = PRESET_CHARS_DIR / f"{char_id}.json"
@@ -7155,7 +9165,7 @@ def build_character(
 
     # Step 1: キャラクター分析
     if callback:
-        callback("[STAT]Step 1/3: キャラクター分析")
+        callback("[STAT]Step 1/4: キャラクター分析")
 
     bible = analyze_character(client, work_title, char_name, cost_tracker, callback)
 
@@ -7167,7 +9177,7 @@ def build_character(
 
     # Step 2: キャラバイブル保存
     if callback:
-        callback("[SAVE]Step 2/3: キャラバイブル保存")
+        callback("[SAVE]Step 2/4: キャラバイブル保存")
 
     with open(bible_path, "w", encoding="utf-8") as f:
         json.dump(bible, f, ensure_ascii=False, indent=2)
@@ -7176,7 +9186,7 @@ def build_character(
 
     # Step 3: Skill生成
     if callback:
-        callback("[INFO] Step 3/3: Skill生成")
+        callback("[INFO]Step 3/4: Skill生成")
 
     skill_content = generate_character_skill(char_id, bible)
 
@@ -7184,6 +9194,32 @@ def build_character(
         f.write(skill_content)
 
     log_message(f"Skill保存: {skill_path}")
+
+    # Step 4: キャラ専用セリフプール生成（ローカル優先→API補正）
+    if not pool_path.exists() or force_refresh:
+        # まずローカル生成（即座、$0）
+        from character_pool_generator import generate_character_pool_local
+        if callback:
+            callback(f"[INFO]Step 4/4: {char_name}専用セリフプール生成中（ローカル）...")
+        char_pool = generate_character_pool_local(bible)
+        char_pool["char_id"] = char_id
+        with open(pool_path, "w", encoding="utf-8") as f:
+            json.dump(char_pool, f, ensure_ascii=False, indent=2)
+        log_message(f"キャラプール保存（ローカル）: {pool_path}")
+
+        # API可能ならspeech+thoughtだけAPI補正
+        try:
+            char_pool = upgrade_character_pool_api(
+                client, char_id, bible, cost_tracker, callback,
+                upgrade_types=["speech", "thought"]
+            )
+            with open(pool_path, "w", encoding="utf-8") as f:
+                json.dump(char_pool, f, ensure_ascii=False, indent=2)
+            log_message(f"キャラプール更新（API補正）: {pool_path}")
+        except Exception as e:
+            log_message(f"API補正スキップ（ローカル版を使用）: {e}")
+            if callback:
+                callback(f"[WARN]API補正スキップ、ローカル版を使用: {e}")
 
     if callback:
         callback(f"[OK]キャラクター生成完了: {char_id}")
@@ -7225,6 +9261,7 @@ def load_preset_character(char_id: str, callback: Optional[Callable] = None) -> 
     preset_path = PRESET_CHARS_DIR / f"{char_id}.json"
     bible_path = CHARACTERS_DIR / f"{char_id}.json"
     skill_path = CHAR_SKILLS_DIR / f"{char_id}.skill.md"
+    pool_path = CHARACTERS_DIR / f"{char_id}_pool.json"
 
     if callback:
         callback(f"[FILE]プリセット読み込み中: {char_id}")
@@ -7240,6 +9277,25 @@ def load_preset_character(char_id: str, callback: Optional[Callable] = None) -> 
     skill_content = generate_character_skill(char_id, bible)
     with open(skill_path, "w", encoding="utf-8") as f:
         f.write(skill_content)
+
+    # プールコピー/生成
+    if not pool_path.exists():
+        preset_pool_path = PRESET_CHARS_DIR / f"{char_id}_pool.json"
+        if preset_pool_path.exists():
+            # プリセットプールをコピー
+            import shutil
+            shutil.copy2(preset_pool_path, pool_path)
+            if callback:
+                callback(f"[FILE]プリセットプールコピー: {char_id}")
+        else:
+            # ローカル生成
+            from character_pool_generator import generate_character_pool_local
+            char_pool = generate_character_pool_local(bible)
+            char_pool["char_id"] = char_id
+            with open(pool_path, "w", encoding="utf-8") as f:
+                json.dump(char_pool, f, ensure_ascii=False, indent=2)
+            if callback:
+                callback(f"[INFO]プールをローカル生成: {char_id}")
 
     if callback:
         callback(f"[OK]プリセット読み込み完了: {bible.get('character_name', char_id)}")
@@ -7271,23 +9327,24 @@ class MaterialCard(ctk.CTkFrame):
         **kwargs
     ):
         # M3 Card styling based on variant
+        # All variants use border to prevent corner anti-alias fading
         if variant == "filled":
             bg_color = MaterialColors.SURFACE_CONTAINER_HIGHEST
-            border_width = 0
-            border_color = None
+            border_width = 1
+            border_color = MaterialColors.OUTLINE_VARIANT
         elif variant == "outlined":
             bg_color = MaterialColors.SURFACE
             border_width = 1
             border_color = MaterialColors.OUTLINE_VARIANT
         else:  # elevated (default)
             bg_color = MaterialColors.SURFACE_CONTAINER_LOW
-            border_width = 0
-            border_color = None
-        
+            border_width = 1
+            border_color = MaterialColors.OUTLINE_VARIANT
+
         super().__init__(
             master,
             fg_color=bg_color,
-            corner_radius=12,  # M3: 12dp for medium
+            corner_radius=0,   # Sharp edges — no anti-alias artifacts
             border_width=border_width,
             border_color=border_color,
             **kwargs
@@ -7389,7 +9446,7 @@ class MaterialButton(ctk.CTkButton):
         variants = {
             "filled": {
                 "fg_color": MaterialColors.PRIMARY,
-                "hover_color": "#7058B8",  # Slightly lighter on hover
+                "hover_color": "#2563EB",  # Blue-600 on hover
                 "text_color": MaterialColors.ON_PRIMARY,
                 "border_width": 0,
             },
@@ -7427,13 +9484,13 @@ class MaterialButton(ctk.CTkButton):
             },
             "danger": {
                 "fg_color": MaterialColors.ERROR,
-                "hover_color": "#9C1F19",
+                "hover_color": "#B91C1C",  # Red-700
                 "text_color": MaterialColors.ON_ERROR,
                 "border_width": 0,
             },
             "success": {
                 "fg_color": MaterialColors.SUCCESS,
-                "hover_color": "#145426",
+                "hover_color": "#15803D",  # Green-700
                 "text_color": "#FFFFFF",
                 "border_width": 0,
             },
@@ -7516,7 +9573,7 @@ class MaterialTextField(ctk.CTkFrame):
                 self,
                 height=height,
                 placeholder_text=placeholder,
-                placeholder_text_color=MaterialColors.ON_SURFACE_VARIANT,
+                placeholder_text_color="#3D3D3D",
                 show=show,
                 fg_color=fg_color,
                 text_color=MaterialColors.ON_SURFACE,
@@ -7665,7 +9722,7 @@ class MaterialChip(ctk.CTkButton):
             master,
             text=text,
             height=32,  # M3: 32dp height
-            corner_radius=8,  # M3: 8dp corners
+            corner_radius=0,
             fg_color=fg_color,
             hover_color=MaterialColors.SURFACE_CONTAINER,
             text_color=text_color,
@@ -7754,9 +9811,9 @@ class Snackbar(ctk.CTkFrame):
         # M3 uses inverse surface for snackbar, but we can tint for status
         colors = {
             "info": MaterialColors.INVERSE_SURFACE,
-            "success": "#2E7D32",    # Green-800
-            "error": "#C62828",       # Red-800
-            "warning": "#F57C00"      # Orange-800
+            "success": "#15803D",    # Green-700
+            "error": "#B91C1C",      # Red-700
+            "warning": "#B45309"     # Amber-700
         }
         
         self.configure(fg_color=colors.get(type, MaterialColors.INVERSE_SURFACE))
@@ -7861,12 +9918,13 @@ class ExportDialog(ctk.CTkToplevel):
         self.configure(fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST)
 
         # Header
-        header = ctk.CTkFrame(self, fg_color=MaterialColors.SURFACE, corner_radius=0)
+        header = ctk.CTkFrame(self, fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST, corner_radius=0)
         header.pack(fill="x")
         icon_text_label(
             header, Icons.FILE_EXPORT, "エクスポート形式を選択",
-            icon_size=14, text_size=16, text_color=MaterialColors.PRIMARY
+            icon_size=14, text_size=16, text_color=MaterialColors.ON_SURFACE
         ).pack(anchor="w", padx=20, pady=16)
+        ctk.CTkFrame(self, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x")
 
         # シーン数表示
         info_lbl = ctk.CTkLabel(
@@ -8034,10 +10092,14 @@ class App(ctk.CTk):
         self.stop_requested = False
         self.last_results = None  # 最新の生成結果を保持（再エクスポート用）
         self.last_metadata = None  # パイプラインメタデータ（再エクスポート用）
-        self.work_type_var = ctk.StringVar(value="二次創作")
-
         self.create_widgets()
         self.load_saved_config()
+
+        # CTkEntryプレースホルダー強制表示（初期化直後のタイミング問題対策）
+        self.after(100, self._ensure_placeholders)
+
+        # ドラッグ&ドロップ初期化（ウィンドウマッピング後に実行）
+        self.after(200, self._setup_png_drop)
 
         # ウィンドウ閉じ保護
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -8046,11 +10108,15 @@ class App(ctk.CTk):
         self.bind("<Control-Return>", lambda e: self.start_generation())
         self.bind("<Escape>", lambda e: self.stop_generation() if self.is_generating else None)
 
+        # プレゼンモード（Ctrl+Shift+P で切替）
+        self._presentation_mode = False
+        self.bind("<Control-Shift-P>", lambda e: self.toggle_presentation_mode())
+
     def create_widgets(self):
         # ══════════════════════════════════════════════════════════════
         # HEADER
         # ══════════════════════════════════════════════════════════════
-        header = ctk.CTkFrame(self, height=56, fg_color=MaterialColors.SURFACE, corner_radius=0)
+        header = ctk.CTkFrame(self, height=56, fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST, corner_radius=0)
         header.pack(fill="x")
         header.pack_propagate(False)
 
@@ -8059,7 +10125,7 @@ class App(ctk.CTk):
 
         icon_text_label(
             header_inner, Icons.FILM, "Daihon Rakku",
-            icon_size=16, text_size=20, text_color=MaterialColors.PRIMARY
+            icon_size=16, text_size=20, text_color=MaterialColors.ON_SURFACE
         ).pack(side="left")
 
         ctk.CTkLabel(
@@ -8072,6 +10138,9 @@ class App(ctk.CTk):
             header_inner, text="FANZA同人CG集 脚本生成",
             font=ctk.CTkFont(size=13), text_color=MaterialColors.ON_SURFACE_VARIANT
         ).pack(side="right")
+
+        # Header bottom border
+        ctk.CTkFrame(self, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x")
 
         # ══════════════════════════════════════════════════════════════
         # MAIN CONTENT
@@ -8086,9 +10155,10 @@ class App(ctk.CTk):
         content.pack(fill="both", expand=True, padx=24, pady=20)
 
         # ══════════════════════════════════════════════════════════════
-        # 1. API設定
+        # 1. API設定（プレゼン時は非表示）
         # ══════════════════════════════════════════════════════════════
-        api_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=12)
+        api_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=0, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT)
+        self._api_card = api_card  # プレゼンモード用参照
         api_card.pack(fill="x", pady=(0, 16))
 
         icon_text_label(
@@ -8102,14 +10172,15 @@ class App(ctk.CTk):
             api_card, height=42, placeholder_text="Anthropic API Key (sk-ant-...)", show="*",
             font=ctk.CTkFont(size=15),
             fg_color=MaterialColors.SURFACE_CONTAINER, text_color=MaterialColors.ON_SURFACE,
-            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
+            placeholder_text_color="#3D3D3D",
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE
         )
         self.api_field.pack(fill="x", padx=20, pady=(0, 12))
 
         # ══════════════════════════════════════════════════════════════
         # 2. プロファイル管理（キャラ生成より上に配置）
         # ══════════════════════════════════════════════════════════════
-        profile_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=12)
+        profile_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=0, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT)
         profile_card.pack(fill="x", pady=(0, 16))
 
         icon_text_label(
@@ -8124,7 +10195,7 @@ class App(ctk.CTk):
         self.profile_combo = ctk.CTkOptionMenu(
             profile_row, values=["（新規）"] + get_profile_list(), height=36, width=150,
             font=ctk.CTkFont(size=14),
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
             button_color=MaterialColors.PRIMARY,
             text_color=MaterialColors.ON_SURFACE,
             dropdown_text_color=MaterialColors.ON_SURFACE,
@@ -8137,8 +10208,9 @@ class App(ctk.CTk):
         self.profile_name_entry = ctk.CTkEntry(
             profile_row, height=36, width=120, placeholder_text="プロファイル名",
             font=ctk.CTkFont(size=14),
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
             text_color=MaterialColors.ON_SURFACE,
+            placeholder_text_color="#3D3D3D",
             border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
         )
         self.profile_name_entry.pack(side="left", padx=(0, 8))
@@ -8163,7 +10235,7 @@ class App(ctk.CTk):
         # ══════════════════════════════════════════════════════════════
         # 3. キャラクター設定
         # ══════════════════════════════════════════════════════════════
-        char_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=12)
+        char_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=0, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT)
         char_card.pack(fill="x", pady=(0, 16))
 
         icon_text_label(
@@ -8172,37 +10244,17 @@ class App(ctk.CTk):
         ).pack(anchor="w", padx=20, pady=(12, 8))
         ctk.CTkFrame(char_card, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", padx=20, pady=(0, 8))
 
-        # --- 作品タイプ ラジオボタン ---
-        type_row = ctk.CTkFrame(char_card, fg_color="transparent")
-        type_row.pack(fill="x", padx=20, pady=(0, 8))
-
-        ctk.CTkRadioButton(
-            type_row, text="二次創作（プリセットキャラ）",
-            variable=self.work_type_var, value="二次創作",
-            font=ctk.CTkFont(size=14), text_color=MaterialColors.ON_SURFACE,
-            fg_color=MaterialColors.PRIMARY, border_color=MaterialColors.OUTLINE,
-            hover_color=MaterialColors.PRIMARY_CONTAINER,
-            command=self._on_work_type_changed
-        ).pack(side="left", padx=(0, 16))
-
-        ctk.CTkRadioButton(
-            type_row, text="オリジナル（カスタム作成）",
-            variable=self.work_type_var, value="オリジナル",
-            font=ctk.CTkFont(size=14), text_color=MaterialColors.ON_SURFACE,
-            fg_color=MaterialColors.PRIMARY, border_color=MaterialColors.OUTLINE,
-            hover_color=MaterialColors.PRIMARY_CONTAINER,
-            command=self._on_work_type_changed
-        ).pack(side="left")
-
-        # --- プリセットコンテナ（二次創作時のみ表示） ---
-        self._preset_container = ctk.CTkFrame(char_card, fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST, corner_radius=8)
-
-        # --- カスタムコンテナ（オリジナル時のみ表示） ---
-        self._custom_container = ctk.CTkFrame(char_card, fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST, corner_radius=8)
-
-        # --- 共通: 使用キャラ選択（常時表示、切替の基準点） ---
+        # --- 使用キャラ選択行 ---
         self._char_select_row = ctk.CTkFrame(char_card, fg_color="transparent")
         self._char_select_row.pack(fill="x", padx=20, pady=(0, 12))
+
+        # --- プリセットコンテナ（折りたたみ、初期非表示） ---
+        self._preset_card = MaterialCard(
+            char_card, title="二次創作・プリセットキャラ一覧", variant="outlined",
+            collapsible=True, start_collapsed=True
+        )
+        self._preset_card.pack(fill="x", padx=16, pady=(0, 10))
+        self._preset_container = self._preset_card.content_frame
 
         # --- プリセットタブ構築 ---
         self._all_presets = []
@@ -8212,21 +10264,26 @@ class App(ctk.CTk):
         self._preset_card_frame = None
         self._build_preset_tab(self._preset_container)
 
-        # --- オリジナル作成タブ構築 ---
+        # --- オリジナルキャラ設定コンテナ（折りたたみ、初期非表示） ---
+        self._custom_card = MaterialCard(
+            char_card, title="オリジナルキャラ作成", variant="outlined",
+            collapsible=True, start_collapsed=True
+        )
+        self._custom_card.pack(fill="x", padx=16, pady=(0, 10))
+        self._custom_container = self._custom_card.content_frame
+
         self._selected_archetype = "ツンデレ"
         self._selected_hair_color = "黒髪"
         self._archetype_chips = {}
         self._hair_color_chips = {}
         self._build_custom_tab(self._custom_container)
 
-        # --- API生成セクション（カスタムコンテナ内） ---
-        self._build_api_section(self._custom_container)
+        # 内部変数（config保存/復元用、UIウィジェットなし）
+        self._work_title_val = ""
+        self._char_name_val = ""
 
         # ネストスクロール衝突防止
         self._setup_nested_scroll()
-
-        # 初期表示切替
-        self._on_work_type_changed()
 
         # --- 使用キャラ選択ウィジェット ---
         char_select_row = self._char_select_row
@@ -8238,7 +10295,7 @@ class App(ctk.CTk):
         self.char_select_combo = ctk.CTkOptionMenu(
             char_select_row, values=["（キャラ選択）"], height=36,
             font=ctk.CTkFont(size=14),
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
             button_color=MaterialColors.PRIMARY, dropdown_fg_color=MaterialColors.SURFACE,
             text_color=MaterialColors.ON_SURFACE,
             dropdown_text_color=MaterialColors.ON_SURFACE,
@@ -8251,7 +10308,7 @@ class App(ctk.CTk):
         # ══════════════════════════════════════════════════════════════
         # 4. 作品設定（メイン入力エリア）
         # ══════════════════════════════════════════════════════════════
-        concept_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=12)
+        concept_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=0, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT)
         concept_card.pack(fill="x", pady=(0, 16))
 
         icon_text_label(
@@ -8272,12 +10329,53 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=12), text_color=MaterialColors.ON_SURFACE_VARIANT
         ).pack(side="left", padx=(4, 0))
 
+        # --- コンセプトプリセット行 ---
+        preset_row = ctk.CTkFrame(concept_card, fg_color="transparent")
+        preset_row.pack(fill="x", padx=20, pady=(6, 0))
+        ctk.CTkLabel(
+            preset_row, text="プリセット:",
+            font=ctk.CTkFont(size=12), text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(side="left")
+        _cat_list = ["--"] + list(CONCEPT_PRESETS.keys())
+        self.concept_cat_menu = ctk.CTkOptionMenu(
+            preset_row, values=_cat_list, width=160, height=32,
+            font=ctk.CTkFont(size=13),
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
+            button_color=MaterialColors.PRIMARY,
+            dropdown_fg_color=MaterialColors.SURFACE,
+            text_color=MaterialColors.ON_SURFACE,
+            command=self._on_concept_category_changed,
+        )
+        self.concept_cat_menu.set("--")
+        self.concept_cat_menu.pack(side="left", padx=(6, 4))
+        self.concept_name_menu = ctk.CTkOptionMenu(
+            preset_row, values=["--"], width=200, height=32,
+            font=ctk.CTkFont(size=13),
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
+            button_color=MaterialColors.PRIMARY,
+            dropdown_fg_color=MaterialColors.SURFACE,
+            text_color=MaterialColors.ON_SURFACE,
+            command=self._on_concept_preset_selected,
+        )
+        self.concept_name_menu.set("--")
+        self.concept_name_menu.pack(side="left", padx=(0, 4))
+        self.concept_shuffle_btn = ctk.CTkButton(
+            preset_row, text="\U0001f3b2", width=32, height=32,
+            font=ctk.CTkFont(size=16),
+            fg_color=MaterialColors.SECONDARY_CONTAINER,
+            text_color=MaterialColors.ON_SECONDARY_CONTAINER,
+            hover_color=MaterialColors.PRIMARY, corner_radius=6,
+            command=self._on_concept_shuffle,
+        )
+        self.concept_shuffle_btn.pack(side="left")
+        self._last_concept_variation = ""
+
         self.concept_text = ctk.CTkTextbox(
             concept_card, height=120,
             font=ctk.CTkFont(size=16),
             fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
             text_color=MaterialColors.ON_SURFACE,
-            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE,
             wrap="word"
         )
         self.concept_text.pack(fill="x", padx=20, pady=(6, 12))
@@ -8301,7 +10399,8 @@ class App(ctk.CTk):
             height=34, font=ctk.CTkFont(size=15),
             fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
             text_color=MaterialColors.ON_SURFACE,
-            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
+            placeholder_text_color="#3D3D3D",
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE
         )
         _lbl_cfg = dict(font=ctk.CTkFont(size=12), text_color=MaterialColors.ON_SURFACE_VARIANT)
 
@@ -8353,16 +10452,246 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=16),
             fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
             text_color=MaterialColors.ON_SURFACE,
-            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE,
             wrap="word"
         )
         self.other_chars_text.pack(fill="x", padx=20, pady=(8, 16))
         self.other_chars_text.insert("1.0", "相手役の男性（顔なし）\nSD: 1boy, faceless_male")
 
+        # ── 男性キャラ設定 ──
+        male_char_frame = ctk.CTkFrame(concept_card, fg_color="transparent")
+        male_char_frame.pack(fill="x", padx=16, pady=(0, 4))
+        ctk.CTkLabel(male_char_frame, text="男性キャラ", font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold")).pack(anchor="w", padx=4)
+
+        male_row = ctk.CTkFrame(male_char_frame, fg_color="transparent")
+        male_row.pack(fill="x", padx=4, pady=(4, 0))
+
+        # プリセットドロップダウン
+        self.male_preset_combo = ctk.CTkOptionMenu(
+            male_row, values=list(MALE_PRESETS.keys()),
+            width=160, height=32,
+            font=ctk.CTkFont(family=FONT_JP, size=12),
+            command=self._on_male_preset_changed,
+        )
+        self.male_preset_combo.pack(side="left", padx=(0, 8))
+        self.male_preset_combo.set("おまかせ")
+
+        # カスタム入力フィールド
+        self.male_custom_field = ctk.CTkEntry(
+            male_row, placeholder_text="自由入力: はげた小太りの中年 等",
+            height=34, font=ctk.CTkFont(family=FONT_JP, size=13),
+            fg_color=MaterialColors.SURFACE_CONTAINER_LOWEST,
+            text_color=MaterialColors.ON_SURFACE,
+            placeholder_text_color="#3D3D3D",
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE,
+        )
+        self.male_custom_field.pack(side="left", fill="x", expand=True)
+
+        # 男性 髪型・髪色・肌色
+        male_detail_row = ctk.CTkFrame(male_char_frame, fg_color="transparent")
+        male_detail_row.pack(fill="x", padx=4, pady=(4, 0))
+
+        ctk.CTkLabel(male_detail_row, text="髪型", font=ctk.CTkFont(family=FONT_JP, size=12)).pack(side="left", padx=(0, 4))
+        self.male_hair_style_combo = ctk.CTkOptionMenu(
+            male_detail_row, values=list(MALE_HAIR_STYLE_OPTIONS.keys()),
+            width=100, height=32, font=ctk.CTkFont(family=FONT_JP, size=12),
+        )
+        self.male_hair_style_combo.pack(side="left", padx=(0, 12))
+        self.male_hair_style_combo.set("おまかせ")
+
+        ctk.CTkLabel(male_detail_row, text="髪色", font=ctk.CTkFont(family=FONT_JP, size=12)).pack(side="left", padx=(0, 4))
+        self.male_hair_color_combo = ctk.CTkOptionMenu(
+            male_detail_row, values=list(MALE_HAIR_COLOR_OPTIONS.keys()),
+            width=100, height=32, font=ctk.CTkFont(family=FONT_JP, size=12),
+        )
+        self.male_hair_color_combo.pack(side="left", padx=(0, 12))
+        self.male_hair_color_combo.set("おまかせ")
+
+        ctk.CTkLabel(male_detail_row, text="肌色", font=ctk.CTkFont(family=FONT_JP, size=12)).pack(side="left", padx=(0, 4))
+        self.male_skin_color_combo = ctk.CTkOptionMenu(
+            male_detail_row, values=list(MALE_SKIN_COLOR_OPTIONS.keys()),
+            width=100, height=32, font=ctk.CTkFont(family=FONT_JP, size=12),
+        )
+        self.male_skin_color_combo.pack(side="left", padx=(0, 0))
+        self.male_skin_color_combo.set("おまかせ")
+
+        # ── シーン環境 ──
+        env_frame = ctk.CTkFrame(concept_card, fg_color="transparent")
+        env_frame.pack(fill="x", padx=16, pady=(0, 8))
+        ctk.CTkLabel(env_frame, text="シーン環境", font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold")).pack(anchor="w", padx=4)
+
+        env_row = ctk.CTkFrame(env_frame, fg_color="transparent")
+        env_row.pack(fill="x", padx=4, pady=(4, 0))
+
+        # 時間帯
+        ctk.CTkLabel(env_row, text="時間帯", font=ctk.CTkFont(family=FONT_JP, size=12)).pack(side="left", padx=(0, 4))
+        self.time_of_day_combo = ctk.CTkOptionMenu(
+            env_row, values=list(TIME_OF_DAY_OPTIONS.keys()),
+            width=100, height=32,
+            font=ctk.CTkFont(family=FONT_JP, size=12),
+        )
+        self.time_of_day_combo.pack(side="left", padx=(0, 16))
+        self.time_of_day_combo.set("おまかせ")
+
+        # 場所タイプ
+        ctk.CTkLabel(env_row, text="場所", font=ctk.CTkFont(family=FONT_JP, size=12)).pack(side="left", padx=(0, 4))
+        self.location_type_combo = ctk.CTkOptionMenu(
+            env_row, values=list(LOCATION_TYPE_OPTIONS.keys()),
+            width=100, height=32,
+            font=ctk.CTkFont(family=FONT_JP, size=12),
+        )
+        self.location_type_combo.pack(side="left")
+        self.location_type_combo.set("おまかせ")
+
+        # ══════════════════════════════════════════════════════════════
+        # 4b. SDプロンプト設定（折りたたみ）
+        # ══════════════════════════════════════════════════════════════
+        sd_card = MaterialCard(
+            content, title="SDプロンプト設定", variant="outlined",
+            collapsible=True, start_collapsed=True
+        )
+        sd_card.pack(fill="x", pady=(0, 16))
+        sd_content = sd_card.content_frame
+
+        # --- クオリティタグ ---
+        ctk.CTkLabel(
+            sd_content, text="クオリティタグ",
+            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(anchor="w", pady=(0, 4))
+
+        quality_mode_row = ctk.CTkFrame(sd_content, fg_color="transparent")
+        quality_mode_row.pack(fill="x", pady=(0, 4))
+        self.sd_quality_mode_var = tk.StringVar(value="auto")
+        ctk.CTkRadioButton(
+            quality_mode_row, text="自動", variable=self.sd_quality_mode_var, value="auto",
+            font=ctk.CTkFont(family=FONT_JP, size=12),
+            command=self._on_sd_quality_mode_changed
+        ).pack(side="left", padx=(0, 16))
+        ctk.CTkRadioButton(
+            quality_mode_row, text="カスタム", variable=self.sd_quality_mode_var, value="manual",
+            font=ctk.CTkFont(family=FONT_JP, size=12),
+            command=self._on_sd_quality_mode_changed
+        ).pack(side="left")
+
+        self.sd_quality_custom_entry = ctk.CTkEntry(
+            sd_content, height=36,
+            font=ctk.CTkFont(size=13),
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+            placeholder_text="(masterpiece, best_quality:1.2)",
+            placeholder_text_color="#3D3D3D",
+            state="disabled"
+        )
+        self.sd_quality_custom_entry.pack(fill="x", pady=(0, 8))
+
+        # 区切り線
+        ctk.CTkFrame(sd_content, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", pady=8)
+
+        # --- プレフィックス ---
+        ctk.CTkLabel(
+            sd_content, text="プレフィックス（全シーン先頭に追加）",
+            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(anchor="w", pady=(0, 4))
+        self.sd_prefix_text = ctk.CTkTextbox(
+            sd_content, height=60,
+            font=ctk.CTkFont(size=13),
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+        )
+        self.sd_prefix_text.pack(fill="x", pady=(0, 8))
+
+        # --- サフィックス ---
+        ctk.CTkLabel(
+            sd_content, text="サフィックス（全シーン末尾に追加）",
+            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(anchor="w", pady=(0, 4))
+        self.sd_suffix_text = ctk.CTkTextbox(
+            sd_content, height=60,
+            font=ctk.CTkFont(size=13),
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+        )
+        self.sd_suffix_text.pack(fill="x", pady=(0, 8))
+
+        # 区切り線
+        ctk.CTkFrame(sd_content, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", pady=8)
+
+        # --- PNG Info 読み取り ---
+        ctk.CTkLabel(
+            sd_content, text="画像から読み取り",
+            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(anchor="w", pady=(0, 4))
+
+        # ドロップゾーン
+        self.png_drop_frame = ctk.CTkFrame(
+            sd_content, height=90,
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=8, border_width=2,
+            border_color=MaterialColors.OUTLINE_VARIANT,
+        )
+        self.png_drop_frame.pack(fill="x", pady=(0, 4))
+        self.png_drop_frame.pack_propagate(False)
+
+        drop_inner = ctk.CTkFrame(self.png_drop_frame, fg_color="transparent")
+        drop_inner.place(relx=0.5, rely=0.5, anchor="center")
+
+        self.png_drop_icon_label = ctk.CTkLabel(
+            drop_inner, text=Icons.IMAGE,
+            font=ctk.CTkFont(family=FONT_ICON, size=18),
+            text_color=MaterialColors.ON_SURFACE_VARIANT,
+        )
+        self.png_drop_icon_label.pack()
+        self.png_drop_hint_label = ctk.CTkLabel(
+            drop_inner,
+            text="ここに画像をドロップ、またはクリックして選択" if WINDND_AVAILABLE else "クリックして画像を選択",
+            font=ctk.CTkFont(family=FONT_JP, size=12),
+            text_color=MaterialColors.ON_SURFACE_VARIANT,
+        )
+        self.png_drop_hint_label.pack()
+        self.png_filename_label = ctk.CTkLabel(
+            drop_inner, text="",
+            font=ctk.CTkFont(family=FONT_JP, size=11),
+            text_color=MaterialColors.PRIMARY,
+        )
+        self.png_filename_label.pack()
+
+        # ドロップゾーン全体をクリック可能に
+        for w in (self.png_drop_frame, drop_inner, self.png_drop_icon_label, self.png_drop_hint_label, self.png_filename_label):
+            w.configure(cursor="hand2")
+            w.bind("<Button-1>", lambda e: self._on_png_info_load())
+
+        self.png_preview_text = ctk.CTkTextbox(
+            sd_content, height=80,
+            font=ctk.CTkFont(size=12),
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+            state="disabled"
+        )
+        self.png_preview_text.pack(fill="x", pady=(0, 4))
+
+        png_apply_row = ctk.CTkFrame(sd_content, fg_color="transparent")
+        png_apply_row.pack(fill="x", pady=(0, 4))
+        MaterialButton(
+            png_apply_row, text="プレフィックスに適用", variant="filled_tonal", size="small",
+            command=self._apply_png_to_prefix
+        ).pack(side="left", padx=(0, 8))
+        MaterialButton(
+            png_apply_row, text="サフィックスに適用", variant="filled_tonal", size="small",
+            command=self._apply_png_to_suffix
+        ).pack(side="left")
+
         # ══════════════════════════════════════════════════════════════
         # 5. 生成設定
         # ══════════════════════════════════════════════════════════════
-        settings_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=12)
+        settings_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=0, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT)
         settings_card.pack(fill="x", pady=(0, 16))
 
         icon_text_label(
@@ -8380,7 +10709,7 @@ class App(ctk.CTk):
         ctk.CTkLabel(scenes_frame, text="シーン数", font=ctk.CTkFont(size=13), text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
         self.scenes_entry = ctk.CTkEntry(
             scenes_frame, height=38, font=ctk.CTkFont(size=15),
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
             text_color=MaterialColors.ON_SURFACE,
             border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
         )
@@ -8394,7 +10723,7 @@ class App(ctk.CTk):
         self.theme_combo = ctk.CTkOptionMenu(
             theme_frame, values=list(THEME_OPTIONS.keys()), height=38,
             font=ctk.CTkFont(size=14),
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
             button_color=MaterialColors.PRIMARY, dropdown_fg_color=MaterialColors.SURFACE,
             text_color=MaterialColors.ON_SURFACE,
             dropdown_text_color=MaterialColors.ON_SURFACE
@@ -8411,12 +10740,13 @@ class App(ctk.CTk):
             settings_card, text="シーン数入力で予想コスト表示",
             font=ctk.CTkFont(size=12), text_color=MaterialColors.ON_SURFACE_VARIANT
         )
+        self._cost_preview_label = self.cost_preview_label  # プレゼンモード用参照
         self.cost_preview_label.pack(anchor="w", padx=20, pady=(4, 12))
 
         # ══════════════════════════════════════════════════════════════
         # 6. 生成セクション
         # ══════════════════════════════════════════════════════════════
-        generate_section = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=12,
+        generate_section = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=0,
                                         border_width=1, border_color=MaterialColors.PRIMARY)
         generate_section.pack(fill="x", pady=(0, 16))
 
@@ -8494,9 +10824,10 @@ class App(ctk.CTk):
         add_tooltip(self.export_btn, "別形式で再エクスポート")
 
         # ══════════════════════════════════════════════════════════════
-        # 7. コスト＆ログ
+        # 7. コスト＆ログ（プレゼン時は非表示）
         # ══════════════════════════════════════════════════════════════
-        cost_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=12)
+        cost_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=0, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT)
+        self._cost_card = cost_card  # プレゼンモード用参照
         cost_card.pack(fill="x", pady=(0, 16))
 
         icon_text_label(
@@ -8511,7 +10842,7 @@ class App(ctk.CTk):
         )
         self.cost_label.pack(anchor="w", padx=20, pady=(0, 12))
 
-        log_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=12)
+        log_card = ctk.CTkFrame(content, fg_color=MaterialColors.SURFACE_CONTAINER_LOW, corner_radius=0, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT)
         log_card.pack(fill="both", expand=True, pady=(0, 16))
 
         icon_text_label(
@@ -8545,6 +10876,88 @@ class App(ctk.CTk):
         self.concept_text.delete("1.0", "end")
         if value:
             self.concept_text.insert("1.0", value)
+
+    # --- コンセプトプリセットハンドラ ---
+    def _on_concept_category_changed(self, cat: str):
+        """カテゴリ変更→コンセプトドロップダウン更新"""
+        if cat == "--" or cat not in CONCEPT_PRESETS:
+            self.concept_name_menu.configure(values=["--"])
+            self.concept_name_menu.set("--")
+            return
+        names = list(CONCEPT_PRESETS[cat].keys())
+        self.concept_name_menu.configure(values=["--"] + names)
+        self.concept_name_menu.set("--")
+
+    def _on_concept_preset_selected(self, name: str):
+        """プリセット選択→テキスト挿入+テーマ自動設定"""
+        cat = self.concept_cat_menu.get()
+        if name == "--" or cat == "--":
+            return
+        preset = CONCEPT_PRESETS.get(cat, {}).get(name)
+        if not preset:
+            return
+        variation = random.choice(preset["variations"])
+        self._last_concept_variation = variation
+        self._set_concept_text(variation)
+        # テーマ自動設定
+        theme_key = preset.get("theme", "")
+        if theme_key and theme_key in _THEME_KEY_TO_JP:
+            self.theme_combo.set(_THEME_KEY_TO_JP[theme_key])
+
+    def _on_concept_shuffle(self):
+        """別バリエーション再抽選（同じものを避ける）"""
+        cat = self.concept_cat_menu.get()
+        name = self.concept_name_menu.get()
+        if cat == "--" or name == "--":
+            return
+        preset = CONCEPT_PRESETS.get(cat, {}).get(name)
+        if not preset:
+            return
+        variations = preset["variations"]
+        if len(variations) <= 1:
+            self._set_concept_text(variations[0])
+            return
+        candidates = [v for v in variations if v != self._last_concept_variation]
+        if not candidates:
+            candidates = variations
+        variation = random.choice(candidates)
+        self._last_concept_variation = variation
+        self._set_concept_text(variation)
+
+    def _on_male_preset_changed(self, value):
+        """男性プリセット選択時にカスタム入力をクリア"""
+        if value != "おまかせ":
+            self.male_custom_field.delete(0, "end")
+
+    def get_male_tags(self) -> str:
+        """現在のGUI状態から男性SDタグ文字列を返す"""
+        custom = self.male_custom_field.get().strip() if hasattr(self, 'male_custom_field') else ""
+        if custom:
+            base = parse_male_description(custom)
+        else:
+            preset_key = self.male_preset_combo.get() if hasattr(self, 'male_preset_combo') else "おまかせ"
+            base = MALE_PRESETS.get(preset_key, "")
+
+        # 髪型・髪色・肌色の追加タグ
+        extra = []
+        if hasattr(self, 'male_hair_style_combo'):
+            v = MALE_HAIR_STYLE_OPTIONS.get(self.male_hair_style_combo.get(), "")
+            if v:
+                extra.append(v)
+        if hasattr(self, 'male_hair_color_combo'):
+            v = MALE_HAIR_COLOR_OPTIONS.get(self.male_hair_color_combo.get(), "")
+            if v:
+                extra.append(v)
+        if hasattr(self, 'male_skin_color_combo'):
+            v = MALE_SKIN_COLOR_OPTIONS.get(self.male_skin_color_combo.get(), "")
+            if v:
+                extra.append(v)
+
+        if extra:
+            parts = [t.strip() for t in base.split(",") if t.strip()] if base else []
+            parts.extend(extra)
+            return ", ".join(parts)
+        return base
 
     def _set_characters_text(self, value: str):
         """登場人物テキストをパースして個別フィールドに設定"""
@@ -8663,9 +11076,7 @@ class App(ctk.CTk):
             self.scenes_entry.insert(0, str(self.config_data["num_scenes"]))
         if self.config_data.get("theme_jp"):
             self.theme_combo.set(self.config_data["theme_jp"])
-        if self.config_data.get("work_type"):
-            self.work_type_var.set(self.config_data["work_type"])
-            self._on_work_type_changed()
+        # work_type is always "二次創作" (original character creation removed)
         if self.config_data.get("story_structure"):
             ss = self.config_data["story_structure"]
             self.prologue_slider.set(ss.get("prologue", 10))
@@ -8675,8 +11086,152 @@ class App(ctk.CTk):
                 self.structure_preset.set(preset_name)
             self._update_structure_bar()
 
+        # 男性キャラ・シーン環境の復元
+        if "male_preset" in self.config_data and hasattr(self, 'male_preset_combo'):
+            self.male_preset_combo.set(self.config_data["male_preset"])
+        if "male_custom" in self.config_data and hasattr(self, 'male_custom_field'):
+            _mc = self.config_data["male_custom"]
+            if _mc:  # 値がある時だけ操作（空の場合はプレースホルダー維持）
+                self.male_custom_field.delete(0, "end")
+                self.male_custom_field.insert(0, _mc)
+        if "male_hair_style" in self.config_data and hasattr(self, 'male_hair_style_combo'):
+            self.male_hair_style_combo.set(self.config_data["male_hair_style"])
+        if "male_hair_color" in self.config_data and hasattr(self, 'male_hair_color_combo'):
+            self.male_hair_color_combo.set(self.config_data["male_hair_color"])
+        if "male_skin_color" in self.config_data and hasattr(self, 'male_skin_color_combo'):
+            self.male_skin_color_combo.set(self.config_data["male_skin_color"])
+        if "time_of_day" in self.config_data and hasattr(self, 'time_of_day_combo'):
+            self.time_of_day_combo.set(self.config_data["time_of_day"])
+        if "location_type" in self.config_data and hasattr(self, 'location_type_combo'):
+            self.location_type_combo.set(self.config_data["location_type"])
+
+        # SD設定の復元
+        if "sd_quality_mode" in self.config_data:
+            self.sd_quality_mode_var.set(self.config_data["sd_quality_mode"])
+            self._on_sd_quality_mode_changed()
+        if self.config_data.get("sd_quality_custom"):
+            self.sd_quality_custom_entry.configure(state="normal")
+            self.sd_quality_custom_entry.delete(0, "end")
+            self.sd_quality_custom_entry.insert(0, self.config_data["sd_quality_custom"])
+            if self.sd_quality_mode_var.get() == "auto":
+                self.sd_quality_custom_entry.configure(state="disabled")
+        if self.config_data.get("sd_prefix_tags"):
+            self.sd_prefix_text.delete("1.0", "end")
+            self.sd_prefix_text.insert("1.0", self.config_data["sd_prefix_tags"])
+        if self.config_data.get("sd_suffix_tags"):
+            self.sd_suffix_text.delete("1.0", "end")
+            self.sd_suffix_text.insert("1.0", self.config_data["sd_suffix_tags"])
+
         # 初期コスト予測を表示
         self.after(100, self.update_cost_preview)
+
+    # --- SDプロンプト設定コールバック ---
+    def _on_sd_quality_mode_changed(self):
+        """auto/manual切替でカスタム入力欄のstate変更"""
+        if self.sd_quality_mode_var.get() == "manual":
+            self.sd_quality_custom_entry.configure(state="normal")
+        else:
+            self.sd_quality_custom_entry.configure(state="disabled")
+
+    def _setup_png_drop(self):
+        """windndによるドラッグ&ドロップのフック（ウィンドウ表示後に呼ぶ）"""
+        if not WINDND_AVAILABLE:
+            return
+        try:
+            # force_unicode=True: DragQueryFileW使用でUnicode strを直接受け取る
+            # （デフォルトのANSI版だと日本語パスがCP932 bytesになり文字化けする）
+            windnd.hook_dropfiles(self.png_drop_frame, func=self._on_png_files_dropped, force_unicode=True)
+        except Exception as e:
+            log_message(f"ドラッグ&ドロップ初期化失敗: {e}")
+
+    def _on_png_files_dropped(self, file_list):
+        """windndからのドロップコールバック（force_unicode=Trueでstr型リスト）"""
+        _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff", ".tif")
+        for f in file_list:
+            # force_unicode=True → str型、万が一bytes時はシステムエンコーディングで復元
+            if isinstance(f, bytes):
+                import locale
+                for enc in (locale.getpreferredencoding(False), "utf-8"):
+                    try:
+                        path = f.decode(enc)
+                        break
+                    except (UnicodeDecodeError, LookupError):
+                        continue
+                else:
+                    path = f.decode("utf-8", errors="replace")
+            else:
+                path = str(f)
+            if path.lower().endswith(_IMAGE_EXTS):
+                self._load_png_info(path)
+                return
+        # 画像ファイルが見つからない場合
+        if hasattr(self, 'snackbar'):
+            self.snackbar.show("対応する画像ファイルが見つかりません", type="error")
+
+    def _on_png_info_load(self):
+        """ファイルダイアログから画像選択→パース→プレビュー表示"""
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            filetypes=[("画像ファイル", "*.png *.jpg *.jpeg *.webp"), ("PNG", "*.png"), ("JPEG", "*.jpg *.jpeg"), ("WebP", "*.webp"), ("全てのファイル", "*.*")]
+        )
+        if not path:
+            return
+        self._load_png_info(path)
+
+    def _load_png_info(self, path: str):
+        """画像ファイルからSD情報を読み取りプレビューに表示（共通処理）"""
+        result = parse_png_info(path)
+        filename = Path(path).name
+        self.png_filename_label.configure(text=filename)
+        # ドロップゾーンのヒントを更新
+        self.png_drop_hint_label.configure(
+            text="別の画像をドロップで差替え" if WINDND_AVAILABLE else "クリックで別の画像を選択"
+        )
+        self.png_preview_text.configure(state="normal")
+        self.png_preview_text.delete("1.0", "end")
+        if "error" in result:
+            self.png_preview_text.insert("1.0", result["error"])
+            self.png_drop_frame.configure(border_color="#B3261E")  # error red
+        else:
+            positive = result.get("positive", "")
+            # rawデータの先頭を診断ログに記録
+            raw = result.get("raw", "")
+            log_message(f"PNG Info positive[:{min(80,len(positive))}]: {repr(positive[:80])}")
+            if raw != positive:
+                log_message(f"PNG Info raw[:{min(80,len(raw))}]: {repr(raw[:80])}")
+            self.png_preview_text.insert("1.0", positive)
+            self.png_drop_frame.configure(border_color=MaterialColors.PRIMARY)  # success
+        self.png_preview_text.configure(state="disabled")
+
+    def _apply_png_to_prefix(self):
+        """プレビュー内容をプレフィックスに追記"""
+        self.png_preview_text.configure(state="normal")
+        content = self.png_preview_text.get("1.0", "end-1c").strip()
+        self.png_preview_text.configure(state="disabled")
+        if not content:
+            return
+        existing = self.sd_prefix_text.get("1.0", "end-1c").strip()
+        if existing:
+            self.sd_prefix_text.delete("1.0", "end")
+            self.sd_prefix_text.insert("1.0", f"{existing}, {content}")
+        else:
+            self.sd_prefix_text.delete("1.0", "end")
+            self.sd_prefix_text.insert("1.0", content)
+
+    def _apply_png_to_suffix(self):
+        """プレビュー内容をサフィックスに追記"""
+        self.png_preview_text.configure(state="normal")
+        content = self.png_preview_text.get("1.0", "end-1c").strip()
+        self.png_preview_text.configure(state="disabled")
+        if not content:
+            return
+        existing = self.sd_suffix_text.get("1.0", "end-1c").strip()
+        if existing:
+            self.sd_suffix_text.delete("1.0", "end")
+            self.sd_suffix_text.insert("1.0", f"{existing}, {content}")
+        else:
+            self.sd_suffix_text.delete("1.0", "end")
+            self.sd_suffix_text.insert("1.0", content)
 
     def update_cost_preview(self, event=None):
         """シーン数に基づいてコスト予測を更新"""
@@ -8713,7 +11268,7 @@ class App(ctk.CTk):
         self.structure_preset = ctk.CTkOptionMenu(
             header_row, values=list(STRUCTURE_PRESETS.keys()), height=30,
             font=ctk.CTkFont(size=12), width=200,
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
             button_color=MaterialColors.PRIMARY,
             dropdown_fg_color=MaterialColors.SURFACE,
             text_color=MaterialColors.ON_SURFACE,
@@ -8892,12 +11447,25 @@ class App(ctk.CTk):
             "num_scenes": int(self.scenes_entry.get() or "10"),
             "theme_jp": theme_jp,
             "theme": THEME_OPTIONS.get(theme_jp, ""),
-            "work_type": self.work_type_var.get(),
+            "work_type": "二次創作",
             "story_structure": {
                 "prologue": int(round(self.prologue_slider.get())),
                 "epilogue": int(round(self.epilogue_slider.get())),
                 "preset": self.structure_preset.get(),
             },
+            "concept_preset_category": self.concept_cat_menu.get(),
+            "concept_preset_name": self.concept_name_menu.get(),
+            "male_preset": self.male_preset_combo.get() if hasattr(self, 'male_preset_combo') else "おまかせ",
+            "male_custom": self.male_custom_field.get() if hasattr(self, 'male_custom_field') else "",
+            "male_hair_style": self.male_hair_style_combo.get() if hasattr(self, 'male_hair_style_combo') else "おまかせ",
+            "male_hair_color": self.male_hair_color_combo.get() if hasattr(self, 'male_hair_color_combo') else "おまかせ",
+            "male_skin_color": self.male_skin_color_combo.get() if hasattr(self, 'male_skin_color_combo') else "おまかせ",
+            "time_of_day": self.time_of_day_combo.get() if hasattr(self, 'time_of_day_combo') else "おまかせ",
+            "location_type": self.location_type_combo.get() if hasattr(self, 'location_type_combo') else "おまかせ",
+            "sd_quality_mode": self.sd_quality_mode_var.get() if hasattr(self, 'sd_quality_mode_var') else "auto",
+            "sd_quality_custom": self.sd_quality_custom_entry.get() if hasattr(self, 'sd_quality_custom_entry') else "",
+            "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
+            "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
         }
         save_config(self.config_data)
         self.snackbar.show("設定を保存しました", type="success")
@@ -8915,9 +11483,20 @@ class App(ctk.CTk):
             "num_scenes": int(self.scenes_entry.get() or "10"),
             "theme_jp": theme_jp,
             "theme": THEME_OPTIONS.get(theme_jp, ""),
-            "work_title": self.work_title_entry.get(),
-            "char_name": self.char_name_entry.get(),
-            "work_type": self.work_type_var.get(),
+            "work_title": self._work_title_val,
+            "char_name": self._char_name_val,
+            "work_type": "二次創作",
+            "male_preset": self.male_preset_combo.get() if hasattr(self, 'male_preset_combo') else "おまかせ",
+            "male_custom": self.male_custom_field.get() if hasattr(self, 'male_custom_field') else "",
+            "male_hair_style": self.male_hair_style_combo.get() if hasattr(self, 'male_hair_style_combo') else "おまかせ",
+            "male_hair_color": self.male_hair_color_combo.get() if hasattr(self, 'male_hair_color_combo') else "おまかせ",
+            "male_skin_color": self.male_skin_color_combo.get() if hasattr(self, 'male_skin_color_combo') else "おまかせ",
+            "time_of_day": self.time_of_day_combo.get() if hasattr(self, 'time_of_day_combo') else "おまかせ",
+            "location_type": self.location_type_combo.get() if hasattr(self, 'location_type_combo') else "おまかせ",
+            "sd_quality_mode": self.sd_quality_mode_var.get() if hasattr(self, 'sd_quality_mode_var') else "auto",
+            "sd_quality_custom": self.sd_quality_custom_entry.get() if hasattr(self, 'sd_quality_custom_entry') else "",
+            "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
+            "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
         }
 
     def apply_config(self, config: dict):
@@ -8940,14 +11519,9 @@ class App(ctk.CTk):
         if config.get("theme_jp"):
             self.theme_combo.set(config["theme_jp"])
         if config.get("work_title"):
-            self.work_title_entry.delete(0, "end")
-            self.work_title_entry.insert(0, config["work_title"])
+            self._work_title_val = config["work_title"]
         if config.get("char_name"):
-            self.char_name_entry.delete(0, "end")
-            self.char_name_entry.insert(0, config["char_name"])
-        if config.get("work_type"):
-            self.work_type_var.set(config["work_type"])
-            self._on_work_type_changed()
+            self._char_name_val = config["char_name"]
         if config.get("story_structure"):
             ss = config["story_structure"]
             self.prologue_slider.set(ss.get("prologue", 10))
@@ -8956,6 +11530,47 @@ class App(ctk.CTk):
             if preset_name in STRUCTURE_PRESETS:
                 self.structure_preset.set(preset_name)
             self._update_structure_bar()
+        # コンセプトプリセット復元
+        if config.get("concept_preset_category"):
+            cat = config["concept_preset_category"]
+            self.concept_cat_menu.set(cat)
+            self._on_concept_category_changed(cat)
+            if config.get("concept_preset_name"):
+                self.concept_name_menu.set(config["concept_preset_name"])
+        # 男性キャラ・シーン環境の復元
+        if "male_preset" in config and hasattr(self, 'male_preset_combo'):
+            self.male_preset_combo.set(config["male_preset"])
+        if "male_custom" in config and hasattr(self, 'male_custom_field'):
+            _mc = config["male_custom"]
+            if _mc:  # 値がある時だけ操作（空の場合はプレースホルダー維持）
+                self.male_custom_field.delete(0, "end")
+                self.male_custom_field.insert(0, _mc)
+        if "male_hair_style" in config and hasattr(self, 'male_hair_style_combo'):
+            self.male_hair_style_combo.set(config["male_hair_style"])
+        if "male_hair_color" in config and hasattr(self, 'male_hair_color_combo'):
+            self.male_hair_color_combo.set(config["male_hair_color"])
+        if "male_skin_color" in config and hasattr(self, 'male_skin_color_combo'):
+            self.male_skin_color_combo.set(config["male_skin_color"])
+        if "time_of_day" in config and hasattr(self, 'time_of_day_combo'):
+            self.time_of_day_combo.set(config["time_of_day"])
+        if "location_type" in config and hasattr(self, 'location_type_combo'):
+            self.location_type_combo.set(config["location_type"])
+        # SD設定の復元
+        if "sd_quality_mode" in config and hasattr(self, 'sd_quality_mode_var'):
+            self.sd_quality_mode_var.set(config["sd_quality_mode"])
+            self._on_sd_quality_mode_changed()
+        if config.get("sd_quality_custom") and hasattr(self, 'sd_quality_custom_entry'):
+            self.sd_quality_custom_entry.configure(state="normal")
+            self.sd_quality_custom_entry.delete(0, "end")
+            self.sd_quality_custom_entry.insert(0, config["sd_quality_custom"])
+            if self.sd_quality_mode_var.get() == "auto":
+                self.sd_quality_custom_entry.configure(state="disabled")
+        if config.get("sd_prefix_tags") and hasattr(self, 'sd_prefix_text'):
+            self.sd_prefix_text.delete("1.0", "end")
+            self.sd_prefix_text.insert("1.0", config["sd_prefix_tags"])
+        if config.get("sd_suffix_tags") and hasattr(self, 'sd_suffix_text'):
+            self.sd_suffix_text.delete("1.0", "end")
+            self.sd_suffix_text.insert("1.0", config["sd_suffix_tags"])
         self.update_cost_preview()
 
     def refresh_profile_list(self):
@@ -9270,9 +11885,54 @@ class App(ctk.CTk):
             if other_chars:
                 full_characters = f"{characters}\n\n【その他の登場人物】\n{other_chars}"
 
+            # v7.0: 男性設定・時間帯・場所タイプをGUIから取得
+            _male_tags = self.get_male_tags() if hasattr(self, 'get_male_tags') else ""
+            _time_of_day_jp = self.time_of_day_combo.get() if hasattr(self, 'time_of_day_combo') else "おまかせ"
+            _time_tags = TIME_OF_DAY_OPTIONS.get(_time_of_day_jp, "")
+            _location_jp = self.location_type_combo.get() if hasattr(self, 'location_type_combo') else "おまかせ"
+            _location_type = LOCATION_TYPE_OPTIONS.get(_location_jp, "")
+
+            # v7.3: 男性キャラの日本語説明を取得（LLMプロンプト用）
+            _male_desc_jp = ""
+            if hasattr(self, 'male_custom_field'):
+                _custom = self.male_custom_field.get().strip()
+                if _custom:
+                    _male_desc_jp = _custom
+            if not _male_desc_jp and hasattr(self, 'male_preset_combo'):
+                _preset_key = self.male_preset_combo.get()
+                if _preset_key != "おまかせ":
+                    _male_desc_jp = _preset_key
+            # 髪型・髪色・肌色の日本語を追記
+            _male_detail_parts = []
+            for _attr, _lbl in [
+                ('male_hair_style_combo', ''),
+                ('male_hair_color_combo', ''),
+                ('male_skin_color_combo', '肌:'),
+            ]:
+                if hasattr(self, _attr):
+                    _v = getattr(self, _attr).get()
+                    if _v and _v != "おまかせ" and _v != "普通":
+                        _male_detail_parts.append(f"{_lbl}{_v}")
+            if _male_detail_parts:
+                _detail = "、".join(_male_detail_parts)
+                _male_desc_jp = f"{_male_desc_jp}、{_detail}" if _male_desc_jp else _detail
+
+            # v7.4: SDプロンプト設定をGUIから取得
+            _sd_quality_mode = self.sd_quality_mode_var.get() if hasattr(self, 'sd_quality_mode_var') else "auto"
+            _sd_quality_custom = ""
+            if _sd_quality_mode == "manual" and hasattr(self, 'sd_quality_custom_entry'):
+                _sd_quality_custom = self.sd_quality_custom_entry.get().strip()
+            _sd_prefix = self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else ""
+            _sd_suffix = self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else ""
+
             results, cost_tracker, pipeline_metadata = generate_pipeline(
                 api_key, concept, full_characters, num_scenes, theme, callback,
-                story_structure=story_structure
+                story_structure=story_structure,
+                male_tags=_male_tags, time_tags=_time_tags, location_type=_location_type,
+                male_description=_male_desc_jp,
+                sd_quality_tags=_sd_quality_custom,
+                sd_prefix_tags=_sd_prefix,
+                sd_suffix_tags=_sd_suffix,
             )
 
             if self.stop_requested:
@@ -9290,7 +11950,9 @@ class App(ctk.CTk):
             export_csv(results, csv_path)
             export_json(results, json_path, metadata=pipeline_metadata)
             export_sd_prompts(results, sd_path)
-            export_wildcard(results, wc_path)
+            export_wildcard(results, wc_path,
+                           male_tags=_male_tags, time_tags=_time_tags,
+                           location_type=_location_type)
             export_dialogue_list(results, dlg_path)
 
             # Excel出力（openpyxlがある場合）
@@ -9391,6 +12053,33 @@ class App(ctk.CTk):
             # last_results が無い場合でもJSONインポートでエクスポート可能
             ExportDialog(self, [], metadata=meta)
 
+    def toggle_presentation_mode(self):
+        """Ctrl+Shift+P: APIキー・コスト表示を切替"""
+        self._presentation_mode = not self._presentation_mode
+        if self._presentation_mode:
+            self._api_card.pack_forget()
+            self._cost_card.pack_forget()
+            self._cost_preview_label.pack_forget()
+            self.snackbar.show("プレゼンモード ON（Ctrl+Shift+Pで解除）", type="info")
+        else:
+            # content フレームの先頭に再挿入
+            siblings = self._api_card.master.winfo_children()
+            self._api_card.pack(fill="x", pady=(0, 16), before=siblings[0] if siblings else None)
+            self._cost_card.pack(fill="x", pady=(0, 16))
+            self._cost_preview_label.pack(anchor="w", padx=20, pady=(4, 12))
+            self.snackbar.show("プレゼンモード OFF", type="info")
+
+    def _ensure_placeholders(self):
+        """CTkEntryのプレースホルダーが初期化後に確実に表示されるようにする"""
+        for entry in [
+            getattr(self, 'male_custom_field', None),
+        ]:
+            if entry is not None and not entry.get():
+                try:
+                    entry._activate_placeholder()
+                except Exception:
+                    pass
+
     def on_close(self):
         """ウィンドウ閉じ時の処理（生成中なら確認ダイアログ）"""
         if self.is_generating:
@@ -9485,10 +12174,10 @@ class App(ctk.CTk):
             label = f"【{p.get('work_title', p.get('work', ''))}】{p.get('character_name', p.get('name', ''))}"
             self._preset_map[label] = p
 
-        # Update title with count
+        # Update card title with count
         count = len(self._all_presets)
-        if hasattr(self, '_preset_title_label'):
-            self._preset_title_label.configure(text=f"プリセットキャラ（API不要・{count}体収録）")
+        if hasattr(self, '_preset_card'):
+            self._preset_card.title_label.configure(text=f"二次創作・プリセットキャラ一覧（{count}体収録）")
 
         # Show all characters immediately
         if hasattr(self, '_category_chips') and self._category_chips:
@@ -9502,72 +12191,10 @@ class App(ctk.CTk):
         """プリセット読み込み（後方互換）"""
         pass
 
-    def save_custom_character(self):
-        """オリジナルキャラクターを保存"""
-        name = self.custom_name_entry.get().strip()
-        if not name:
-            self.snackbar.show("キャラ名を入力してください", type="warning")
-            return
-
-        # shyness_levelの取得
-        shyness_level = int(round(self.shyness_slider.get()))
-
-        # その他の登場人物テキスト取得
-        other_chars = ""
-        if hasattr(self, "other_chars_text"):
-            other_chars = self.other_chars_text.get("1.0", "end-1c").strip()
-
-        bible = build_custom_character_data(
-            char_name=name,
-            age=self.custom_age_dd.get(),
-            relationship=self.custom_rel_dd.get(),
-            archetype=self._selected_archetype,
-            first_person=self.custom_first_person_dd.get(),
-            speech_style=self.custom_speech_dd.get(),
-            hair_color=self._selected_hair_color,
-            hair_style=self.custom_hair_style_dd.get(),
-            body_type=self.custom_body_dd.get(),
-            chest=self.custom_chest_dd.get(),
-            clothing=self.custom_clothing_dd.get(),
-            shyness_level=shyness_level,
-            custom_traits=self.custom_traits_entry.get().strip(),
-            other_characters=other_chars,
-        )
-
-        # char_id生成＆保存
-        char_id = generate_char_id("オリジナル", name)
-        bible_path = CHARACTERS_DIR / f"{char_id}.json"
-        skill_path = CHAR_SKILLS_DIR / f"{char_id}.skill.md"
-
-        with open(bible_path, "w", encoding="utf-8") as f:
-            json.dump(bible, f, ensure_ascii=False, indent=2)
-
-        skill_content = generate_character_skill(char_id, bible)
-        with open(skill_path, "w", encoding="utf-8") as f:
-            f.write(skill_content)
-
-        self.refresh_char_list()
-        self.log(f"[OK]オリジナルキャラ保存: {name} ({self._selected_archetype})")
-        self.log(f"   性格: {bible['personality_core']['brief_description']}")
-        self.log(f"   一人称: {bible['speech_pattern']['first_person']} / 口調: {self.custom_speech_dd.get()}")
-        self.log(f"   外見: {bible['physical_description']['hair']}")
-        self.snackbar.show(f"{name}を保存しました（API未使用）", type="success")
-
     # ======== Preset Tab Methods ========
 
     def _build_preset_tab(self, parent):
         """プリセットタブUIを構築"""
-        # Title with dynamic count
-        title_row = ctk.CTkFrame(parent, fg_color="transparent")
-        title_row.pack(fill="x", padx=16, pady=(12, 8))
-
-        self._preset_title_label = ctk.CTkLabel(
-            title_row, text="プリセットキャラ（API不要・0体収録）",
-            font=ctk.CTkFont(family=FONT_JP, size=16, weight="bold"),
-            text_color=MaterialColors.ON_SURFACE
-        )
-        self._preset_title_label.pack(side="left")
-
         # Category chip row
         chip_frame = ctk.CTkFrame(parent, fg_color="transparent")
         chip_frame.pack(fill="x", padx=16, pady=(0, 8))
@@ -9700,7 +12327,8 @@ class App(ctk.CTk):
         card = ctk.CTkFrame(
             self._preset_card_frame,
             fg_color=MaterialColors.SURFACE_CONTAINER_LOW,
-            corner_radius=10, height=56
+            corner_radius=0, height=56,
+            border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
         )
         card.pack(fill="x", pady=(0, 6), padx=12)
         card.pack_propagate(False)
@@ -9719,7 +12347,7 @@ class App(ctk.CTk):
         }
         accent = cat_colors.get(category, MaterialColors.PRIMARY)
 
-        accent_bar = ctk.CTkFrame(card, fg_color=accent, width=4, corner_radius=2)
+        accent_bar = ctk.CTkFrame(card, fg_color=accent, width=4, corner_radius=0)
         accent_bar.pack(side="left", fill="y", padx=(0, 0), pady=6)
 
         # Name (bold)
@@ -9944,66 +12572,6 @@ class App(ctk.CTk):
 
         self.bind_all("<MouseWheel>", _on_mousewheel)
 
-    def _on_work_type_changed(self):
-        """ラジオボタン切替で表示コンテナを切替"""
-        is_preset = self.work_type_var.get() == "二次創作"
-        if is_preset:
-            self._custom_container.pack_forget()
-            self._preset_container.pack(fill="x", padx=16, pady=(0, 10),
-                                        before=self._char_select_row)
-        else:
-            self._preset_container.pack_forget()
-            self._custom_container.pack(fill="x", padx=16, pady=(0, 10),
-                                        before=self._char_select_row)
-
-    def _build_api_section(self, parent):
-        """API生成セクションを構築（カスタムコンテナ内）"""
-        api_card = MaterialCard(parent, title="API キャラ生成", variant="outlined")
-        api_card.pack(fill="x", padx=12, pady=(12, 12))
-
-        api_inner = ctk.CTkFrame(api_card, fg_color="transparent")
-        api_inner.pack(fill="x", padx=20, pady=(0, 16))
-
-        ctk.CTkLabel(
-            api_inner, text="Claude APIでキャラクター分析（Sonnet使用）",
-            font=ctk.CTkFont(size=14),
-            text_color=MaterialColors.ON_SURFACE_VARIANT
-        ).pack(anchor="w", pady=(0, 4))
-
-        api_char_row = ctk.CTkFrame(api_inner, fg_color="transparent")
-        api_char_row.pack(fill="x", pady=(0, 8))
-
-        work_frame = ctk.CTkFrame(api_char_row, fg_color="transparent")
-        work_frame.pack(side="left", fill="x", expand=True, padx=(0, 8))
-        ctk.CTkLabel(work_frame, text="作品名", font=ctk.CTkFont(size=13),
-                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
-        self.work_title_entry = ctk.CTkEntry(
-            work_frame, height=38, placeholder_text="例: 五等分の花嫁",
-            font=ctk.CTkFont(size=15), fg_color=MaterialColors.SURFACE_CONTAINER,
-            text_color=MaterialColors.ON_SURFACE,
-            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
-        )
-        self.work_title_entry.pack(fill="x", pady=(3, 0))
-
-        char_name_frame = ctk.CTkFrame(api_char_row, fg_color="transparent")
-        char_name_frame.pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(char_name_frame, text="キャラ名", font=ctk.CTkFont(size=13),
-                    text_color=MaterialColors.ON_SURFACE_VARIANT).pack(anchor="w")
-        self.char_name_entry = ctk.CTkEntry(
-            char_name_frame, height=38, placeholder_text="例: 中野一花",
-            font=ctk.CTkFont(size=15), fg_color=MaterialColors.SURFACE_CONTAINER,
-            text_color=MaterialColors.ON_SURFACE,
-            corner_radius=6, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
-        )
-        self.char_name_entry.pack(fill="x", pady=(3, 0))
-
-        self.char_generate_btn = ctk.CTkButton(
-            api_inner, text="キャラ生成（API使用）", height=36,
-            font=ctk.CTkFont(size=14, weight="bold"), corner_radius=6,
-            fg_color=MaterialColors.PRIMARY, hover_color=MaterialColors.PRIMARY_VARIANT,
-            command=self.start_char_generation
-        )
-        self.char_generate_btn.pack(anchor="w", pady=(0, 8))
 
     def _load_preset_direct(self, preset_info):
         """ワンクリックでプリセット読み込み"""
@@ -10013,16 +12581,64 @@ class App(ctk.CTk):
             self.refresh_char_list()
             name = bible.get("character_name", char_id)
             work = preset_info.get("work_title", "")
-            # Also populate work/char fields in API tab
-            self.work_title_entry.delete(0, "end")
-            self.work_title_entry.insert(0, work)
-            self.char_name_entry.delete(0, "end")
-            self.char_name_entry.insert(0, name)
+            self._work_title_val = work
+            self._char_name_val = name
             self.snackbar.show(f"{name}を読み込みました", type="success")
         except Exception as e:
             self.snackbar.show(f"読み込みエラー: {e}", type="error")
 
     # ======== Custom Character Tab Methods ========
+
+    def save_custom_character(self):
+        """オリジナルキャラクターを保存"""
+        name = self.custom_name_entry.get().strip()
+        if not name:
+            self.snackbar.show("キャラ名を入力してください", type="warning")
+            return
+
+        # shyness_levelの取得
+        shyness_level = int(round(self.shyness_slider.get()))
+
+        # その他の登場人物テキスト取得
+        other_chars = ""
+        if hasattr(self, "other_chars_text"):
+            other_chars = self.other_chars_text.get("1.0", "end-1c").strip()
+
+        bible = build_custom_character_data(
+            char_name=name,
+            age=self.custom_age_dd.get(),
+            relationship=self.custom_rel_dd.get(),
+            archetype=self._selected_archetype,
+            first_person=self.custom_first_person_dd.get(),
+            speech_style=self.custom_speech_dd.get(),
+            hair_color=self._selected_hair_color,
+            hair_style=self.custom_hair_style_dd.get(),
+            body_type=self.custom_body_dd.get(),
+            chest=self.custom_chest_dd.get(),
+            clothing=self.custom_clothing_dd.get(),
+            shyness_level=shyness_level,
+            custom_traits=self.custom_traits_entry.get().strip(),
+            other_characters=other_chars,
+        )
+
+        # char_id生成＆保存
+        char_id = generate_char_id("オリジナル", name)
+        bible_path = CHARACTERS_DIR / f"{char_id}.json"
+        skill_path = CHAR_SKILLS_DIR / f"{char_id}.skill.md"
+
+        with open(bible_path, "w", encoding="utf-8") as f:
+            json.dump(bible, f, ensure_ascii=False, indent=2)
+
+        skill_content = generate_character_skill(char_id, bible)
+        with open(skill_path, "w", encoding="utf-8") as f:
+            f.write(skill_content)
+
+        self.refresh_char_list()
+        self.log(f"[OK]オリジナルキャラ保存: {name} ({self._selected_archetype})")
+        self.log(f"   性格: {bible['personality_core']['brief_description']}")
+        self.log(f"   一人称: {bible['speech_pattern']['first_person']} / 口調: {self.custom_speech_dd.get()}")
+        self.log(f"   外見: {bible['physical_description']['hair']}")
+        self.snackbar.show(f"{name}を保存しました（API未使用）", type="success")
 
     def _build_custom_tab(self, parent):
         """オリジナル作成タブUIを構築"""
@@ -10047,7 +12663,7 @@ class App(ctk.CTk):
                 dd.set(default)
             return dd
 
-        # === Template Quick Start (20種) ===
+        # === Template Quick Start (32種) ===
         tmpl_label = ctk.CTkLabel(custom_scroll, text="テンプレート（ワンクリック雛形）— FANZA売れ筋32種",
                     font=ctk.CTkFont(family=FONT_JP, size=14, weight="bold"),
                     text_color=MaterialColors.PRIMARY)
@@ -10208,8 +12824,9 @@ class App(ctk.CTk):
         self.custom_name_entry = ctk.CTkEntry(
             bc, height=36, placeholder_text="例: 佐藤花子",
             font=ctk.CTkFont(family=FONT_JP, size=15), width=350,
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
             text_color=MaterialColors.ON_SURFACE,
+            placeholder_text_color="#3D3D3D",
             border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
         )
         self.custom_name_entry.pack(anchor="w", pady=(2, 0))
@@ -10315,8 +12932,9 @@ class App(ctk.CTk):
         self.custom_traits_entry = ctk.CTkEntry(
             xc, height=36, placeholder_text="例: 読書好き、猫が好き",
             font=ctk.CTkFont(family=FONT_JP, size=14), width=350,
-            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=6,
+            fg_color=MaterialColors.SURFACE_CONTAINER, corner_radius=4,
             text_color=MaterialColors.ON_SURFACE,
+            placeholder_text_color="#3D3D3D",
             border_width=1, border_color=MaterialColors.OUTLINE_VARIANT
         )
         self.custom_traits_entry.pack(anchor="w", pady=(2, 0))
@@ -10426,78 +13044,6 @@ class App(ctk.CTk):
 
         self._update_custom_preview()
         self.snackbar.show(f"テンプレート「{template_name}」を適用", type="info")
-
-    def start_char_generation(self):
-        """キャラクター生成開始"""
-        if self.is_generating:
-            self.snackbar.show("生成中です", type="warning")
-            return
-
-        api_key = self.api_field.get().strip()
-
-        work_title = self.work_title_entry.get().strip()
-        char_name = self.char_name_entry.get().strip()
-
-        if not api_key:
-            self.snackbar.show("Anthropic APIキーを入力してください", type="error")
-            return
-        if not work_title:
-            self.snackbar.show("作品名を入力してください", type="error")
-            return
-        if not char_name:
-            self.snackbar.show("キャラクター名を入力してください", type="error")
-            return
-
-        self.is_generating = True
-        self.char_generate_btn.configure(state="disabled", text="生成中...")
-        self.progress.set(0)
-
-        thread = threading.Thread(
-            target=self.run_char_generation,
-            args=(api_key, work_title, char_name),
-            daemon=True
-        )
-        thread.start()
-
-    def run_char_generation(self, api_key: str, work_title: str, char_name: str):
-        """キャラクター生成スレッド"""
-        try:
-            def callback(msg):
-                self.after(0, lambda: self.update_status(msg))
-
-            bible, char_id, cost_tracker = build_character(
-                api_key, work_title, char_name,
-                force_refresh=False,
-                callback=callback,
-            )
-
-            self.after(0, lambda: self.on_char_complete(bible, char_id, cost_tracker))
-
-        except Exception as e:
-            self.after(0, lambda: self.on_char_error(str(e)))
-
-    def on_char_complete(self, bible: dict, char_id: str, cost_tracker: CostTracker):
-        """キャラ生成完了"""
-        self.is_generating = False
-        self.char_generate_btn.configure(state="normal", text="キャラ生成")
-        self.progress.set(1)
-
-        self.cost_label.configure(text=cost_tracker.summary())
-        self.update_status(f"[OK]キャラ生成完了: {char_id}")
-        self.log(f"[FILE]Bible: characters/{char_id}.json")
-        self.log(f"[FILE]Skill: skills/characters/{char_id}.skill.md")
-        self.snackbar.show(f"{bible.get('character_name', '')} 生成完了!", type="success")
-
-        # キャラ一覧を更新
-        self.refresh_char_list()
-
-    def on_char_error(self, error: str):
-        """キャラ生成エラー"""
-        self.is_generating = False
-        self.char_generate_btn.configure(state="normal", text="キャラ生成")
-        self.progress.set(0)
-        self.update_status(f"[ERROR]エラー: {error}")
-        self.snackbar.show(f"エラー: {error[:50]}", type="error")
 
 
 if __name__ == "__main__":

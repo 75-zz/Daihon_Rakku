@@ -1,5 +1,209 @@
 # Changelog
 
+## [7.4.0] - 2026-02-18
+
+### Added (SDプロンプト設定セクション + PNG Info読み取り)
+
+#### SDプロンプト設定UI
+- **折り畳みMaterialCard**: 「SDプロンプト設定」セクション新設（デフォルト折り畳み）
+- **クオリティタグモード切替**: 自動（`(masterpiece, best_quality:1.2)`）/ カスタム入力のラジオボタン
+- **プレフィックス/サフィックスタグ**: 全シーン先頭/末尾に追加されるカスタムタグ入力欄
+  - LoRAタグ `<lora:model:0.7>` 等はdeduplicateをバイパス（壊れ防止）
+- **設定永続化**: sd_quality_mode/sd_quality_custom/sd_prefix_tags/sd_suffix_tags の4キーを保存・復元
+
+#### PNG Info読み取り（マルチフォーマット対応）
+- **SD WebUI形式のメタデータ抽出**: PNG tEXt / JPEG EXIF UserComment / WebP EXIF対応
+- **6段階抽出パイプライン**: PNG tEXt → EXIF sub-IFD → raw EXIF bytes → JPEG COM → img.info → ファイルバイトスキャン
+- **piexif/Pillow互換**: `UNICODE\x00` + UTF-16-LE / latin-1誤デコード / 複数エンコーディング自動判定
+- **抽出結果プレビュー**: 読み取り専用テキストボックスでプロンプト表示
+- **適用ボタン**: 「プレフィックスに適用」「サフィックスに適用」で即座に反映
+
+#### ドラッグ&ドロップ対応
+- **windnd統合**: PNG/JPEG/WebP画像をドロップゾーンにD&Dで読み込み
+- **ドロップゾーンUI**: アイコン+ヒントテキスト+クリックでファイル選択にも対応
+- **日本語パス対応**: `force_unicode=True`でUnicodeパスを正しく処理
+- **ビジュアルフィードバック**: 読み取り成功/失敗でボーダー色変化
+
+### Changed
+- `enhance_sd_prompts()`: sd_quality_tags/sd_prefix_tags/sd_suffix_tags 3パラメータ追加
+- `generate_pipeline()`: 同3パラメータを転送
+- PIL/windnd条件付きimport追加（未インストール時もクラッシュしない）
+
+---
+
+## [7.3.0] - 2026-02-18
+
+### Added (ローカルプール生成 + セリフ品質根本修正)
+
+#### character_pool_generator.py（新規）
+- **ローカルキャラ固有プール生成**: API不要・即座に生成
+- `detect_personality_type()`: 9性格タイプ自動判定
+- `generate_moan_pool()`: MOAN_POOLからスコアリング+shyness補正で8個×5intensity選出
+- `generate_speech_pool()`: 性格×フェーズの2Dマトリクス重み付きサンプリング+一人称置換+語尾適応
+- `generate_thought_pool()`: 同様ロジック（語尾適応なし）
+
+#### batch_generate_pools.py（新規）
+- 255体一括プール生成CLI（--dry-run/--force/--char）
+- 255体を1.8秒で生成（API版: $10 → ローカル: $0）
+
+#### 男性セリフ観察型修正
+- SPEECH_MALE_POOL dirty/praise「～だな」観察パターン除去→命令/挑発型に
+- system prompt: 「身体観察」→「挑発」に変更、男性セリフ観察実況禁止ルール追加
+- auto_fix Step 9a: _MALE_OBSERVATION_PATTERNS辞書+正規表現で自動置換
+- validate_script: 男性観察型セリフ検出追加
+
+#### thought部位ラベル冒頭修正
+- THOUGHT_POOL body_awareness/general: 「太もも…」「膝…」等→感覚主語に全面書換
+- auto_fix Step 9b: _BODY_PART_RE正規表現で25部位×「…」冒頭パターン自動置換
+- validate_script: thought部位ラベル冒頭検出追加
+
+### Changed
+- gui.py: upgrade_character_pool_api()でspeech+thoughtのみAPI補正（moan維持）
+- gui.py: load_preset_character()でプリセットプールコピー or ローカルオンザフライ生成
+- cg_bubble_writer.skill.md: パターンE（部位ラベル冒頭禁止）追加
+- 255体プール再生成完了（body-part-first 0件確認済み）
+
+---
+
+## [7.2.0] - 2026-02-17
+
+### Added (キャラ固有セリフプール + フェーズ別セリフDB)
+
+#### SCENE_PHASE_SPEECH_MAP新設（ero_dialogue_pool.py）
+- 6フェーズ×5タイプ = 338エントリー
+- intro(38)/approach(41)/foreplay(70)/penetration(73)/climax(76)/afterglow(40)
+- 各フェーズにspeech/thought/male/moan/onomatopoeia
+
+#### infer_phase()
+- intensity+scene位置→フェーズ自動推定
+- i1=intro / i2=approach / i3=foreplay|penetration / i4=penetration|climax / i5=climax|afterglow
+
+#### generate_character_pool()
+- キャラプロファイルからAPI 1回で専用セリフプール生成
+- moan i1-5×8個 + speech 6phase×5個 + thought 6phase×5個 = ~100個/キャラ
+- 保存先: characters/{char_id}_pool.json / Sonnet使用 / ~$0.03-0.05/キャラ
+
+### Changed
+- get_speech_pool(): phase引数追加（後方互換維持）
+- build_character() Step 4追加: キャラ生成時に自動でプール生成+JSON保存
+- auto_fix_script連携: Step 8a/8b/9/10でキャラプール優先混合
+- _deduplicate_across_scenes連携: moan/thought/speechでキャラプール優先混合
+- generate_scene_draft連携: common_systemにキャラ固有セリフ例をfew-shotとして注入
+- shorten_male_speech除去（ユーザー指示）
+
+---
+
+## [7.1.0] - 2026-02-17
+
+### Fixed (口調・セリフ精度向上)
+
+#### MOAN_POOL不自然子音修正（46エントリー）
+- i1: 12件 / i2: 15件 / i3: 6件 / i4: 5件 / i5: 5件
+- 不自然子音組み合わせ（ひふ/くふ/はく/やふっ/ぐひっ等）→自然な喘ぎに置換
+
+#### セリフプール修正
+- THOUGHT_POOL長文修正: 6件20文字超→短縮
+- SPEECH_FEMALE_POOL修正: 4エントリー短縮
+- SPEECH_MALE_POOL修正: doctor 19文字→15文字
+- THOUGHT_POOL guilt/resignation差別化: guilt=自責系、resignation=諦め系
+
+### Changed
+- _UNNATURAL_REPLACEMENTS +17パターン（書き言葉→話し言葉変換）
+- _HIRAGANA_MAP +4パターン（嫌い/遅い/重い/狭い）
+- validate_script +3新チェック: intensity不一致/語尾パターン3連続/thought20文字超
+- auto_fix_script Step20追加: intensity不一致自動修正
+
+---
+
+## [7.0.0] - 2026-02-17
+
+### Added (セリフ・プロンプト大幅拡張)
+
+#### ero_dialogue_pool.py v7.0（4259→4782行 / 合計4400+エントリー）
+- SPEECH_FEMALE_POOL 29→36カテゴリ / 835→990エントリー
+  - +oral_react/afterglow/teasing/size_react/anger/praise_react/bondage_react
+- THOUGHT_POOL 21→27カテゴリ / 591→701エントリー
+  - +pleasure_denial/addiction/rage/resignation/confusion/guilt
+- SPEECH_MALE_POOL 16→20カテゴリ / 400→480エントリー
+  - +teacher/yakuza/classmate/stepfather
+- ONOMATOPOEIA_POOL 12→17カテゴリ / 138→185+
+  - +anal/throat/vibrator/dripping/breathing
+- NEUTRAL_POOL 50→75 / AFTERMATH_POOL 50→75 / MALE_SHORT_REPLACEMENTS 30→50
+
+#### ルーティング拡張
+- bondage/stepfather/teacher/yakuza/classmate用speech+thought+male分岐追加
+- forced→rage+pleasure_denial+resignation統合 / sibling→guilt統合 / corruption→addiction統合
+
+### Changed
+- _UNNATURAL_REPLACEMENTS +25パターン（拘束/義父/フェラ/小説的表現/硬い接続詞）
+- _HIRAGANA_MAP +11エントリー（痛い/苦しい/太い/硬い/壊れる等）
+- _INTENSITY_EXPRESSION_MAP intensity1-2追加 + 4-5に新タグ
+- CLOTHING_ESCALATION拡張 / FLUID_PROGRESSION拡張 / _CONTRADICTORY_PAIRS +5ペア
+
+---
+
+## [6.0.0] - 2026-02-16
+
+### Added (ユニバーサルテーマ拡張)
+
+#### テーマ自動推定エンジン
+- `_infer_theme_from_concept()`: THEME_KEYWORD_MAP 30テーマ×キーワードで自動推定
+- `_build_dynamic_theme_guide()`: テーマ未マッチ時も最低限のガイド生成
+- generate_pipeline()統合: テーマ未指定時→自動推定→動的フォールバックの3段階
+
+#### THEME_OPTIONS 17→31（+14テーマUI）
+- isekai/onsen/sleep/gangbang/medical/swimsuit/sports/idol/neighbor/prostitution/voyeur/tentacle/reverse_rape/cosplay
+
+#### THEME_GUIDES 16→30（+14テーマ設定）
+- 各テーマにintensity_curve/foreplay_ratio/intro_ratio/sd_tags等
+
+#### ero_dialogue_pool.py v6.0（4236→5276+行 / 合計3500+エントリー）
+- STORY_PATTERN_LIBRARY 31→46パターン / 690 key_lines
+- SPEECH_FEMALE_POOL +7カテゴリ / THOUGHT_POOL +3カテゴリ / SPEECH_MALE_POOL +4カテゴリ
+- ルーティング拡張: isekai/onsen/sleep/gangbang/medical/idol用分岐追加
+
+---
+
+## [5.0.0] - 2026-02-16
+
+### Fixed (50シーン品質崩壊の根本修正 + 痴漢/公共テーマ完全対応)
+
+#### 7根本原因修正
+- ascending curve空文字 / chikan foreplay_ratio / 男性セリフ反復 / title品質 / location多様性 / プール不足 / 50シーンプロンプト
+
+#### ero_dialogue_pool.py v5.0（3162→4236行 / 合計3000+エントリー）
+- STORY_PATTERN_LIBRARY +3パターン（public_molestation/toilet_trap/stranger_assault）
+- SPEECH_MALE_POOL +3カテゴリ（chikan/taunt/public）
+- SPEECH_FEMALE_POOL +1カテゴリ（chikan）
+- THOUGHT_POOL +2カテゴリ（public_shame/chikan_resistance）
+
+### Changed
+- chikan intensity_curve ascending→wave / foreplay_ratio 0.10→0.20
+- validate_script: title品質チェック + 男性セリフ末尾反復チェック
+- auto_fix: pool男性修正 / ハードコード代替 / title修正 / description混入修正
+- long_script_section: 25+シーン用mini-arc/i4連続上限5/男性セリフ多様性
+
+---
+
+## [4.0.0] - 2026-02-15
+
+### Added (ストーリー＆セリフ回しパターン大幅拡充)
+
+#### ero_dialogue_pool.py v4.0（2472→3162行 / 合計2800+エントリー）
+- STORY_PATTERN_LIBRARY 16→28パターン（+12新パターン）
+- SPEECH_FEMALE_POOL 21カテゴリ/645エントリー
+- THOUGHT_POOL 16カテゴリ/491エントリー
+- SPEECH_MALE_POOL 9カテゴリ/255エントリー
+- ONOMATOPOEIA_POOL 12カテゴリ/138エントリー
+
+#### ルーティング拡張
+- 調教/SM/近親/義妹/アナル専用ルート追加
+
+### Changed
+- MOAN_POOL intensity4補完
+
+---
+
 ## [3.9.0] - 2026-02-15
 
 ### Added (ストーリーパターン学習データ + Wild Cardエクスポート)
