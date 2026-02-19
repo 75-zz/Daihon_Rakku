@@ -14,8 +14,9 @@ import random
 import threading
 from datetime import datetime
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import tkinter as tk
 import customtkinter as ctk
@@ -200,6 +201,9 @@ MAX_RETRIES = 3
 MAX_RETRIES_OVERLOADED = 6  # 529 Overloaded専用（長時間待機）
 RETRY_DELAY = 2
 RETRY_DELAY_OVERLOADED = 15  # 529 Overloaded初回待機秒数
+CONCURRENT_BATCH_SIZE = 5       # Wave内同時生成数
+CONCURRENT_MIN_SCENES = 13      # 並列化の最小シーン数
+CONCURRENT_WAVE_COOLDOWN = 2.0  # Wave間クールダウン(秒)
 OUTPUT_DIR = Path(__file__).parent
 SKILLS_DIR = OUTPUT_DIR / "skills"
 JAILBREAK_FILE = OUTPUT_DIR / "jailbreak.md"
@@ -1091,6 +1095,7 @@ def _build_dynamic_theme_guide(concept: str) -> dict:
 DEFAULT_NEGATIVE_PROMPT = "worst_quality, low_quality, lowres, bad_anatomy, bad_hands, missing_fingers, extra_fingers, mutated_hands, poorly_drawn_face, ugly, deformed, blurry, text, watermark, signature, censored, mosaic_censoring, loli, shota, child"
 
 QUALITY_POSITIVE_TAGS = "(masterpiece, best_quality:1.2)"
+QUALITY_TAGS_DISABLED = "__DISABLED__"  # カスタムモードで空欄→quality tags無し
 
 # 体位タグリスト（体位重複防止システム用）
 POSITION_TAGS = {
@@ -1682,16 +1687,39 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
     for sid, text in all_moan_texts:
         moan_map.setdefault(text, []).append(sid)
     repeated_moans = {t: sids for t, sids in moan_map.items() if len(sids) > 1}
-    # 類似喘ぎ検出（正規化後の先頭3文字一致）
-    moan_normalized = [(sid, text, _normalize_bubble_text(text)) for sid, text in all_moan_texts]
-    for i in range(len(moan_normalized)):
-        for j in range(i + 1, len(moan_normalized)):
-            s1, t1, n1 = moan_normalized[i]
-            s2, t2, n2 = moan_normalized[j]
-            if t1 != t2 and s1 != s2 and _is_similar_bubble(t1, t2):
-                key = f"{t1}≈{t2}"
-                if key not in repeated_moans:
-                    repeated_moans[key] = [s1, s2]
+    # 類似喘ぎ検出（正規化ハッシュ + 先頭4文字バケット → O(n)）
+    moan_norm_map = {}  # normalized_text -> [(sid, original_text)]
+    moan_prefix_map = {}  # prefix4 -> [(sid, original_text)]
+    for sid, text in all_moan_texts:
+        norm = _normalize_bubble_text(text)
+        moan_norm_map.setdefault(norm, []).append((sid, text))
+        if len(norm) >= 4:
+            prefix = norm[:4]
+            moan_prefix_map.setdefault(prefix, []).append((sid, text))
+    # 正規化一致で重複検出
+    for norm, entries in moan_norm_map.items():
+        if len(entries) > 1:
+            unique_texts = {}
+            for sid, text in entries:
+                unique_texts.setdefault(text, []).append(sid)
+            texts = list(unique_texts.keys())
+            for i in range(len(texts)):
+                for j in range(i + 1, len(texts)):
+                    key = f"{texts[i]}≈{texts[j]}"
+                    if key not in repeated_moans:
+                        repeated_moans[key] = [unique_texts[texts[i]][0], unique_texts[texts[j]][0]]
+    # 先頭4文字一致で類似検出
+    for prefix, entries in moan_prefix_map.items():
+        if len(entries) > 1:
+            unique_texts = {}
+            for sid, text in entries:
+                unique_texts.setdefault(text, []).append(sid)
+            texts = list(unique_texts.keys())
+            for i in range(len(texts)):
+                for j in range(i + 1, len(texts)):
+                    key = f"{texts[i]}≈{texts[j]}"
+                    if key not in repeated_moans:
+                        repeated_moans[key] = [unique_texts[texts[i]][0], unique_texts[texts[j]][0]]
 
     # --- クロスシーン: speech重複チェック ---
     speech_map = {}
@@ -2236,10 +2264,15 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
     # 使用済みテキスト追跡（全シーン横断）
     used_moan_raw = set()
     used_moan_texts = set()
+    used_moan_prefixes = set()  # 正規化先頭4文字（O(1)類似検出用）
     used_thought_raw = set()
     used_thought_texts = set()
+    used_thought_prefixes = set()
     used_speech_raw = set()
     used_speech_texts = set()
+    used_speech_prefixes = set()
+    used_speech_suffixes = set()  # 末尾5文字（部分一致O(1)用）
+    moan_core_counter = {}  # 正規化先頭3文字 -> カウント（O(1)部分一致用）
     # 表現パターン追跡（「初めて」「彼のこと」等の重複防止）
     used_patterns = {}  # pattern_key -> count
     # thought先頭パターン追跡（「だめ…」「やだ…」等の同一先頭3文字反復防止）
@@ -2348,13 +2381,13 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 if (text in used_moan_raw) or (norm in used_moan_texts):
                     need_replace = True
                     reason = "重複"
-                elif any(_is_similar_bubble(text, prev) for prev in used_moan_raw):
+                elif len(norm) >= 4 and norm[:4] in used_moan_prefixes:
                     need_replace = True
                     reason = "類似"
-                # 部分一致チェック: 正規化後2文字以上の共通中核が3回以上出現
-                elif not need_replace and len(norm) >= 2:
-                    core = norm[:3] if len(norm) >= 3 else norm
-                    _moan_core_hits = sum(1 for prev in used_moan_texts if core in prev)
+                # 部分一致チェック: 正規化後先頭3文字が3回以上使用 → O(1)
+                elif not need_replace and len(norm) >= 3:
+                    core = norm[:3]
+                    _moan_core_hits = moan_core_counter.get(core, 0)
                     if _moan_core_hits >= 2:
                         need_replace = True
                         reason = f"部分一致({core}系{_moan_core_hits+1}回)"
@@ -2368,7 +2401,7 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 if (text in used_thought_raw) or (norm in used_thought_texts):
                     need_replace = True
                     reason = "重複"
-                elif any(_is_similar_bubble(text, prev) for prev in used_thought_raw):
+                elif len(norm) >= 4 and norm[:4] in used_thought_prefixes:
                     need_replace = True
                     reason = "類似"
                 elif _check_pattern_limit(text):
@@ -2386,18 +2419,14 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                 if (text in used_speech_raw) or (norm in used_speech_texts):
                     need_replace = True
                     reason = "重複"
-                elif any(_is_similar_bubble(text, prev) for prev in used_speech_raw):
+                elif len(norm) >= 4 and norm[:4] in used_speech_prefixes:
                     need_replace = True
                     reason = "類似"
-                # 部分一致チェック（末尾5文字 or 先頭5文字の一致）
+                # 部分一致チェック（末尾5文字 or 先頭5文字の一致）→ O(1)セットルックアップ
                 elif len(norm) >= 5 and not need_replace:
-                    norm_suffix = norm[-5:]
-                    norm_prefix = norm[:5]
-                    for prev in used_speech_texts:
-                        if len(prev) >= 5 and (prev[-5:] == norm_suffix or prev[:5] == norm_prefix):
-                            need_replace = True
-                            reason = "部分一致"
-                            break
+                    if norm[-5:] in used_speech_suffixes or norm[:5] in used_speech_prefixes:
+                        need_replace = True
+                        reason = "部分一致"
                 # 非エロシーンで♡付きセリフは文脈不整合
                 if ctx == "non_sexual" and ("♡" in text or "♥" in text):
                     need_replace = True
@@ -2440,18 +2469,30 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
 
             # 使用済み登録
             final_text = b.get("text", "")
+            final_norm = _normalize_bubble_text(final_text)
             if btype == "moan":
                 used_moan_raw.add(final_text)
-                used_moan_texts.add(_normalize_bubble_text(final_text))
+                used_moan_texts.add(final_norm)
+                if len(final_norm) >= 4:
+                    used_moan_prefixes.add(final_norm[:4])
+                if len(final_norm) >= 3:
+                    _core = final_norm[:3]
+                    moan_core_counter[_core] = moan_core_counter.get(_core, 0) + 1
             elif btype == "thought":
                 used_thought_raw.add(final_text)
-                used_thought_texts.add(_normalize_bubble_text(final_text))
+                used_thought_texts.add(final_norm)
+                if len(final_norm) >= 4:
+                    used_thought_prefixes.add(final_norm[:4])
                 _register_patterns(final_text)
                 _register_thought_prefix(final_text)
                 _register_thought_kw(final_text)
             elif btype == "speech":
                 used_speech_raw.add(final_text)
-                used_speech_texts.add(_normalize_bubble_text(final_text))
+                used_speech_texts.add(final_norm)
+                if len(final_norm) >= 4:
+                    used_speech_prefixes.add(final_norm[:4])
+                if len(final_norm) >= 5:
+                    used_speech_suffixes.add(final_norm[-5:])
 
             cleaned_bubbles.append(b)
 
@@ -3051,8 +3092,6 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         # --- v7.0追加: 硬い接続詞 ---
         "しかしながら": "でも…",
         "それにもかかわらず": "なのに…",
-        "したがって": "",
-        "なぜならば": "",
         # --- v7.1追加: お嬢様口調→CG集 ---
         "でございますの": "…の…♡",
         "いたしますわ": "ちゃう…♡",
@@ -3076,6 +3115,17 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         "お腹の中が熱い": "おなか…あつい…♡",
         "頭の中が真っ白": "しろ…い…",
         "我を忘れて": "もう…なにも…",
+        # --- v7.4追加: 文語表現→CG集 ---
+        "溢れ出す": "あふれて…",
+        "身を委ねる": "まかせ…ちゃう…♡",
+        "恍惚として": "とろとろ…♡",
+        "蕩ける": "とけちゃ…う…♡",
+        "嬌声を上げ": "あ…んっ♡",
+        "甘い吐息": "はぁ…♡",
+        "悦びに": "きもちぃ…",
+        "淫らな": "えっちな…",
+        "したがって": "…",
+        "なぜならば": "…",
     }
     # 男性セリフの不自然表現修正（heroine_name_setが必要なので判定付き）
     _MALE_SPEECH_REPLACEMENTS = {
@@ -3120,6 +3170,12 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         "遅い": "おそい",
         "重い": "おもい",
         "狭い": "せまい",
+        # v7.4追加
+        "臭い": "くさい",
+        "濡れる": "ぬれる",
+        "震える": "ふるえる",
+        "崩れる": "くずれる",
+        "乱れる": "みだれる",
     }
     _fix_count = 0
     for scene in results:
@@ -3387,6 +3443,12 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         "たまらん顔だな": "たまんねぇ",
         "極上だな": "最高だ",
         "見事だな": "最高だ",
+        # v7.4追加
+        "反応がいいな": "もっと感じろ",
+        "締まりがいいな": "もっと締めろ",
+        "いい匂いだな": "いい匂いだ",
+        "素直だな": "素直だろ",
+        "正直だな": "正直だろ",
     }
     import re as _re_autofix
     # 「～だな」「～してるな」「～だろうな」で終わる観察型パターン検出
@@ -4461,11 +4523,16 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 if "outdoors" not in _existing_lower_17:
                     tags.insert(min(2, len(tags)), "outdoors")
 
-        # 2. quality tags先頭確保
-        quality_found = any("masterpiece" in t.lower() or "best_quality" in t.lower() for t in tags)
-        if not quality_found:
-            effective_quality = sd_quality_tags if sd_quality_tags else QUALITY_POSITIVE_TAGS
-            tags.insert(0, effective_quality)
+        # 2. quality tags先頭確保（QUALITY_TAGS_DISABLED時は完全除去）
+        if sd_quality_tags == QUALITY_TAGS_DISABLED:
+            # カスタムモードで空欄→既存のquality tagsも除去
+            _quality_kw = {"masterpiece", "best_quality", "best quality", "high_quality", "highres", "absurdres"}
+            tags = [t for t in tags if not any(kw in t.lower() for kw in _quality_kw)]
+        else:
+            quality_found = any("masterpiece" in t.lower() or "best_quality" in t.lower() for t in tags)
+            if not quality_found:
+                effective_quality = sd_quality_tags if sd_quality_tags else QUALITY_POSITIVE_TAGS
+                tags.insert(0, effective_quality)
 
         # 3. キャラタグ補完（上位タグが欠落していれば追加）
         if char_danbooru:
@@ -5143,27 +5210,29 @@ class CostTracker:
     sonnet_cache_creation: int = 0
     sonnet_cache_read: int = 0
     api_calls: int = 0
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     def add(self, model: str, input_tokens: int, output_tokens: int,
             cache_creation_tokens: int = 0, cache_read_tokens: int = 0):
-        self.api_calls += 1
-        self.cache_creation += cache_creation_tokens
-        self.cache_read += cache_read_tokens
-        if "sonnet" in model:
-            self.sonnet_input += input_tokens
-            self.sonnet_output += output_tokens
-            self.sonnet_cache_creation += cache_creation_tokens
-            self.sonnet_cache_read += cache_read_tokens
-        elif model == MODELS.get("haiku_fast", "claude-3-haiku-20240307"):
-            self.haiku_fast_input += input_tokens
-            self.haiku_fast_output += output_tokens
-            self.haiku_fast_cache_creation += cache_creation_tokens
-            self.haiku_fast_cache_read += cache_read_tokens
-        else:
-            self.haiku_input += input_tokens
-            self.haiku_output += output_tokens
-            self.haiku_cache_creation += cache_creation_tokens
-            self.haiku_cache_read += cache_read_tokens
+        with self._lock:
+            self.api_calls += 1
+            self.cache_creation += cache_creation_tokens
+            self.cache_read += cache_read_tokens
+            if "sonnet" in model:
+                self.sonnet_input += input_tokens
+                self.sonnet_output += output_tokens
+                self.sonnet_cache_creation += cache_creation_tokens
+                self.sonnet_cache_read += cache_read_tokens
+            elif model == MODELS.get("haiku_fast", "claude-3-haiku-20240307"):
+                self.haiku_fast_input += input_tokens
+                self.haiku_fast_output += output_tokens
+                self.haiku_fast_cache_creation += cache_creation_tokens
+                self.haiku_fast_cache_read += cache_read_tokens
+            else:
+                self.haiku_input += input_tokens
+                self.haiku_output += output_tokens
+                self.haiku_cache_creation += cache_creation_tokens
+                self.haiku_cache_read += cache_read_tokens
 
     def total_cost_usd(self) -> float:
         """キャッシュ料金を正確に反映したコスト計算。
@@ -5319,7 +5388,8 @@ def save_config(config: dict):
 def _decode_exif_user_comment(value) -> str:
     """EXIF UserComment (0x9286) を文字列にデコード。
 
-    SD WebUI(piexif)は b"UNICODE\\x00" + utf-16-le で書き込む。
+    SD WebUI(piexif)は b"UNICODE\\x00" + utf-16 で書き込む。
+    バイトオーダーはEXIFヘッダ(II=LE/MM=BE)依存のためbodyの先頭2バイトで自動判定。
     Pillowバージョンにより bytes or str(latin-1誤デコード) で返る。
     """
     if not value:
@@ -5340,9 +5410,17 @@ def _decode_exif_user_comment(value) -> str:
     if isinstance(value, bytes):
         header = value[:8] if len(value) >= 8 else value
         body = value[8:] if len(value) > 8 else value
-        # piexif: b"UNICODE\x00" + utf-16-le encoded body
+        # piexif: b"UNICODE\x00" + utf-16 encoded body
+        # バイトオーダーは EXIF ヘッダ(II/MM)依存: bodyの先頭2バイトで自動判定
         if header.startswith(b"UNICODE"):
-            for enc in ("utf-16-le", "utf-16-be", "utf-8"):
+            # 先頭2バイトでバイトオーダーを推定
+            # body[0]==0x00 && body[1] が印刷可能ASCII → big-endian
+            # body[1]==0x00 && body[0] が印刷可能ASCII → little-endian
+            if len(body) >= 2 and body[0] == 0x00 and 0x20 <= body[1] <= 0x7e:
+                utf16_order = ("utf-16-be", "utf-16-le")
+            else:
+                utf16_order = ("utf-16-le", "utf-16-be")
+            for enc in (*utf16_order, "utf-8"):
                 try:
                     decoded = body.decode(enc).strip("\x00").strip()
                     if decoded:
@@ -6323,11 +6401,27 @@ def _generate_outline_chunk(
 ) -> list:
     """アウトラインを10シーンずつチャンク生成（常にフル12フィールド形式）"""
 
-    # 前チャンクの要約を構築
+    # 前チャンクの要約を構築（スライディングウィンドウ: 直近20件+古い分は1行要約）
     prev_summary = ""
     if previous_scenes:
         prev_lines = []
-        for s in previous_scenes:
+        n_prev = len(previous_scenes)
+
+        # 古いシーン（20件より前）: 1行要約でトークン節約
+        if n_prev > 20:
+            prev_lines.append(f"（シーン1〜{n_prev - 20}: {n_prev - 20}シーン確定済み、省略）")
+            # 最後の5シーンの要約だけ残す（古い分の雰囲気を伝える）
+            old_start = max(0, n_prev - 30)
+            old_end = n_prev - 20
+            for s in previous_scenes[old_start:old_end]:
+                sid = s.get("scene_id", "?")
+                title = s.get("title", "")[:15]
+                intensity = s.get("intensity", 3)
+                prev_lines.append(f"[{sid}] {title} (i={intensity})")
+
+        # 直近20件: フル要約
+        recent_start = max(0, n_prev - 20)
+        for s in previous_scenes[recent_start:]:
             sid = s.get("scene_id", "?")
             title = s.get("title", "")[:20]
             intensity = s.get("intensity", 3)
@@ -7840,6 +7934,197 @@ def apply_fix(
     return parse_json_response(response)
 
 
+# === Wave並列生成ヘルパー ===
+def _generate_single_scene_for_wave(
+    client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
+    callback, story_so_far, synopsis, current_roadmap, male_description,
+    scene_index, total_scenes, timestamp,
+):
+    """Wave並列生成用: 1シーン分の生成+エラーハンドリング。
+
+    戻り値: (scene_index, result_dict_or_None, summary_string_or_None, error_msg_or_None)
+    InterruptedError は再送出してWave全体を停止させる。
+    """
+    intensity = scene.get("intensity", 3)
+    model_type = "Sonnet" if intensity >= 4 else "Haiku(4.5)"
+
+    def _try_generate(**extra_kwargs):
+        draft = generate_scene_draft(
+            client, context, scene, jailbreak,
+            cost_tracker, theme, char_profiles, callback,
+            story_so_far=story_so_far,
+            synopsis=extra_kwargs.get("synopsis_override", synopsis),
+            outline_roadmap=current_roadmap,
+            male_description=male_description,
+        )
+        draft["intensity"] = intensity
+        scene_val = validate_scene(draft, scene_index)
+        if not scene_val["valid"]:
+            for err in scene_val["errors"]:
+                log_message(f"  [SCHEMA] シーン{scene_index+1}: {err}")
+        return draft
+
+    try:
+        log_message(f"シーン {scene_index+1}/{total_scenes} 生成開始 (intensity={intensity}, {model_type})")
+        if callback:
+            callback(f"[SCENE]シーン {scene_index+1}/{total_scenes} [{model_type}] 重要度{intensity}")
+
+        draft = _try_generate()
+
+        # ファイル保存
+        draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{scene_index+1}.json"
+        with open(draft_file, "w", encoding="utf-8") as f:
+            json.dump(draft, f, ensure_ascii=False, indent=2)
+        final_file = FINAL_DIR / f"final_{timestamp}_scene{scene_index+1}.json"
+        with open(final_file, "w", encoding="utf-8") as f:
+            json.dump(draft, f, ensure_ascii=False, indent=2)
+
+        summary = extract_scene_summary(draft)
+        log_message(f"シーン {scene_index+1}/{total_scenes} 完了")
+        if callback:
+            callback(f"[OK]シーン {scene_index+1}/{total_scenes} 完了")
+        return (scene_index, draft, summary, None)
+
+    except InterruptedError:
+        # ユーザー停止要求 → 再送出してWave全体を停止させる
+        raise
+
+    except Exception as e:
+        err_msg = str(e)
+        log_message(f"シーン {scene_index+1} 生成エラー: {err_msg}")
+
+        # 529 Overloaded: クールダウン後にリトライ
+        is_overloaded = "サーバー過負荷" in err_msg or "529" in err_msg or "Overloaded" in err_msg
+        if is_overloaded:
+            cooldown = 60
+            log_message(f"サーバー過負荷検出: {cooldown}秒待機後にシーン{scene_index+1}をリトライ")
+            if callback:
+                callback(f"[WARN]サーバー過負荷、{cooldown}秒待機後にシーン{scene_index+1}をリトライ...")
+            time.sleep(cooldown)
+            try:
+                draft = _try_generate()
+                draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{scene_index+1}.json"
+                with open(draft_file, "w", encoding="utf-8") as f:
+                    json.dump(draft, f, ensure_ascii=False, indent=2)
+                final_file = FINAL_DIR / f"final_{timestamp}_scene{scene_index+1}.json"
+                with open(final_file, "w", encoding="utf-8") as f:
+                    json.dump(draft, f, ensure_ascii=False, indent=2)
+                summary = extract_scene_summary(draft)
+                log_message(f"シーン {scene_index+1} 過負荷リトライ成功")
+                if callback:
+                    callback(f"[OK]シーン {scene_index+1}/{total_scenes} 過負荷リトライ成功")
+                return (scene_index, draft, summary, None)
+            except InterruptedError:
+                raise
+            except Exception as e2:
+                err_msg = str(e2)
+                log_message(f"シーン {scene_index+1} 過負荷リトライも失敗: {err_msg}")
+
+        # コンテンツ拒否 or JSONパースエラー → 最大2回リトライ
+        is_refusal = any(kw in err_msg for kw in ["倫理", "対応することはできません", "cannot", "inappropriate"])
+        is_json_error = any(kw in err_msg for kw in ["Invalid JSON", "No JSON", "Empty response", "JSONDecodeError"])
+
+        if is_refusal or is_json_error:
+            retry_reason = "コンテンツ拒否" if is_refusal else "JSONパースエラー"
+            log_message(f"シーン {scene_index+1} {retry_reason}検出、リトライ")
+            if callback:
+                callback(f"[WARN]シーン {scene_index+1} {retry_reason}、リトライ中...")
+            for retry_n in range(2):
+                try:
+                    draft = _try_generate(synopsis_override="" if is_refusal else synopsis)
+                    draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{scene_index+1}.json"
+                    with open(draft_file, "w", encoding="utf-8") as f:
+                        json.dump(draft, f, ensure_ascii=False, indent=2)
+                    final_file = FINAL_DIR / f"final_{timestamp}_scene{scene_index+1}.json"
+                    with open(final_file, "w", encoding="utf-8") as f:
+                        json.dump(draft, f, ensure_ascii=False, indent=2)
+                    summary = extract_scene_summary(draft)
+                    log_message(f"シーン {scene_index+1} リトライ{retry_n+1}回目成功")
+                    if callback:
+                        callback(f"[OK]シーン {scene_index+1}/{total_scenes} リトライ成功")
+                    return (scene_index, draft, summary, None)
+                except InterruptedError:
+                    raise
+                except Exception as e2:
+                    log_message(f"シーン {scene_index+1} リトライ{retry_n+1}回目失敗: {e2}")
+
+        # 全リトライ失敗 → エラー結果を返す
+        import traceback
+        log_message(traceback.format_exc())
+        if callback:
+            callback(f"[ERROR]シーン {scene_index+1} エラー: {err_msg[:50]}")
+
+        error_result = {
+            "scene_id": scene.get("scene_id", scene_index + 1),
+            "title": f"シーン{scene_index+1}",
+            "mood": "エラー",
+            "bubbles": [],
+            "onomatopoeia": [],
+            "direction": f"生成エラー: {err_msg[:100]}",
+            "sd_prompt": ""
+        }
+        return (scene_index, error_result, f"[シーン{scene_index+1}: エラーにより欠落]", None)
+
+
+def _generate_scenes_wave(
+    wave_scenes, client, context, jailbreak, cost_tracker, theme, char_profiles,
+    callback, story_so_far, synopsis, roadmap_lines, male_description,
+    total_scenes, timestamp, max_workers=CONCURRENT_BATCH_SIZE,
+):
+    """Wave内の全シーンをThreadPoolExecutorで同時生成し、scene_index順にソートして返す。
+
+    戻り値: [(scene_index, result_dict, summary_string, error), ...]
+    InterruptedError発生時はexecutorをシャットダウンして再送出。
+    """
+    wave_results = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {}
+        for scene_index, scene in wave_scenes:
+            # 各シーンのロードマップ（近傍±5行）
+            marked_lines = []
+            window_start = max(0, scene_index - 5)
+            window_end = min(len(roadmap_lines), scene_index + 6)
+            if window_start > 0:
+                marked_lines.append(f"  ... (シーン1〜{window_start}省略)")
+            for j in range(window_start, window_end):
+                line = roadmap_lines[j]
+                if j == scene_index:
+                    marked_lines.append(f"★ {line}")
+                else:
+                    marked_lines.append(f"  {line}")
+            if window_end < len(roadmap_lines):
+                marked_lines.append(f"  ... (シーン{window_end+1}〜{len(roadmap_lines)}省略)")
+            current_roadmap = "\n".join(marked_lines)
+
+            future = executor.submit(
+                _generate_single_scene_for_wave,
+                client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
+                callback, story_so_far, synopsis, current_roadmap, male_description,
+                scene_index, total_scenes, timestamp,
+            )
+            futures[future] = scene_index
+
+        interrupted = False
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                wave_results.append(result)
+            except InterruptedError:
+                interrupted = True
+                # 残りのfutureをキャンセル
+                for f in futures:
+                    f.cancel()
+                break
+
+        if interrupted:
+            raise InterruptedError("ユーザーによる停止")
+
+    # scene_index順にソート
+    wave_results.sort(key=lambda x: x[0])
+    return wave_results
+
+
 # === メインパイプライン ===
 def generate_pipeline(
     api_key: str,
@@ -8076,7 +8361,7 @@ def generate_pipeline(
     if callback:
         callback(f"[COST]推定コスト: ${est_cost:.4f}（API {len(outline)+2}回: Haiku4.5×{haiku_count} + Sonnet×{high_count}）")
 
-    # Phase 4: シーン生成（完全シーケンシャル + ストーリー蓄積）
+    # Phase 4: シーン生成
     results = []
     story_summaries = []
 
@@ -8093,154 +8378,206 @@ def generate_pipeline(
         roadmap_lines.append(f"[{sid}] {title} (i={_rm_intensity}, {location}) {situation}{goal_part}")
     outline_roadmap = "\n".join(roadmap_lines)
 
-    for i, scene in enumerate(outline):
-        intensity = scene.get("intensity", 3)
-        model_type = "Sonnet" if intensity >= 4 else "Haiku(4.5)"
+    use_wave_parallel = len(outline) >= CONCURRENT_MIN_SCENES
 
-        # story_so_far を構築（スライディングウィンドウ方式）
-        # 直近2シーン=フル, 3-5前=圧縮, 6以前=1行
-        story_so_far = _build_story_so_far(story_summaries, results)
+    if use_wave_parallel:
+        # === Wave並列モード: 5シーン同時生成 ===
+        num_waves = (len(outline) + CONCURRENT_BATCH_SIZE - 1) // CONCURRENT_BATCH_SIZE
+        log_message(f"Wave並列モード: {CONCURRENT_BATCH_SIZE}シーン同時生成×{num_waves}wave")
+        if callback:
+            callback(f"[INFO]Wave並列モード: {CONCURRENT_BATCH_SIZE}シーン同時生成×{num_waves}wave")
 
-        # 現在シーン近傍±5のロードマップ（トークン節約: 全30行→最大11行）
-        marked_lines = []
-        window_start = max(0, i - 5)
-        window_end = min(len(roadmap_lines), i + 6)
-        if window_start > 0:
-            marked_lines.append(f"  ... (シーン1〜{window_start}省略)")
-        for j in range(window_start, window_end):
-            line = roadmap_lines[j]
-            if j == i:
-                marked_lines.append(f"★ {line}")
-            else:
-                marked_lines.append(f"  {line}")
-        if window_end < len(roadmap_lines):
-            marked_lines.append(f"  ... (シーン{window_end+1}〜{len(roadmap_lines)}省略)")
-        current_roadmap = "\n".join(marked_lines)
+        wave_idx = 0
+        scene_cursor = 0
+        while scene_cursor < len(outline):
+            wave_end = min(scene_cursor + CONCURRENT_BATCH_SIZE, len(outline))
+            wave_scenes = [(i, outline[i]) for i in range(scene_cursor, wave_end)]
+            wave_idx += 1
 
-        try:
-            log_message(f"シーン {i+1}/{len(outline)} 生成開始 (intensity={intensity}, {model_type})")
+            log_message(f"Wave {wave_idx}: シーン {scene_cursor+1}-{wave_end}/{len(outline)} 並列生成中...")
             if callback:
-                callback(f"[SCENE]シーン {i+1}/{len(outline)} [{model_type}] 重要度{intensity}")
+                callback(f"[WAVE]Wave {wave_idx}: シーン {scene_cursor+1}-{wave_end}/{len(outline)} 並列生成中...")
 
-            draft = generate_scene_draft(
-                client, context, scene, jailbreak,
-                cost_tracker, theme, char_profiles, callback,
-                story_so_far=story_so_far,
-                synopsis=synopsis,
-                outline_roadmap=current_roadmap,
-                male_description=male_description,
+            # Wave開始前にstory_so_farスナップショットを取得（Wave内全シーンで共有）
+            story_so_far = _build_story_so_far(story_summaries, results)
+
+            wave_results = _generate_scenes_wave(
+                wave_scenes, client, context, jailbreak, cost_tracker, theme,
+                char_profiles, callback, story_so_far, synopsis, roadmap_lines,
+                male_description, len(outline), timestamp,
             )
 
-            draft["intensity"] = intensity
+            # 結果をscene_index順に蓄積
+            for si, draft, summary, _err in wave_results:
+                results.append(draft)
+                story_summaries.append(summary)
+                log_message(f"シーン {si+1} 要約蓄積: {summary[:80]}...")
 
-            # スキーマバリデーション: 個別シーン
-            scene_val = validate_scene(draft, i)
-            if not scene_val["valid"]:
-                for err in scene_val["errors"]:
-                    log_message(f"  [SCHEMA] シーン{i+1}: {err}")
-                if callback:
-                    callback(f"[WARN]シーン{i+1}検証: {len(scene_val['errors'])}件の問題")
-
-            results.append(draft)
-
-            # 要約を蓄積して次シーンに渡す
-            summary = extract_scene_summary(draft)
-            story_summaries.append(summary)
-            log_message(f"シーン {i+1} 要約蓄積: {summary[:80]}...")
-
-            draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{i+1}.json"
-            with open(draft_file, "w", encoding="utf-8") as f:
-                json.dump(draft, f, ensure_ascii=False, indent=2)
-            final_file = FINAL_DIR / f"final_{timestamp}_scene{i+1}.json"
-            with open(final_file, "w", encoding="utf-8") as f:
-                json.dump(draft, f, ensure_ascii=False, indent=2)
-
-            log_message(f"シーン {i+1}/{len(outline)} 完了")
+            log_message(f"Wave {wave_idx} 完了: シーン {scene_cursor+1}-{wave_end}/{len(outline)}")
             if callback:
-                callback(f"[OK]シーン {i+1}/{len(outline)} 完了")
+                callback(f"[OK]Wave {wave_idx} 完了: シーン {scene_cursor+1}-{wave_end}/{len(outline)}")
 
-        except Exception as e:
-            err_msg = str(e)
-            log_message(f"シーン {i+1} 生成エラー: {err_msg}")
+            scene_cursor = wave_end
 
-            # 529 Overloaded: グローバルクールダウン後にリトライ
-            is_overloaded = "サーバー過負荷" in err_msg or "529" in err_msg or "Overloaded" in err_msg
-            if is_overloaded:
-                cooldown = 60
-                log_message(f"サーバー過負荷検出: {cooldown}秒のグローバルクールダウン後にシーン{i+1}をリトライ")
+            # Wave間クールダウン（最終Wave以外）
+            if scene_cursor < len(outline):
+                # ユーザー停止チェック
                 if callback:
-                    callback(f"[WARN]サーバー過負荷、{cooldown}秒待機後にシーン{i+1}をリトライ...")
-                time.sleep(cooldown)
-                try:
-                    draft = generate_scene_draft(
-                        client, context, scene, jailbreak,
-                        cost_tracker, theme, char_profiles, callback,
-                        story_so_far=story_so_far, synopsis=synopsis,
-                        outline_roadmap=current_roadmap
-                    )
-                    draft["intensity"] = intensity
-                    results.append(draft)
-                    summary = extract_scene_summary(draft)
-                    story_summaries.append(summary)
-                    log_message(f"シーン {i+1} 過負荷リトライ成功")
+                    try:
+                        callback(f"[INFO]Wave間クールダウン {CONCURRENT_WAVE_COOLDOWN}秒...")
+                    except InterruptedError:
+                        raise
+                time.sleep(CONCURRENT_WAVE_COOLDOWN)
+
+    else:
+        # === 直列モード: 12シーン以下（従来通り） ===
+        for i, scene in enumerate(outline):
+            intensity = scene.get("intensity", 3)
+            model_type = "Sonnet" if intensity >= 4 else "Haiku(4.5)"
+
+            # story_so_far を構築（スライディングウィンドウ方式）
+            story_so_far = _build_story_so_far(story_summaries, results)
+
+            # 現在シーン近傍±5のロードマップ
+            marked_lines = []
+            window_start = max(0, i - 5)
+            window_end = min(len(roadmap_lines), i + 6)
+            if window_start > 0:
+                marked_lines.append(f"  ... (シーン1〜{window_start}省略)")
+            for j in range(window_start, window_end):
+                line = roadmap_lines[j]
+                if j == i:
+                    marked_lines.append(f"★ {line}")
+                else:
+                    marked_lines.append(f"  {line}")
+            if window_end < len(roadmap_lines):
+                marked_lines.append(f"  ... (シーン{window_end+1}〜{len(roadmap_lines)}省略)")
+            current_roadmap = "\n".join(marked_lines)
+
+            try:
+                log_message(f"シーン {i+1}/{len(outline)} 生成開始 (intensity={intensity}, {model_type})")
+                if callback:
+                    callback(f"[SCENE]シーン {i+1}/{len(outline)} [{model_type}] 重要度{intensity}")
+
+                draft = generate_scene_draft(
+                    client, context, scene, jailbreak,
+                    cost_tracker, theme, char_profiles, callback,
+                    story_so_far=story_so_far,
+                    synopsis=synopsis,
+                    outline_roadmap=current_roadmap,
+                    male_description=male_description,
+                )
+
+                draft["intensity"] = intensity
+
+                # スキーマバリデーション: 個別シーン
+                scene_val = validate_scene(draft, i)
+                if not scene_val["valid"]:
+                    for err in scene_val["errors"]:
+                        log_message(f"  [SCHEMA] シーン{i+1}: {err}")
                     if callback:
-                        callback(f"[OK]シーン {i+1}/{len(outline)} 過負荷リトライ成功")
-                    continue
-                except Exception as e2:
-                    err_msg = str(e2)
-                    log_message(f"シーン {i+1} 過負荷リトライも失敗: {err_msg}")
+                        callback(f"[WARN]シーン{i+1}検証: {len(scene_val['errors'])}件の問題")
 
-            # リトライ判定（コンテンツ拒否 or JSONパースエラー）
-            is_refusal = any(kw in err_msg for kw in ["倫理", "対応することはできません", "cannot", "inappropriate"])
-            is_json_error = any(kw in err_msg for kw in ["Invalid JSON", "No JSON", "Empty response", "JSONDecodeError"])
+                results.append(draft)
 
-            if is_refusal or is_json_error:
-                retry_reason = "コンテンツ拒否" if is_refusal else "JSONパースエラー"
-                log_message(f"シーン {i+1} {retry_reason}検出、リトライ")
+                # 要約を蓄積して次シーンに渡す
+                summary = extract_scene_summary(draft)
+                story_summaries.append(summary)
+                log_message(f"シーン {i+1} 要約蓄積: {summary[:80]}...")
+
+                draft_file = DRAFTS_DIR / f"draft_{timestamp}_scene{i+1}.json"
+                with open(draft_file, "w", encoding="utf-8") as f:
+                    json.dump(draft, f, ensure_ascii=False, indent=2)
+                final_file = FINAL_DIR / f"final_{timestamp}_scene{i+1}.json"
+                with open(final_file, "w", encoding="utf-8") as f:
+                    json.dump(draft, f, ensure_ascii=False, indent=2)
+
+                log_message(f"シーン {i+1}/{len(outline)} 完了")
                 if callback:
-                    callback(f"[WARN]シーン {i+1} {retry_reason}、リトライ中...")
+                    callback(f"[OK]シーン {i+1}/{len(outline)} 完了")
 
-                # 最大2回リトライ
-                retry_success = False
-                for retry_n in range(2):
+            except Exception as e:
+                err_msg = str(e)
+                log_message(f"シーン {i+1} 生成エラー: {err_msg}")
+
+                # 529 Overloaded: グローバルクールダウン後にリトライ
+                is_overloaded = "サーバー過負荷" in err_msg or "529" in err_msg or "Overloaded" in err_msg
+                if is_overloaded:
+                    cooldown = 60
+                    log_message(f"サーバー過負荷検出: {cooldown}秒のグローバルクールダウン後にシーン{i+1}をリトライ")
+                    if callback:
+                        callback(f"[WARN]サーバー過負荷、{cooldown}秒待機後にシーン{i+1}をリトライ...")
+                    time.sleep(cooldown)
                     try:
                         draft = generate_scene_draft(
                             client, context, scene, jailbreak,
                             cost_tracker, theme, char_profiles, callback,
-                            story_so_far=story_so_far,
-                            synopsis="" if is_refusal else synopsis
+                            story_so_far=story_so_far, synopsis=synopsis,
+                            outline_roadmap=current_roadmap
                         )
                         draft["intensity"] = intensity
                         results.append(draft)
                         summary = extract_scene_summary(draft)
                         story_summaries.append(summary)
-                        log_message(f"シーン {i+1} リトライ{retry_n+1}回目成功")
+                        log_message(f"シーン {i+1} 過負荷リトライ成功")
                         if callback:
-                            callback(f"[OK]シーン {i+1}/{len(outline)} リトライ成功")
-                        retry_success = True
-                        break
+                            callback(f"[OK]シーン {i+1}/{len(outline)} 過負荷リトライ成功")
+                        continue
                     except Exception as e2:
-                        log_message(f"シーン {i+1} リトライ{retry_n+1}回目失敗: {e2}")
+                        err_msg = str(e2)
+                        log_message(f"シーン {i+1} 過負荷リトライも失敗: {err_msg}")
 
-                if retry_success:
-                    continue
+                # リトライ判定（コンテンツ拒否 or JSONパースエラー）
+                is_refusal = any(kw in err_msg for kw in ["倫理", "対応することはできません", "cannot", "inappropriate"])
+                is_json_error = any(kw in err_msg for kw in ["Invalid JSON", "No JSON", "Empty response", "JSONDecodeError"])
 
-            import traceback
-            log_message(traceback.format_exc())
-            if callback:
-                callback(f"[ERROR]シーン {i+1} エラー: {err_msg[:50]}")
+                if is_refusal or is_json_error:
+                    retry_reason = "コンテンツ拒否" if is_refusal else "JSONパースエラー"
+                    log_message(f"シーン {i+1} {retry_reason}検出、リトライ")
+                    if callback:
+                        callback(f"[WARN]シーン {i+1} {retry_reason}、リトライ中...")
 
-            error_result = {
-                "scene_id": scene.get("scene_id", i + 1),
-                "title": f"シーン{i+1}",
-                "mood": "エラー",
-                "bubbles": [],
-                "onomatopoeia": [],
-                "direction": f"生成エラー: {err_msg[:100]}",
-                "sd_prompt": ""
-            }
-            results.append(error_result)
-            story_summaries.append(f"[シーン{i+1}: エラーにより欠落]")
+                    # 最大2回リトライ
+                    retry_success = False
+                    for retry_n in range(2):
+                        try:
+                            draft = generate_scene_draft(
+                                client, context, scene, jailbreak,
+                                cost_tracker, theme, char_profiles, callback,
+                                story_so_far=story_so_far,
+                                synopsis="" if is_refusal else synopsis
+                            )
+                            draft["intensity"] = intensity
+                            results.append(draft)
+                            summary = extract_scene_summary(draft)
+                            story_summaries.append(summary)
+                            log_message(f"シーン {i+1} リトライ{retry_n+1}回目成功")
+                            if callback:
+                                callback(f"[OK]シーン {i+1}/{len(outline)} リトライ成功")
+                            retry_success = True
+                            break
+                        except Exception as e2:
+                            log_message(f"シーン {i+1} リトライ{retry_n+1}回目失敗: {e2}")
+
+                    if retry_success:
+                        continue
+
+                import traceback
+                log_message(traceback.format_exc())
+                if callback:
+                    callback(f"[ERROR]シーン {i+1} エラー: {err_msg[:50]}")
+
+                error_result = {
+                    "scene_id": scene.get("scene_id", i + 1),
+                    "title": f"シーン{i+1}",
+                    "mood": "エラー",
+                    "bubbles": [],
+                    "onomatopoeia": [],
+                    "direction": f"生成エラー: {err_msg[:100]}",
+                    "sd_prompt": ""
+                }
+                results.append(error_result)
+                story_summaries.append(f"[シーン{i+1}: エラーにより欠落]")
 
     # スキーマバリデーション: 結果配列全体
     results_validation = validate_results(results)
@@ -10548,17 +10885,24 @@ class App(ctk.CTk):
         # ══════════════════════════════════════════════════════════════
         sd_card = MaterialCard(
             content, title="SDプロンプト設定", variant="outlined",
-            collapsible=True, start_collapsed=True
+            collapsible=True, start_collapsed=False
         )
         sd_card.pack(fill="x", pady=(0, 16))
         sd_content = sd_card.content_frame
 
         # --- クオリティタグ ---
+        _quality_header = ctk.CTkFrame(sd_content, fg_color="transparent")
+        _quality_header.pack(anchor="w", pady=(0, 4))
         ctk.CTkLabel(
-            sd_content, text="クオリティタグ",
+            _quality_header, text="クオリティタグ",
             font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
             text_color=MaterialColors.ON_SURFACE_VARIANT
-        ).pack(anchor="w", pady=(0, 4))
+        ).pack(side="left")
+        ctk.CTkLabel(
+            _quality_header, text="（不要の場合は「カスタム」を選択し空欄のままにしてください）",
+            font=ctk.CTkFont(family=FONT_JP, size=12),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(side="left", padx=(6, 0))
 
         quality_mode_row = ctk.CTkFrame(sd_content, fg_color="transparent")
         quality_mode_row.pack(fill="x", pady=(0, 4))
@@ -10580,44 +10924,60 @@ class App(ctk.CTk):
             fg_color=MaterialColors.SURFACE_CONTAINER,
             corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
             text_color=MaterialColors.ON_SURFACE,
-            placeholder_text="(masterpiece, best_quality:1.2)",
+            placeholder_text="カスタムクオリティタグを入力…",
             placeholder_text_color="#3D3D3D",
-            state="disabled"
         )
+        # 自動モード初期値: QUALITY_POSITIVE_TAGS を表示して無効化
+        self.sd_quality_custom_entry.insert(0, QUALITY_POSITIVE_TAGS)
+        self.sd_quality_custom_entry.configure(state="disabled")
         self.sd_quality_custom_entry.pack(fill="x", pady=(0, 8))
 
         # 区切り線
         ctk.CTkFrame(sd_content, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", pady=8)
 
         # --- プレフィックス ---
+        _prefix_header = ctk.CTkFrame(sd_content, fg_color="transparent")
+        _prefix_header.pack(fill="x", pady=(0, 4))
         ctk.CTkLabel(
-            sd_content, text="プレフィックス（全シーン先頭に追加）",
+            _prefix_header, text="プレフィックス（全シーン先頭に追加）",
             font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
             text_color=MaterialColors.ON_SURFACE_VARIANT
-        ).pack(anchor="w", pady=(0, 4))
+        ).pack(side="left")
+        MaterialButton(
+            _prefix_header, text="クリア", variant="text", size="small",
+            command=lambda: (self.sd_prefix_text.delete("1.0", "end"))
+        ).pack(side="right")
         self.sd_prefix_text = ctk.CTkTextbox(
-            sd_content, height=60,
+            sd_content, height=100,
             font=ctk.CTkFont(size=13),
             fg_color=MaterialColors.SURFACE_CONTAINER,
             corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
             text_color=MaterialColors.ON_SURFACE,
         )
         self.sd_prefix_text.pack(fill="x", pady=(0, 8))
+        self.sd_prefix_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_prefix_text, 100, 1200))
 
         # --- サフィックス ---
+        _suffix_header = ctk.CTkFrame(sd_content, fg_color="transparent")
+        _suffix_header.pack(fill="x", pady=(0, 4))
         ctk.CTkLabel(
-            sd_content, text="サフィックス（全シーン末尾に追加）",
+            _suffix_header, text="サフィックス（全シーン末尾に追加）",
             font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
             text_color=MaterialColors.ON_SURFACE_VARIANT
-        ).pack(anchor="w", pady=(0, 4))
+        ).pack(side="left")
+        MaterialButton(
+            _suffix_header, text="クリア", variant="text", size="small",
+            command=lambda: (self.sd_suffix_text.delete("1.0", "end"))
+        ).pack(side="right")
         self.sd_suffix_text = ctk.CTkTextbox(
-            sd_content, height=60,
+            sd_content, height=100,
             font=ctk.CTkFont(size=13),
             fg_color=MaterialColors.SURFACE_CONTAINER,
             corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
             text_color=MaterialColors.ON_SURFACE,
         )
         self.sd_suffix_text.pack(fill="x", pady=(0, 8))
+        self.sd_suffix_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_suffix_text, 100, 1200))
 
         # 区切り線
         ctk.CTkFrame(sd_content, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", pady=8)
@@ -10631,44 +10991,43 @@ class App(ctk.CTk):
 
         # ドロップゾーン
         self.png_drop_frame = ctk.CTkFrame(
-            sd_content, height=90,
+            sd_content,
             fg_color=MaterialColors.SURFACE_CONTAINER,
             corner_radius=8, border_width=2,
             border_color=MaterialColors.OUTLINE_VARIANT,
         )
         self.png_drop_frame.pack(fill="x", pady=(0, 4))
-        self.png_drop_frame.pack_propagate(False)
 
-        drop_inner = ctk.CTkFrame(self.png_drop_frame, fg_color="transparent")
-        drop_inner.place(relx=0.5, rely=0.5, anchor="center")
-
+        # アイコン＋ヒントテキストを横並び（pack expand で上下中央）
+        _drop_row = ctk.CTkFrame(self.png_drop_frame, fg_color="transparent")
+        _drop_row.pack(expand=True, pady=16)
         self.png_drop_icon_label = ctk.CTkLabel(
-            drop_inner, text=Icons.IMAGE,
-            font=ctk.CTkFont(family=FONT_ICON, size=18),
+            _drop_row, text=Icons.IMAGE,
+            font=ctk.CTkFont(family=FONT_ICON, size=20),
             text_color=MaterialColors.ON_SURFACE_VARIANT,
         )
-        self.png_drop_icon_label.pack()
+        self.png_drop_icon_label.pack(side="left", padx=(0, 8))
         self.png_drop_hint_label = ctk.CTkLabel(
-            drop_inner,
+            _drop_row,
             text="ここに画像をドロップ、またはクリックして選択" if WINDND_AVAILABLE else "クリックして画像を選択",
             font=ctk.CTkFont(family=FONT_JP, size=12),
             text_color=MaterialColors.ON_SURFACE_VARIANT,
         )
-        self.png_drop_hint_label.pack()
+        self.png_drop_hint_label.pack(side="left")
         self.png_filename_label = ctk.CTkLabel(
-            drop_inner, text="",
+            _drop_row, text="",
             font=ctk.CTkFont(family=FONT_JP, size=11),
             text_color=MaterialColors.PRIMARY,
         )
-        self.png_filename_label.pack()
+        self.png_filename_label.pack(side="left", padx=(12, 0))
 
         # ドロップゾーン全体をクリック可能に
-        for w in (self.png_drop_frame, drop_inner, self.png_drop_icon_label, self.png_drop_hint_label, self.png_filename_label):
+        for w in (self.png_drop_frame, _drop_row, self.png_drop_icon_label, self.png_drop_hint_label, self.png_filename_label):
             w.configure(cursor="hand2")
             w.bind("<Button-1>", lambda e: self._on_png_info_load())
 
         self.png_preview_text = ctk.CTkTextbox(
-            sd_content, height=80,
+            sd_content, height=120,
             font=ctk.CTkFont(size=12),
             fg_color=MaterialColors.SURFACE_CONTAINER,
             corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
@@ -11118,19 +11477,58 @@ class App(ctk.CTk):
         if self.config_data.get("sd_prefix_tags"):
             self.sd_prefix_text.delete("1.0", "end")
             self.sd_prefix_text.insert("1.0", self.config_data["sd_prefix_tags"])
+            self._auto_resize_textbox(self.sd_prefix_text, 100, 1200)
         if self.config_data.get("sd_suffix_tags"):
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", self.config_data["sd_suffix_tags"])
+            self._auto_resize_textbox(self.sd_suffix_text, 100, 1200)
 
         # 初期コスト予測を表示
         self.after(100, self.update_cost_preview)
+
+    # --- SDプロンプト テキスト欄動的リサイズ ---
+    @staticmethod
+    def _auto_resize_textbox(textbox, min_h: int = 100, max_h: int = 1200):
+        """テキスト内容に応じてCTkTextboxの高さを自動調整（折り返し考慮）"""
+        try:
+            content = textbox.get("1.0", "end-1c")
+            if not content.strip():
+                textbox.configure(height=min_h)
+                return
+            # ウィジェット幅から1行あたり文字数を推定
+            w_px = textbox.winfo_width()
+            if w_px < 50:
+                w_px = 500  # 初期化前のフォールバック
+            chars_per_line = max(1, w_px // 8)
+            # 各行の折り返しを考慮した表示行数を計算
+            visual_lines = 0
+            for line in content.split("\n"):
+                if len(line) <= chars_per_line:
+                    visual_lines += 1
+                else:
+                    visual_lines += (len(line) + chars_per_line - 1) // chars_per_line
+            # 1行≒20px + 上下パディング20px
+            needed = visual_lines * 20 + 20
+            new_h = max(min_h, min(max_h, needed))
+            textbox.configure(height=new_h)
+        except Exception:
+            pass
 
     # --- SDプロンプト設定コールバック ---
     def _on_sd_quality_mode_changed(self):
         """auto/manual切替でカスタム入力欄のstate変更"""
         if self.sd_quality_mode_var.get() == "manual":
             self.sd_quality_custom_entry.configure(state="normal")
+            # 自動テキストが残っていたら消去してユーザー入力に備える
+            if self.sd_quality_custom_entry.get() == QUALITY_POSITIVE_TAGS:
+                self.sd_quality_custom_entry.delete(0, "end")
         else:
+            # カスタム→自動: 空欄なら自動タグを再表示
+            self.sd_quality_custom_entry.configure(state="normal")
+            current = self.sd_quality_custom_entry.get().strip()
+            if not current:
+                self.sd_quality_custom_entry.delete(0, "end")
+                self.sd_quality_custom_entry.insert(0, QUALITY_POSITIVE_TAGS)
             self.sd_quality_custom_entry.configure(state="disabled")
 
     def _setup_png_drop(self):
@@ -11181,6 +11579,7 @@ class App(ctk.CTk):
     def _load_png_info(self, path: str):
         """画像ファイルからSD情報を読み取りプレビューに表示（共通処理）"""
         result = parse_png_info(path)
+        self._png_info_result = result  # 後から参照用に保存
         filename = Path(path).name
         self.png_filename_label.configure(text=filename)
         # ドロップゾーンのヒントを更新
@@ -11194,20 +11593,22 @@ class App(ctk.CTk):
             self.png_drop_frame.configure(border_color="#B3261E")  # error red
         else:
             positive = result.get("positive", "")
-            # rawデータの先頭を診断ログに記録
             raw = result.get("raw", "")
             log_message(f"PNG Info positive[:{min(80,len(positive))}]: {repr(positive[:80])}")
             if raw != positive:
                 log_message(f"PNG Info raw[:{min(80,len(raw))}]: {repr(raw[:80])}")
-            self.png_preview_text.insert("1.0", positive)
+            self.png_preview_text.insert("1.0", positive if positive else "(情報なし)")
             self.png_drop_frame.configure(border_color=MaterialColors.PRIMARY)  # success
         self.png_preview_text.configure(state="disabled")
+        # 内容に応じて高さを自動調整
+        self._auto_resize_textbox(self.png_preview_text, min_h=120, max_h=1200)
 
     def _apply_png_to_prefix(self):
-        """プレビュー内容をプレフィックスに追記"""
-        self.png_preview_text.configure(state="normal")
-        content = self.png_preview_text.get("1.0", "end-1c").strip()
-        self.png_preview_text.configure(state="disabled")
+        """PNG Infoのpositiveプロンプトをプレフィックスに適用"""
+        result = getattr(self, '_png_info_result', None)
+        if not result or "error" in result:
+            return
+        content = result.get("positive", "").strip()
         if not content:
             return
         existing = self.sd_prefix_text.get("1.0", "end-1c").strip()
@@ -11217,12 +11618,16 @@ class App(ctk.CTk):
         else:
             self.sd_prefix_text.delete("1.0", "end")
             self.sd_prefix_text.insert("1.0", content)
+        self._auto_resize_textbox(self.sd_prefix_text, min_h=100, max_h=1200)
+        if hasattr(self, 'snackbar'):
+            self.snackbar.show("プレフィックスに適用しました", type="success")
 
     def _apply_png_to_suffix(self):
-        """プレビュー内容をサフィックスに追記"""
-        self.png_preview_text.configure(state="normal")
-        content = self.png_preview_text.get("1.0", "end-1c").strip()
-        self.png_preview_text.configure(state="disabled")
+        """PNG Infoのpositiveプロンプトをサフィックスに適用"""
+        result = getattr(self, '_png_info_result', None)
+        if not result or "error" in result:
+            return
+        content = result.get("positive", "").strip()
         if not content:
             return
         existing = self.sd_suffix_text.get("1.0", "end-1c").strip()
@@ -11232,6 +11637,9 @@ class App(ctk.CTk):
         else:
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", content)
+        self._auto_resize_textbox(self.sd_suffix_text, min_h=100, max_h=1200)
+        if hasattr(self, 'snackbar'):
+            self.snackbar.show("サフィックスに適用しました", type="success")
 
     def update_cost_preview(self, event=None):
         """シーン数に基づいてコスト予測を更新"""
@@ -11239,8 +11647,8 @@ class App(ctk.CTk):
             num_scenes = int(self.scenes_entry.get())
             if num_scenes < 1:
                 num_scenes = 1
-            elif num_scenes > 50:
-                num_scenes = 50
+            elif num_scenes > 500:
+                num_scenes = 500
 
             est = estimate_cost(num_scenes)
             self.cost_preview_label.configure(
@@ -11463,7 +11871,7 @@ class App(ctk.CTk):
             "time_of_day": self.time_of_day_combo.get() if hasattr(self, 'time_of_day_combo') else "おまかせ",
             "location_type": self.location_type_combo.get() if hasattr(self, 'location_type_combo') else "おまかせ",
             "sd_quality_mode": self.sd_quality_mode_var.get() if hasattr(self, 'sd_quality_mode_var') else "auto",
-            "sd_quality_custom": self.sd_quality_custom_entry.get() if hasattr(self, 'sd_quality_custom_entry') else "",
+            "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
         }
@@ -11494,7 +11902,7 @@ class App(ctk.CTk):
             "time_of_day": self.time_of_day_combo.get() if hasattr(self, 'time_of_day_combo') else "おまかせ",
             "location_type": self.location_type_combo.get() if hasattr(self, 'location_type_combo') else "おまかせ",
             "sd_quality_mode": self.sd_quality_mode_var.get() if hasattr(self, 'sd_quality_mode_var') else "auto",
-            "sd_quality_custom": self.sd_quality_custom_entry.get() if hasattr(self, 'sd_quality_custom_entry') else "",
+            "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
         }
@@ -11568,9 +11976,11 @@ class App(ctk.CTk):
         if config.get("sd_prefix_tags") and hasattr(self, 'sd_prefix_text'):
             self.sd_prefix_text.delete("1.0", "end")
             self.sd_prefix_text.insert("1.0", config["sd_prefix_tags"])
+            self._auto_resize_textbox(self.sd_prefix_text, 100, 1200)
         if config.get("sd_suffix_tags") and hasattr(self, 'sd_suffix_text'):
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", config["sd_suffix_tags"])
+            self._auto_resize_textbox(self.sd_suffix_text, 100, 1200)
         self.update_cost_preview()
 
     def refresh_profile_list(self):
@@ -11788,10 +12198,10 @@ class App(ctk.CTk):
 
         try:
             num_scenes = int(self.scenes_entry.get())
-            if num_scenes < 1 or num_scenes > 50:
+            if num_scenes < 1 or num_scenes > 500:
                 raise ValueError()
         except (ValueError, TypeError):
-            self.snackbar.show("シーン数は1〜50の整数で", type="error")
+            self.snackbar.show("シーン数は1〜500の整数で", type="error")
             return
 
         # ストーリー構成を取得
@@ -11922,8 +12332,10 @@ class App(ctk.CTk):
             _sd_quality_custom = ""
             if _sd_quality_mode == "manual" and hasattr(self, 'sd_quality_custom_entry'):
                 _sd_quality_custom = self.sd_quality_custom_entry.get().strip()
-            _sd_prefix = self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else ""
-            _sd_suffix = self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else ""
+                if not _sd_quality_custom:
+                    _sd_quality_custom = QUALITY_TAGS_DISABLED  # 空欄→quality tags無し
+            _sd_prefix = self.sd_prefix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_prefix_text') else ""
+            _sd_suffix = self.sd_suffix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_suffix_text') else ""
 
             results, cost_tracker, pipeline_metadata = generate_pipeline(
                 api_key, concept, full_characters, num_scenes, theme, callback,
@@ -12062,10 +12474,16 @@ class App(ctk.CTk):
             self._cost_preview_label.pack_forget()
             self.snackbar.show("プレゼンモード ON（Ctrl+Shift+Pで解除）", type="info")
         else:
-            # content フレームの先頭に再挿入
-            siblings = self._api_card.master.winfo_children()
-            self._api_card.pack(fill="x", pady=(0, 16), before=siblings[0] if siblings else None)
+            # api_card: contentフレームの先頭に復元
+            content = self._api_card.master
+            visible = content.pack_slaves()
+            if visible:
+                self._api_card.pack(fill="x", pady=(0, 16), before=visible[0])
+            else:
+                self._api_card.pack(fill="x", pady=(0, 16))
+            # cost_card: contentフレームの末尾に復元
             self._cost_card.pack(fill="x", pady=(0, 16))
+            # cost_preview_label: settings_card内の末尾に復元
             self._cost_preview_label.pack(anchor="w", padx=20, pady=(4, 12))
             self.snackbar.show("プレゼンモード OFF", type="info")
 

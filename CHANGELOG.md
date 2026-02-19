@@ -1,5 +1,57 @@
 # Changelog
 
+## [7.5.0] - 2026-02-19
+
+### Added (Wave並列生成 + 大規模シーン耐障害性)
+
+#### Wave並列生成（100-500シーン高速化）
+- **`_generate_single_scene_for_wave()`新関数**: 1シーン分の生成+529/拒否/JSONリトライをカプセル化
+- **`_generate_scenes_wave()`新関数**: ThreadPoolExecutor(max_workers=5)でWave内全シーンを同時submit、as_completedで完了順収集→index順ソート
+- **Phase 4 Wave並列モード**: 13シーン以上で自動有効化（5シーン同時生成×N wave）
+  - 500シーン: 100 wave → 正常時~8分（従来~42分、5倍高速）
+  - 529多発時: ~1時間（従来~5時間、5倍高速）
+- **定数**: `CONCURRENT_BATCH_SIZE=5` / `CONCURRENT_MIN_SCENES=13` / `CONCURRENT_WAVE_COOLDOWN=2.0`
+- 12シーン以下は従来の直列モードを完全維持
+
+#### CostTrackerスレッドセーフ化
+- `threading.Lock`フィールド追加（dataclass field）
+- `add()`メソッドを`with self._lock:`でラップ
+- 5スレッドからの同時トークン加算に対応
+
+#### InterruptedError完全伝播
+- `_generate_single_scene_for_wave`: `except InterruptedError: raise`を全リトライ箇所に追加
+- `_generate_scenes_wave`: `future.result()`からInterruptedError検出→残futureキャンセル→再raise
+- 停止ボタン→Wave内全スレッド→パイプライン停止が確実に伝播
+
+#### 大規模シーン耐障害性修正
+- **`_generate_outline_chunk`スライディングウィンドウ化**: prev_summaryを直近20件+古い分1行要約に制限
+  - 500シーン: チャンク50のprev_summary 490件(~15Kトークン) → 30件(~1.2Kトークン)に削減
+  - アウトラインコスト: ~370Kトークン → ~60Kトークン（6倍削減）
+- **`validate_script`喘ぎ類似検出O(n)化**: O(n²)二重ループ → 正規化ハッシュ+先頭4文字バケット
+  - 500シーン: 4M回string比較 → ~2000回dict lookup
+- **`_deduplicate_across_scenes`全O(1)化**:
+  - moan/thought/speech類似: `any(_is_similar_bubble(...) for prev in used_*_raw)` → `norm[:4] in used_*_prefixes` セットルックアップ
+  - speech部分一致: `for prev in used_speech_texts:` ループ → `used_speech_suffixes`/`used_speech_prefixes` セット
+  - moan部分一致: `sum(... for prev in used_moan_texts)` → `moan_core_counter` dict
+
+### Changed
+- `from dataclasses import dataclass` → `from dataclasses import dataclass, field`
+- `from concurrent.futures import ThreadPoolExecutor, as_completed` 追加
+- Phase 4コメント: 「完全シーケンシャル」→ 並列/直列分岐に更新
+- 進捗表示: `[INFO]Wave並列モード` / `[WAVE]Wave N` / Wave完了ログ追加
+
+### Performance (500シーン想定)
+
+| 処理 | 改善前 | 改善後 |
+|---|---|---|
+| Phase 4 壁時計時間(正常) | ~42分 | ~8分 (5倍) |
+| Phase 4 壁時計時間(529多発) | ~5時間 | ~1時間 (5倍) |
+| アウトラインチャンクコスト | ~370Kトークン | ~60Kトークン (6倍削減) |
+| validate_script 喘ぎ類似 | O(n²) = 4M比較 | O(n) ハッシュ |
+| dedup 全類似チェック | O(n×m) スキャン | O(1) セットルックアップ |
+
+---
+
 ## [7.4.0] - 2026-02-18
 
 ### Added (SDプロンプト設定セクション + PNG Info読み取り)
