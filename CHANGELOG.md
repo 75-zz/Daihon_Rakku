@@ -1,5 +1,131 @@
 # Changelog
 
+## [8.5.0] - 2026-02-22
+
+### Added (100シーン品質根本修正 8施策)
+
+#### 修正1: intensity分布リバランス（Step 6c新設）
+- i=4が全体の40%を超えた場合、超過分をシーン位置に応じて再割当
+  - ratio < 0.15 → i=2（イントロ区間は低intensity）
+  - ratio 0.15-0.35 → i=3（前半ビルドアップ）
+  - ratio 0.5-0.85 → i=5昇格（Act3内、_max_i5未達時のみ、近接i=5回避）
+- **期待効果**: i=4が67%→40%以下、i=5が1%→6-10%に改善
+
+#### 修正2: ロケーションprefix dedup強化
+- `_fix_consecutive_locations()`の比較方式を完全一致→**先頭20文字prefix一致**に変更
+  - 70%閾値チェック: `Counter`集計をprefixベースに
+  - 3連続チェック: prefix 20文字で判定（微妙な表現違いをキャッチ）
+- `_MICRO_LOCATIONS`にシャワー/プール/温泉/海の4箇所追加（合計9箇所）
+
+#### 修正3: description phrase-level dedup強化（Step 12a2新設）
+- 既存15字prefix dedupの後に**10字prefix二次チェック**を追加
+- 同一10字prefixが3回以上出現 → 3回目以降にintensity別バリエーション挿入
+- prefixが変わらない場合は先頭挿入にフォールバック
+
+#### 修正4: バブル順序ローテーション（Step 10e新設）
+- 同一first-bubble typeが3シーン連続 → moan→thought→speech→...でローテーション
+- intensity≤2のシーンではmoan-firstを回避（不自然防止）
+- pop+insertで既存バブルを並べ替え（バブル数は不変）
+
+#### 修正5: 男性セリフ均等分配（Step 4.57新設）
+- intensity≥3 かつ 男性バブルなし かつ バブル1-2個のシーンを抽出
+- その45%に`get_male_speech_pool_for_theme()`から男性speechを1つ注入
+- 直後のStep 4.58（35%上限制限）で過剰分はキャップ
+- **期待効果**: 男性セリフ35/100→50-60/100シーンに改善
+
+#### 修正6: タイトルlocation leak検出（Step 17c新設 + validate_script拡張）
+- `_TITLE_LOCATION_LEAK_WORDS` 16語（タイル/シャワー室/天井/床/ベンチ/洗面台等）
+- タイトルにleak語含有 → テンプレート再生成（_TITLE_REGEN_TEMPLATES使用）
+- 末尾切断チェック（「新」「の」等1文字助詞で終わるtitle検出）
+- `validate_script`にも`_VALIDATE_LEAK_WORDS` 12語 + 末尾切断チェック追加
+
+#### 修正7: SDプロンプト二重カンマ修正
+- `enhance_sd_prompts()`の`scene["sd_prompt"]`設定後に`.replace(",,", ",").strip(", ")`追加
+- sd_prefix_tags/sd_suffix_tags結合時のカンマ残留を除去
+
+#### 修正8: アウトライン体位多様性指示強化
+- `_generate_outline_chunk()`に27種の体位/行為キーワード抽出を追加
+  - 騎乗位/正常位/バック/フェラ/パイズリ/中出し/顔射等
+- 直近10シーンのsituationからキーワード抽出 → 「繰り返し厳禁」プロンプト注入
+- `_completed_actions`に`_position_warning`を統合（action_set有無に関わらず有効）
+
+---
+
+## [8.4.0] - 2026-02-22
+
+### Added (Opus清書+品質向上7施策)
+
+#### 施策1: Opus清書パス
+- MODELS/COSTS/CostTrackerにOpus追加
+- `polish_scene()`にmodel引数追加
+- Phase 5-3.5でi>=5シーンをOpus清書
+
+#### 施策2: ONOMATOPOEIA intensity連動
+- `sub_fallback`リスト3段階フォールバック（primary→fallback→全マージ）
+
+#### 施策3: infer_phase early/mid/late拡張
+- 6サブフェーズ: foreplay_early/late, penetration_early/late, climax_early/late
+- `SCENE_PHASE_SPEECH_MAP` + フォールバック
+
+#### 施策4: SPEECH_FEMALEテーマ属性タグ
+- `SPEECH_FEMALE_THEME_AFFINITY` 43カテゴリ×テーマ親和度
+- `_extend_with_affinity`（0.7全量/0.4半量）
+
+#### 施策5: N-gram語彙多様性チェック
+- `validate_script` 4文字N-gram 5回超検出
+- `auto_fix` Step 10d: 3回目以降プール代替
+
+#### 施策6: THOUGHT↔SPEECH感情矛盾検出
+- `validate_script`チェック + `auto_fix` Step 10b
+- ポジ/ネガ矛盾差替え、forced i3-4免除
+
+#### 施策7: シーン間心理状態遷移モデル
+- `_PSYCHOLOGICAL_STAGES` 5段階
+- `auto_fix` Step 10c: 2段階以上乖離差替え、純愛はresistanceスキップ
+
+---
+
+## [8.3.0] - 2026-02-21
+
+### Fixed (タイトル破壊修正 + i≤2連続制限 + Grok全削除)
+- **Step 17b タイトル破壊修正**: `old_title[2:]`の盲目的文字切断を廃止→タイトル全体をテンプレート再生成
+- **i≤2連続上限5**: intensity post-validation Step 6bに追加
+- **Grok機能完全削除**: gui.py 72+箇所のGrok参照を全削除。grok_client.py/grok_api.md削除
+
+---
+
+## [8.2.0] - 2026-02-21
+
+### Fixed (100シーン膠着+品質崩壊の5大バグ修正)
+- **FIX 1**: `_generate_outline_chunk()`に`long_script_section`/`intensity_curve_instruction`/`story_pattern_section`を注入
+- **FIX 2**: auto_fix Step 17 title生成を行為/感情キーワードベースに変更
+- **FIX 3**: description dedup先頭30字→15字に短縮 + ストーリー膠着検出
+- **FIX 4**: intensity post-validation Step 4でi=5ピーク保護
+- ストーリー整合性+セリフ不自然さ除去強化（Phase A-D: mood/story_flow/title/セリフ/description修正）
+
+---
+
+## [8.1.0] - 2026-02-21
+
+### Fixed (100-500シーン品質根本修正)
+- **intensity curve 8段階post-validation**: Step1-8でi=5動的割当/ジャンプ修正/ブレイク挿入/スムージング
+- 致命バグ3件修正: theme上書き/i=5ピーク潰し/story_so_farトークン爆発
+- バリアント枯渇修正3件: Step12 desc/Step14 story_flow/Step15 speech にシーン番号フォールバック
+- 500シーンUX改善6件: auto_fix callback/validation集約/logスロットリング/中間保存/エピローグ指示/score正規化
+
+---
+
+## [8.0.0] - 2026-02-20
+
+### Added (エロ行為・喘ぎ声大幅拡充 + 500シーン完全耐性)
+- **MOAN_POOL倍増**: 5×80=400 → 5×160=795（500シーン×3個でも枯渇なし）
+- **ONOMATOPOEIA_POOL大幅拡充**: 17→22カテゴリ/185+→504エントリー
+- **行為別SPEECH/THOUGHT/MALE新設**: SPEECH_FEMALE +8カテゴリ/+150, THOUGHT +5/+80, SPEECH_MALE +3/+36
+- **500シーン耐性**: pick_replacement スライディングウィンドウ / _VARIANTS 5→15パターン / get_moan_pool ±2混合
+- **合計**: 4223+エントリー / 500シーンシミュレーション 0失敗
+
+---
+
 ## [7.5.0] - 2026-02-19
 
 ### Added (Wave並列生成 + 大規模シーン耐障害性)

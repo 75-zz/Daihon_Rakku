@@ -204,6 +204,10 @@ RETRY_DELAY_OVERLOADED = 15  # 529 Overloaded初回待機秒数
 CONCURRENT_BATCH_SIZE = 5       # Wave内同時生成数
 CONCURRENT_MIN_SCENES = 13      # 並列化の最小シーン数
 CONCURRENT_WAVE_COOLDOWN = 2.0  # Wave間クールダウン(秒)
+
+# プロバイダー設定
+PROVIDER_CLAUDE = "claude"
+
 OUTPUT_DIR = Path(__file__).parent
 SKILLS_DIR = OUTPUT_DIR / "skills"
 JAILBREAK_FILE = OUTPUT_DIR / "jailbreak.md"
@@ -233,6 +237,7 @@ MODELS = {
     "haiku": "claude-haiku-4-5-20251001",        # 高品質（複雑タスク用）
     "haiku_fast": "claude-3-haiku-20240307",      # 低コスト（シンプルタスク用: 4x安い）
     "sonnet": "claude-sonnet-4-20250514",         # プレミアム（最重要シーン用）
+    "opus": "claude-opus-4-5-20250924",           # 最高品質（クライマックス清書用）
 }
 
 # コスト（USD per 1M tokens）
@@ -240,6 +245,7 @@ COSTS = {
     "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
     "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
     "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00},
+    "claude-opus-4-5-20250924": {"input": 5.00, "output": 25.00},
 }
 
 # テーマ選択肢
@@ -1538,19 +1544,92 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                     break
             seen_flows[flow] = scene_id
 
+    # --- v8.2: クロスシーン: story_flow構造テンプレ検出 ---
+    _SF_NORMALIZE_RE = _re.compile(r'(挿入|中出し|絶頂|愛撫|フェラ|座位|正常位|バック|騎乗位|側位|対面)')
+    def _sf_skeleton(text):
+        return _SF_NORMALIZE_RE.sub("\u25c6", text[:30])
+    sf_skeletons = {}
+    for r in results:
+        sf = r.get("story_flow", "")
+        if sf:
+            sk = _sf_skeleton(sf)
+            sf_skeletons[sk] = sf_skeletons.get(sk, 0) + 1
+    threshold_sf = max(3, len(results) // 8)
+    for sk, cnt in sf_skeletons.items():
+        if cnt >= threshold_sf:
+            scene_issues.setdefault("global", []).append(
+                f"story_flow構造反復: 「{sk[:20]}…」が{cnt}回")
+
     # --- クロスシーン: description類似チェック（先頭30文字一致=コピペ） ---
     seen_descs = {}  # desc_prefix -> scene_id
     for i, scene in enumerate(results):
         desc = scene.get("description", "")
-        if not desc or len(desc) < 30:
+        if not desc or len(desc) < 15:
             continue
         scene_id = scene.get("scene_id", i + 1)
-        desc_prefix = desc[:30]
+        desc_prefix = desc[:15]  # v8.2根本修正: 30字→15字に短縮
         if desc_prefix in seen_descs:
             scene_issues.setdefault(scene_id, []).append(
-                f"description類似（シーン{seen_descs[desc_prefix]}と先頭30字一致）")
+                f"description類似（シーン{seen_descs[desc_prefix]}と先頭15字一致）")
         else:
             seen_descs[desc_prefix] = scene_id
+
+    # --- v8.2: クロスシーン: description冒頭10字反復チェック ---
+    desc_prefix10 = {}
+    for r in results:
+        d = r.get("description", "")[:10]
+        if d:
+            desc_prefix10[d] = desc_prefix10.get(d, 0) + 1
+    threshold_dp = max(3, len(results) // 6)
+    for d, cnt in desc_prefix10.items():
+        if cnt >= threshold_dp:
+            scene_issues.setdefault("global", []).append(
+                f"description冒頭「{d}」が{cnt}回反復")
+
+    # --- v8.2根本修正: ストーリー膠着検出 ---
+    # title重複（同一title3回以上 = 同じイベントの繰り返し）
+    _title_counter_v = {}
+    for r in results:
+        t = r.get("title", "")
+        if t:
+            _title_counter_v[t] = _title_counter_v.get(t, 0) + 1
+    for t, cnt in _title_counter_v.items():
+        if cnt >= 3:
+            scene_issues.setdefault("global", []).append(
+                f"ストーリー膠着: title「{t[:15]}」が{cnt}回反復（同一イベント繰り返し）")
+    # situation先頭20字が3シーン以上で一致
+    _sit_prefix = {}
+    for r in results:
+        s = r.get("situation", r.get("description", ""))[:20]
+        if s:
+            _sit_prefix[s] = _sit_prefix.get(s, 0) + 1
+    for s, cnt in _sit_prefix.items():
+        if cnt >= 3:
+            scene_issues.setdefault("global", []).append(
+                f"ストーリー膠着: 状況「{s}」が{cnt}回反復")
+
+    # --- v8.2: クロスシーン: mood反復チェック ---
+    mood_counter = {}
+    for r in results:
+        m = r.get("mood", "")
+        if m:
+            mood_counter[m] = mood_counter.get(m, 0) + 1
+    threshold_mood = max(3, len(results) // 5)
+    for m, cnt in mood_counter.items():
+        if cnt >= threshold_mood:
+            scene_issues.setdefault("global", []).append(
+                f"mood「{m[:15]}」が{cnt}回反復（{cnt}シーンで同一mood）")
+    # mood先頭6字反復
+    mood_prefix6 = {}
+    for r in results:
+        m = r.get("mood", "")[:6]
+        if m:
+            mood_prefix6[m] = mood_prefix6.get(m, 0) + 1
+    threshold_mp = max(4, len(results) // 4)
+    for m, cnt in mood_prefix6.items():
+        if cnt >= threshold_mp:
+            scene_issues.setdefault("global", []).append(
+                f"mood接頭辞「{m}」が{cnt}回反復")
 
     # --- クロスシーン: title長さチェック ---
     for i, scene in enumerate(results):
@@ -1561,6 +1640,8 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                 f"title長すぎ({len(title)}字): 「{title[:30]}...」")
 
     # --- クロスシーン: title品質チェック（句点混入・location混入） ---
+    _VALIDATE_LEAK_WORDS = ["タイル", "白い壁", "天井", "床", "ベンチ", "洗面台",
+                            "カーテン", "ドア", "窓", "机", "排水", "蛇口"]
     _TITLE_LOCATION_KW = [
         "トイレ", "個室", "便所", "教室", "部室", "保健室", "屋上", "体育館",
         "プール", "更衣室", "シャワー室", "ベッドルーム", "リビング", "キッチン",
@@ -1587,6 +1668,16 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         if loc_kw_count >= 2:
             scene_issues.setdefault(scene_id, []).append(
                 f"titleが場所名の羅列: 「{title}」（場所KW{loc_kw_count}個）")
+        # location leak語チェック（建材/設備名がtitleに混入）
+        for lw in _VALIDATE_LEAK_WORDS:
+            if lw in title:
+                scene_issues.setdefault(scene_id, []).append(
+                    f"title location leak: 「{title}」（{lw}混入）")
+                break
+        # 末尾切断チェック（1文字助詞で終わる不自然なタイトル）
+        if len(title) >= 3 and title[-1] in "新のとがをにでへは":
+            scene_issues.setdefault(scene_id, []).append(
+                f"title末尾切断: 「{title}」（「{title[-1]}」で終了）")
         # description断片混入チェック（助詞「の」で始まる/名詞で途切れる不完全title）
         desc = scene.get("description", "")
         if desc and len(title) >= 6:
@@ -1602,6 +1693,18 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             elif len(title) >= 8 and title[-1] in "張貼掛掲載映写":
                 scene_issues.setdefault(scene_id, []).append(
                     f"title不完全（途中で途切れ）: 「{title}」")
+
+    # --- v8.2: クロスシーン: title接頭辞2字反復チェック ---
+    title_prefix2 = {}
+    for r in results:
+        t = r.get("title", "")[:2]
+        if t:
+            title_prefix2[t] = title_prefix2.get(t, 0) + 1
+    threshold_tp = max(4, len(results) // 6)
+    for t, cnt in title_prefix2.items():
+        if cnt >= threshold_tp:
+            scene_issues.setdefault("global", []).append(
+                f"title接頭辞「{t}」が{cnt}回反復")
 
     # --- クロスシーン: title重複チェック ---
     seen_titles = {}  # title -> scene_id
@@ -1653,7 +1756,7 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
     seen_feelings = {}  # feelings_str -> scene_id
     for i, scene in enumerate(results):
         feelings = scene.get("character_feelings", {})
-        if not feelings:
+        if not feelings or not isinstance(feelings, dict):
             continue
         scene_id = scene.get("scene_id", i + 1)
         feelings_str = str(sorted(feelings.values()))
@@ -1751,7 +1854,12 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                 f"thought先頭「{prefix}」が{len(entries)}回反復（シーン{scene_ids_str}）")
 
     # --- クロスシーン: thoughtテキスト内キーワード頻度チェック ---
-    _THOUGHT_CONTENT_KW = ["だめ", "声", "やめて", "おく", "なか", "廊下", "聞こえ"]
+    _THOUGHT_CONTENT_KW = [
+        "だめ", "声", "やめて", "おく", "なか", "廊下", "聞こえ",
+        # v8.2追加: 感情サイクリング検出
+        "こわい", "きもち", "いや", "すき", "もう", "ほしい",
+        "おかしく", "とまら", "しんじ", "たすけ", "はずか", "にげ",
+    ]
     _thought_kw_count = {}
     for sid, text in all_thought_texts:
         for kw in _THOUGHT_CONTENT_KW:
@@ -1831,6 +1939,36 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             if "」" in txt or "「" in txt:
                 scene_issues.setdefault(scene_id, []).append(
                     f"括弧混入: 「{txt}」")
+
+    # --- クロスシーン: 吹き出し内ナレーション混入検出 ---
+    for i, scene in enumerate(results):
+        scene_id = scene.get("scene_id", i + 1)
+        for b in scene.get("bubbles", []):
+            txt = b.get("text", "")
+            btype = b.get("type", "")
+            if not txt:
+                continue
+            # 句号（。）は吹き出しに不適（ナレーション混入の兆候）
+            if "。" in txt:
+                scene_issues.setdefault(scene_id, []).append(
+                    f"吹き出しに句号: 「{txt[:25]}」")
+            # moanに説明文・会話文が混入（漢字3文字以上連続 = 喘ぎではない）
+            if btype == "moan" and _re.search(r'[\u4e00-\u9faf]{3,}', txt):
+                scene_issues.setdefault(scene_id, []).append(
+                    f"moanに説明文混入: 「{txt[:25]}」")
+
+    # --- クロスシーン: description外見反復検出 ---
+    _desc_appearance_seqs = []
+    for scene in results:
+        desc = scene.get("description", "")
+        # 先頭30文字から外見キーワードを抽出
+        _desc_appearance_seqs.append(desc[:30] if desc else "")
+    for k in range(2, len(_desc_appearance_seqs)):
+        d0, d1, d2 = _desc_appearance_seqs[k-2], _desc_appearance_seqs[k-1], _desc_appearance_seqs[k]
+        if d0 and d1 and d2 and d0 == d1 == d2:
+            sid = results[k].get("scene_id", k + 1)
+            scene_issues.setdefault(sid, []).append(
+                f"description先頭3連続同一: 「{d0[:20]}…」")
 
     # --- クロスシーン: オノマトペ近接重複（3シーン以内） ---
     repeated_onom = []
@@ -1943,8 +2081,93 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                     scene_issues.setdefault(sid, []).append(
                         f"thought長すぎ({len(txt)}文字): 「{txt[:25]}…」")
 
+    # --- クロスシーン: ストーリーリセット検出（最後の10%でi≤2はリセットの兆候） ---
+    _total = len(results)
+    if _total >= 20:
+        _epilogue_start = max(1, _total - max(5, _total // 10))
+        _reset_scenes = []
+        for i in range(_epilogue_start, _total):
+            si = results[i].get("intensity", 3)
+            sid = results[i].get("scene_id", i + 1)
+            if si <= 2:
+                _reset_scenes.append(sid)
+        if _reset_scenes:
+            scene_issues.setdefault("global", []).append(
+                f"ストーリーリセット疑い: 終盤シーン{_reset_scenes}がi≤2（導入の繰り返し）")
+
+    # --- クロスシーン: i=4連続過多検出 ---
+    _max_consecutive_4 = 0
+    _curr_run = 0
+    for s in results:
+        if s.get("intensity", 3) == 4:
+            _curr_run += 1
+            _max_consecutive_4 = max(_max_consecutive_4, _curr_run)
+        else:
+            _curr_run = 0
+    if _max_consecutive_4 > 5:
+        scene_issues.setdefault("global", []).append(
+            f"i=4連続{_max_consecutive_4}シーン（上限5・i=3ブレイク不足）")
+
+    # --- クロスシーン: i≤2連続過多検出（テンポ停滞） ---
+    _max_consecutive_low = 0
+    _curr_low_run = 0
+    for s in results:
+        if s.get("intensity", 3) <= 2:
+            _curr_low_run += 1
+            _max_consecutive_low = max(_max_consecutive_low, _curr_low_run)
+        else:
+            _curr_low_run = 0
+    if _max_consecutive_low > 5:
+        scene_issues.setdefault("global", []).append(
+            f"i≤2連続{_max_consecutive_low}シーン（上限5・テンポ停滞）")
+
+    # --- THOUGHT↔SPEECH感情矛盾チェック ---
+    _ct_positive_th = ["幸せ", "嬉しい", "好き", "大好き", "気持ちいい", "もっと", "欲しい", "♡"]
+    _ct_negative_sp = ["やめて", "嫌", "離して", "痛い", "やだ", "助けて", "来ないで"]
+    _ct_negative_th = ["怖い", "嫌だ", "逃げ", "助けて", "痛い", "無理", "嫌い"]
+    _ct_positive_sp = ["もっと", "気持ちいい", "好き", "♡", "嬉しい", "幸せ", "ちょうだい"]
+    _ct_exempt = any(k in (theme or "").lower() for k in ["forced", "reluctant", "陵辱", "強制"])
+    _ct_count = 0
+    for s in results:
+        _i = s.get("intensity", 3)
+        if _ct_exempt and 3 <= _i <= 4:
+            continue
+        _thoughts = [b.get("text", "") for b in s.get("bubbles", []) if b.get("type") == "thought"]
+        _speeches = [b.get("text", "") for b in s.get("bubbles", []) if b.get("type") == "speech"]
+        for _th in _thoughts:
+            for _sp in _speeches:
+                if (any(kw in _th for kw in _ct_positive_th) and any(kw in _sp for kw in _ct_negative_sp)):
+                    _ct_count += 1
+                elif (any(kw in _th for kw in _ct_negative_th) and any(kw in _sp for kw in _ct_positive_sp)):
+                    _ct_count += 1
+    if _ct_count > 0:
+        scene_issues.setdefault("global", []).append(f"THOUGHT↔SPEECH感情矛盾: {_ct_count}件")
+
+    # --- N-gram語彙多様性チェック（4文字以上の繰り返し表現検出）---
+    from collections import Counter as _Counter
+    _ngram_counter = _Counter()
+    for s in results:
+        for b in s.get("bubbles", []):
+            txt = b.get("text", "")
+            if len(txt) >= 4:
+                for _ng_start in range(len(txt) - 3):
+                    _ngram_counter[txt[_ng_start:_ng_start + 4]] += 1
+    _repeated_ngrams = [(ng, cnt) for ng, cnt in _ngram_counter.most_common(20) if cnt > 5]
+    if _repeated_ngrams:
+        _ngram_report = ", ".join(f"「{ng}」×{cnt}" for ng, cnt in _repeated_ngrams[:5])
+        scene_issues.setdefault("global", []).append(
+            f"N-gram反復: {_ngram_report}（計{len(_repeated_ngrams)}パターン）")
+
     n_issues = sum(len(v) for v in scene_issues.values()) + len(repeated_moans) + len(repeated_onom)
-    score = max(0, 100 - n_issues * 5)
+    # スコア計算: シーン数で正規化（大規模シーンでもscore=0にならないように）
+    # ≤20シーン: 従来通り n_issues * 5 で減点
+    # >20シーン: issues_per_scene ベースで減点（1 issue/scene = -33点）
+    n_scenes = max(1, len(results))
+    if n_scenes <= 20:
+        score = max(0, 100 - n_issues * 5)
+    else:
+        issues_per_scene = n_issues / n_scenes
+        score = max(0, 100 - int(issues_per_scene * 33))
 
     return {
         "score": score,
@@ -2280,7 +2503,12 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
     _THOUGHT_PREFIX_LIMIT = 4  # 同一先頭パターンの上限
     # thoughtテキスト内キーワード頻度追跡（「だめ」「声」等の過剰使用防止）
     _thought_kw_counter = {}  # kw -> count
-    _THOUGHT_CONTENT_KW = ["だめ", "声", "やめて", "おく", "なか", "廊下", "聞こえ"]
+    _THOUGHT_CONTENT_KW = [
+        "だめ", "声", "やめて", "おく", "なか", "廊下", "聞こえ",
+        # v8.2追加: 感情サイクリング検出
+        "こわい", "きもち", "いや", "すき", "もう", "ほしい",
+        "おかしく", "とまら", "しんじ", "たすけ", "はずか", "にげ",
+    ]
     _THOUGHT_KW_LIMIT = 4  # 同一キーワードの上限
 
     replace_count = 0
@@ -2585,9 +2813,18 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
             scene["sd_prompt"] = ", ".join(new_tags)
         _prev_angles = _cur_angles
 
-def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") -> list:
+def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
+                    callback: Optional[Callable] = None) -> list:
     """生成結果の自動修正（APIコスト不要のローカル後処理）"""
     import re
+
+    _total_scenes = len(results)
+
+    def _progress(step_name: str):
+        """auto_fix内の進捗報告 + 停止チェック"""
+        if callback:
+            callback(f"🔧 自動修正: {step_name}（{_total_scenes}シーン）")
+        log_message(f"  auto_fix: {step_name}")
 
     # === キャラ名の正規化マップ構築 ===
     correct_names = []  # [(correct_full_name, family, given)]
@@ -2610,6 +2847,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     # テキストフィールド一覧
     text_fields = ["description", "location_detail", "direction", "story_flow", "title"]
 
+    _progress("Step 1-4 基本修正")
     for scene in results:
         # 1. "(XX字)" マーカーの除去
         for field in text_fields + ["mood"]:
@@ -2621,6 +2859,26 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 k: re.sub(r'[（(]\d+字[以内程度上]*[）)]', '', v).strip()
                 for k, v in scene["character_feelings"].items()
             }
+
+        # 1.5. 「……」→「…」全フィールド統一（二重三点リーダ修正）
+        for field in text_fields + ["mood"]:
+            if field in scene and isinstance(scene[field], str):
+                while "……" in scene[field]:
+                    scene[field] = scene[field].replace("……", "…")
+        if "character_feelings" in scene and isinstance(scene["character_feelings"], dict):
+            for k, v in scene["character_feelings"].items():
+                while "……" in v:
+                    v = v.replace("……", "…")
+                scene["character_feelings"][k] = v
+        if "bubbles" in scene and isinstance(scene["bubbles"], list):
+            for bubble in scene["bubbles"]:
+                if not isinstance(bubble, dict):
+                    continue
+                txt = bubble.get("text", "")
+                if isinstance(txt, str) and "……" in txt:
+                    while "……" in txt:
+                        txt = txt.replace("……", "…")
+                    bubble["text"] = txt
 
         # 2. キャラ名の修正（全フィールド対象）
         if correct_names:
@@ -2670,6 +2928,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     for i, scene in enumerate(results):
         scene["scene_id"] = i + 1
 
+    _progress("Step 4.5-4.7 セリフ・表現修正")
     # 4.5. 男性セリフ自動修正（♡除去、moan→speech変換、長文短縮）
     heroine_name_set = set(correct_names) if correct_names else set()
     # 男性speaker名フォールバック（heroine_name_set空時に使用）
@@ -2876,6 +3135,61 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                     break
     if _suffix_fix_count > 0:
         log_message(f"  男性セリフ反復修正(辞書): {_suffix_fix_count}件")
+
+    # 4.57. 男性セリフ均等分配（intensity≥3で男性バブルなしのシーンに補充）
+    import random as _rng_47
+    _male_inject_count = 0
+    _total_scenes_47 = len(results)
+    _scenes_needing_male = []
+    for idx_47, scene in enumerate(results):
+        intensity = scene.get("intensity", 3)
+        if intensity < 3:
+            continue
+        bubbles = scene.get("bubbles", [])
+        has_male_bubble = any(
+            b.get("speaker", "") and _is_male_by_name(b.get("speaker", ""))
+            for b in bubbles
+        )
+        if not has_male_bubble and 1 <= len(bubbles) < 3:
+            _scenes_needing_male.append(idx_47)
+    # 40-50%のシーンに男性セリフを注入
+    if _scenes_needing_male:
+        _inject_target = max(1, int(len(_scenes_needing_male) * 0.45))
+        _rng_47.shuffle(_scenes_needing_male)
+        _inject_candidates = _scenes_needing_male[:_inject_target]
+        try:
+            from ero_dialogue_pool import get_male_speech_pool_for_theme as _get_male_47
+            _has_male_pool_47 = True
+        except ImportError:
+            _has_male_pool_47 = False
+        if _has_male_pool_47:
+            _used_male_47 = set()
+            for idx_47 in _inject_candidates:
+                scene = results[idx_47]
+                intensity = scene.get("intensity", 3)
+                _pool_47 = _get_male_47(theme, intensity)
+                if not _pool_47:
+                    continue
+                candidates_47 = [t for t in _pool_47 if t not in _used_male_47]
+                if not candidates_47:
+                    candidates_47 = _pool_47
+                male_text = _rng_47.choice(candidates_47)
+                _used_male_47.add(male_text)
+                # 男性speakerの名前を推定
+                _male_speaker = "男"
+                if heroine_name_set:
+                    for b in scene.get("bubbles", []):
+                        sp = b.get("speaker", "")
+                        if sp and sp not in heroine_name_set:
+                            _male_speaker = sp
+                            break
+                new_bubble = {"type": "speech", "speaker": _male_speaker, "text": male_text}
+                # バブルの後半に挿入（moanの後、speechの前あたり）
+                insert_at = len(scene.get("bubbles", [])) // 2
+                scene.setdefault("bubbles", []).insert(insert_at, new_bubble)
+                _male_inject_count += 1
+    if _male_inject_count > 0:
+        log_message(f"  Step 4.57 男性セリフ補充: {_male_inject_count}シーンに注入（i≥3、男性バブルなしの45%に分配）")
 
     # 4.58. 男性セリフ頻度制限（全体の35%以下に抑制）
     total_scenes = len(results)
@@ -3126,6 +3440,22 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         "淫らな": "えっちな…",
         "したがって": "…",
         "なぜならば": "…",
+        # --- v8.2追加: 文学的表現→CG集口語 ---
+        "とはいえ": "…けど…",
+        "あるいは": "…",
+        "一方で": "…",
+        "いわゆる": "…",
+        "つまるところ": "…",
+        "要するに": "…",
+        "察するに": "…",
+        "心の奥底で": "…こころの…おく…",
+        "快楽に支配され": "きもちよすぎ…て…",
+        "陶酔に浸り": "とろとろ…\u2665",
+        "背徳感に": "いけないこと…",
+        "羞恥心が": "はずかし…",
+        "嫌悪感を": "いや…",
+        "自制心が": "がまん…できな…",
+        "抗えない衝動": "とめらんない…",
     }
     # 男性セリフの不自然表現修正（heroine_name_setが必要なので判定付き）
     _MALE_SPEECH_REPLACEMENTS = {
@@ -3231,17 +3561,26 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
 
     # 5. シーン間の同一セリフ・SE重複除去（プールから代替置換）
     #    ※重複セリフをプールから代替置換する
+    _progress("Step 5 セリフ重複除去")
     heroine_names = []
     if char_profiles:
         for cp in char_profiles:
             n = cp.get("character_name", "")
             if n:
                 heroine_names.append(n)
-    _deduplicate_across_scenes(results, theme=theme, heroine_names=heroine_names,
-                               char_profiles=char_profiles)
+    try:
+        _deduplicate_across_scenes(results, theme=theme, heroine_names=heroine_names,
+                                   char_profiles=char_profiles)
+    except Exception as _dedup_err:
+        log_message(f"  [WARN]セリフ重複除去エラー（スキップ）: {_dedup_err}")
+        import traceback
+        log_message(traceback.format_exc())
 
     # 6. 3シーン連続同一locationの自動修正
-    _fix_consecutive_locations(results)
+    try:
+        _fix_consecutive_locations(results)
+    except Exception as _loc_err:
+        log_message(f"  [WARN]location多様化エラー（スキップ）: {_loc_err}")
 
     # 7. 吹き出し数上限トリミング（3個以下: ヒロイン1-2 + 男性0-1）
     for scene in results:
@@ -3264,6 +3603,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 kept.append(male_b[0])
             scene["bubbles"] = kept[:3]
 
+    _progress("Step 8-10 喘ぎ・セリフ品質修正")
     # 8. moanタイプ内容修正（3段階: 漢字/助詞/非喘ぎ語彙 → プールから置換）
     # 根拠: MOAN_POOL全400エントリは仮名+装飾のみ。
     #   漢字・助詞がある=LLMの誤生成。
@@ -3305,9 +3645,41 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         if _char_pool and btype in _char_pool:
             if phase and isinstance(_char_pool[btype], dict):
                 char_lines = _char_pool[btype].get(phase, [])
+                # サブフェーズ→ベースフェーズフォールバック
+                if not char_lines and "_" in phase:
+                    base_phase = phase.rsplit("_", 1)[0]
+                    char_lines = _char_pool[btype].get(base_phase, [])
                 pool.extend(char_lines)
         pool.extend(get_speech_pool(btype, theme_, intensity, phase=phase))
         return pool
+
+    def _get_male_pool_for_theme(theme_str: str, intensity: int) -> list:
+        """テーマ・intensity連動で男性セリフプールを返す（auto_fix用）"""
+        try:
+            from ero_dialogue_pool import SPEECH_MALE_POOL, get_male_speech_pool
+        except ImportError:
+            return ["もっと", "どうした", "来い", "行くぞ", "いいだろ"]
+        t = theme_str.lower() if theme_str else ""
+        pool = []
+        if any(k in t for k in ["痴漢", "chikan", "公共", "public", "電車", "train", "トイレ"]):
+            pool.extend(SPEECH_MALE_POOL.get("chikan", []))
+            pool.extend(SPEECH_MALE_POOL.get("taunt", []))
+            pool.extend(SPEECH_MALE_POOL.get("public", []))
+            pool.extend(SPEECH_MALE_POOL.get("command", []))
+        elif any(k in t for k in ["ntr", "寝取", "夜這", "村", "レイプ", "陵辱", "調教", "奴隷"]):
+            pool.extend(SPEECH_MALE_POOL.get("command", []))
+            pool.extend(SPEECH_MALE_POOL.get("dirty", []))
+        elif any(k in t for k in ["純愛", "ラブ", "恋人", "カップル"]):
+            pool.extend(SPEECH_MALE_POOL.get("gentle", []))
+            pool.extend(SPEECH_MALE_POOL.get("praise", []))
+        else:
+            if intensity >= 4:
+                pool.extend(SPEECH_MALE_POOL.get("command", []))
+                pool.extend(SPEECH_MALE_POOL.get("dirty", []))
+            else:
+                pool.extend(SPEECH_MALE_POOL.get("dirty", []))
+                pool.extend(SPEECH_MALE_POOL.get("praise", []))
+        return pool if pool else [v for sp in SPEECH_MALE_POOL.values() for v in sp]
 
     _moan_fix_count = 0
     _used_moan_for_fix = set()
@@ -3378,8 +3750,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     _body_fix_count = 0
     _used_speech_for_fix = set()
     if _has_pool:
-        theme = ""
-        if results:
+        if not theme and results:
             # メタデータからテーマ取得（5テーマ自動検出）
             all_desc = " ".join(
                 s.get("description", "") + " " + s.get("mood", "")
@@ -3528,6 +3899,22 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     if _thought_body_fix_count > 0:
         log_message(f"  thought部位ラベル冒頭修正: {_thought_body_fix_count}件")
 
+    # 9c. thought 20文字超をトリミング（ナレーション化防止）
+    _thought_trim_count = 0
+    for scene in results:
+        for b in scene.get("bubbles", []):
+            if b.get("type") == "thought" and len(b.get("text", "")) > 20:
+                txt = b["text"]
+                # 「…」で切れ目を探して20文字以内に
+                cut = txt[:20].rfind("\u2026")
+                if cut > 5:
+                    b["text"] = txt[:cut + 1]
+                else:
+                    b["text"] = txt[:18] + "\u2026"
+                _thought_trim_count += 1
+    if _thought_trim_count > 0:
+        log_message(f"  thought長さトリミング: {_thought_trim_count}件")
+
     # 10. 同一シーン内テキスト重複修正
     _intra_dup_count = 0
     if _has_pool:
@@ -3558,6 +3945,239 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 seen_texts.add(txt)
     if _intra_dup_count > 0:
         log_message(f"  シーン内重複修正: {_intra_dup_count}件")
+
+    # 10b. THOUGHT↔SPEECH感情矛盾修正
+    _POSITIVE_THOUGHT_KW = ["幸せ", "嬉しい", "好き", "大好き", "気持ちいい", "もっと", "欲しい", "♡"]
+    _NEGATIVE_SPEECH_KW = ["やめて", "嫌", "離して", "痛い", "やだ", "助けて", "来ないで"]
+    _NEGATIVE_THOUGHT_KW = ["怖い", "嫌だ", "逃げ", "助けて", "痛い", "無理", "嫌い"]
+    _POSITIVE_SPEECH_KW = ["もっと", "気持ちいい", "好き", "♡", "嬉しい", "幸せ", "ちょうだい"]
+    # forced/reluctantテーマのi=3-4は矛盾が正常パターン（快楽堕ち）→免除
+    _is_contradiction_exempt = any(k in (theme or "").lower()
+                                    for k in ["forced", "reluctant", "陵辱", "強制"])
+    _contradiction_fix_count = 0
+    if _has_pool:
+        for _si_ct, scene in enumerate(results):
+            intensity = scene.get("intensity", 3)
+            if _is_contradiction_exempt and 3 <= intensity <= 4:
+                continue
+            bubbles = scene.get("bubbles", [])
+            _scene_thoughts = [b for b in bubbles if b.get("type") == "thought"]
+            _scene_speeches = [b for b in bubbles if b.get("type") == "speech"]
+            if not _scene_thoughts or not _scene_speeches:
+                continue
+            for th_b in _scene_thoughts:
+                th_text = th_b.get("text", "")
+                is_positive_thought = any(kw in th_text for kw in _POSITIVE_THOUGHT_KW)
+                is_negative_thought = any(kw in th_text for kw in _NEGATIVE_THOUGHT_KW)
+                for sp_b in _scene_speeches:
+                    sp_text = sp_b.get("text", "")
+                    is_negative_speech = any(kw in sp_text for kw in _NEGATIVE_SPEECH_KW)
+                    is_positive_speech = any(kw in sp_text for kw in _POSITIVE_SPEECH_KW)
+                    # ポジティブthought + ネガティブspeech → thoughtを抵抗系に差替え
+                    if is_positive_thought and is_negative_speech:
+                        pool = _get_speech_pool_with_char("thought", theme, intensity, _si_ct, len(results))
+                        _resist_pool = [p for p in pool if any(kw in p for kw in ["でも", "なのに", "…けど", "嫌", "だめ"])]
+                        if _resist_pool:
+                            repl = pick_replacement(_resist_pool, _used_speech_for_fix, _normalize_bubble_text)
+                            if repl:
+                                log_message(f"  感情矛盾修正: シーン{_si_ct+1} thought「{th_text[:12]}」→「{repl}」")
+                                th_b["text"] = repl
+                                _used_speech_for_fix.add(repl)
+                                _contradiction_fix_count += 1
+                        break
+                    # ネガティブthought + ポジティブspeech → speechを否定系に差替え
+                    if is_negative_thought and is_positive_speech:
+                        pool = _get_speech_pool_with_char("speech", theme, intensity, _si_ct, len(results))
+                        _deny_pool = [p for p in pool if any(kw in p for kw in ["やめ", "だめ", "嫌", "…っ", "痛"])]
+                        if _deny_pool:
+                            repl = pick_replacement(_deny_pool, _used_speech_for_fix, _normalize_bubble_text)
+                            if repl:
+                                log_message(f"  感情矛盾修正: シーン{_si_ct+1} speech「{sp_text[:12]}」→「{repl}」")
+                                sp_b["text"] = repl
+                                _used_speech_for_fix.add(repl)
+                                _contradiction_fix_count += 1
+                        break
+    if _contradiction_fix_count > 0:
+        log_message(f"  感情矛盾修正: {_contradiction_fix_count}件")
+
+    # 10c. シーン間心理状態遷移モデル（2段階以上乖離するセリフを差替え）
+    _PSYCHOLOGICAL_STAGES = ["resistance", "confusion", "acceptance", "desire", "abandon"]
+    _STAGE_SPEECH_PATTERNS = {
+        "resistance": ["やめて", "嫌", "離して", "来ないで", "やだ", "助けて", "痛い", "怖い"],
+        "confusion":  ["なんで", "わからない", "どうして", "嘘", "おかしい", "信じられない", "混乱"],
+        "acceptance": ["…仕方ない", "…もういい", "わかった", "好きに", "…ん…", "いいよ"],
+        "desire":     ["もっと", "欲しい", "お願い", "ちょうだい", "止めないで", "気持ちいい"],
+        "abandon":    ["壊れ", "なんでもいい", "全部", "おかしく", "どうでも", "♡♡♡", "もう…だめ"],
+    }
+    _STAGE_THOUGHT_PATTERNS = {
+        "resistance": ["逃げ", "嫌だ", "怖い", "助けて", "無理"],
+        "confusion":  ["なんで", "わからない", "おかしい", "どうして"],
+        "acceptance": ["仕方ない", "受け入れ", "もういい", "諦め"],
+        "desire":     ["欲しい", "もっと", "気持ちいい", "♡"],
+        "abandon":    ["壊れ", "何も考え", "真っ白", "溶け", "♡♡"],
+    }
+
+    def _infer_psychological_stage(scene_idx: int, intensity: int, total: int, theme_str: str) -> str:
+        """シーン位置/intensity/テーマ→心理段階推定"""
+        ratio = scene_idx / max(total, 1)
+        is_pure_love = any(k in (theme_str or "").lower() for k in ["純愛", "vanilla", "love", "ラブ"])
+        if is_pure_love:
+            # 純愛: resistanceスキップ → confusion開始
+            if ratio < 0.15:
+                return "confusion"
+            elif ratio < 0.4:
+                return "acceptance"
+            elif ratio < 0.7:
+                return "desire"
+            else:
+                return "abandon"
+        if intensity <= 1:
+            return "resistance"
+        elif intensity == 2:
+            return "confusion" if ratio < 0.5 else "acceptance"
+        elif intensity == 3:
+            return "acceptance" if ratio < 0.6 else "desire"
+        elif intensity == 4:
+            return "desire"
+        else:
+            return "abandon"
+
+    def _is_stage_mismatch(text: str, stage: str, patterns_dict: dict) -> bool:
+        """テキストが現在の心理段階から2段階以上離れたキーワードを含むか"""
+        stage_idx = _PSYCHOLOGICAL_STAGES.index(stage) if stage in _PSYCHOLOGICAL_STAGES else 2
+        for other_stage, keywords in patterns_dict.items():
+            other_idx = _PSYCHOLOGICAL_STAGES.index(other_stage) if other_stage in _PSYCHOLOGICAL_STAGES else 2
+            if abs(stage_idx - other_idx) >= 2:
+                if any(kw in text for kw in keywords):
+                    return True
+        return False
+
+    _stage_fix_count = 0
+    if _has_pool:
+        _total_s_psy = len(results)
+        for _si_psy, scene in enumerate(results):
+            intensity = scene.get("intensity", 3)
+            _stage = _infer_psychological_stage(_si_psy, intensity, _total_s_psy, theme)
+            for b in scene.get("bubbles", []):
+                btype = b.get("type", "speech")
+                txt = b.get("text", "")
+                if not txt:
+                    continue
+                if btype == "speech":
+                    if _is_stage_mismatch(txt, _stage, _STAGE_SPEECH_PATTERNS):
+                        pool = _get_speech_pool_with_char("speech", theme, intensity, _si_psy, _total_s_psy)
+                        # 現在段階のキーワードを含むセリフを優先
+                        stage_kw = _STAGE_SPEECH_PATTERNS.get(_stage, [])
+                        _stage_pool = [p for p in pool if any(kw in p for kw in stage_kw)]
+                        target_pool = _stage_pool if _stage_pool else pool
+                        repl = pick_replacement(target_pool, _used_speech_for_fix, _normalize_bubble_text)
+                        if repl:
+                            log_message(f"  心理遷移修正: シーン{_si_psy+1}({_stage}) speech「{txt[:12]}」→「{repl}」")
+                            b["text"] = repl
+                            _used_speech_for_fix.add(repl)
+                            _stage_fix_count += 1
+                elif btype == "thought":
+                    if _is_stage_mismatch(txt, _stage, _STAGE_THOUGHT_PATTERNS):
+                        pool = _get_speech_pool_with_char("thought", theme, intensity, _si_psy, _total_s_psy)
+                        stage_kw = _STAGE_THOUGHT_PATTERNS.get(_stage, [])
+                        _stage_pool = [p for p in pool if any(kw in p for kw in stage_kw)]
+                        target_pool = _stage_pool if _stage_pool else pool
+                        repl = pick_replacement(target_pool, _used_speech_for_fix, _normalize_bubble_text)
+                        if repl:
+                            log_message(f"  心理遷移修正: シーン{_si_psy+1}({_stage}) thought「{txt[:12]}」→「{repl}」")
+                            b["text"] = repl
+                            _used_speech_for_fix.add(repl)
+                            _stage_fix_count += 1
+    if _stage_fix_count > 0:
+        log_message(f"  心理遷移修正: {_stage_fix_count}件")
+
+    # 10d. N-gram語彙多様性修正（4文字N-gramが5回超出現→3回目以降をプール代替）
+    _ngram_fix_count = 0
+    if _has_pool:
+        from collections import Counter as _NgramCounter
+        # 全バブルからN-gram頻度集計
+        _ngram_positions = {}  # ngram -> [(scene_idx, bubble_idx, start_pos)]
+        for _si_ng, scene in enumerate(results):
+            for _bi_ng, b in enumerate(scene.get("bubbles", [])):
+                txt = b.get("text", "")
+                if len(txt) >= 4:
+                    for _ng_s in range(len(txt) - 3):
+                        ng = txt[_ng_s:_ng_s + 4]
+                        _ngram_positions.setdefault(ng, []).append((_si_ng, _bi_ng, _ng_s))
+        # 5回超のN-gramを持つバブルの3回目以降を置換
+        _heavy_ngrams = {ng: positions for ng, positions in _ngram_positions.items()
+                         if len(positions) > 5}
+        _replaced_bubbles = set()  # (scene_idx, bubble_idx)
+        for ng, positions in _heavy_ngrams.items():
+            for _occur_idx, (si, bi, _) in enumerate(positions):
+                if _occur_idx < 2:
+                    continue  # 最初の2回はそのまま
+                if (si, bi) in _replaced_bubbles:
+                    continue
+                scene = results[si]
+                b = scene.get("bubbles", [])[bi]
+                btype = b.get("type", "speech")
+                intensity = scene.get("intensity", 3)
+                _total_s_ng = len(results)
+                if btype == "moan":
+                    pool = _get_moan_pool_with_char(intensity)
+                    repl = pick_replacement(pool, _used_moan_for_fix, _normalize_bubble_text)
+                else:
+                    pool = _get_speech_pool_with_char(btype, theme, intensity, si, _total_s_ng)
+                    repl = pick_replacement(pool, _used_speech_for_fix, _normalize_bubble_text)
+                if repl:
+                    log_message(f"  N-gram反復修正({ng}): シーン{si+1}「{b['text'][:15]}…」→「{repl}」")
+                    b["text"] = repl
+                    _used_speech_for_fix.add(repl)
+                    _replaced_bubbles.add((si, bi))
+                    _ngram_fix_count += 1
+    if _ngram_fix_count > 0:
+        log_message(f"  N-gram反復修正: {_ngram_fix_count}件")
+
+    # 10e. バブル順序ローテーション（同一first-bubble type 3連続防止）
+    _BUBBLE_TYPE_ORDER = ["moan", "thought", "speech"]
+    _prev_first_type = None
+    _consecutive_first = 0
+    _bubble_rotate_count = 0
+    for scene in results:
+        bubbles = scene.get("bubbles", [])
+        if not bubbles or len(bubbles) < 2:
+            _prev_first_type = None
+            _consecutive_first = 0
+            continue
+        first_type = bubbles[0].get("type", "speech")
+        if first_type == _prev_first_type:
+            _consecutive_first += 1
+        else:
+            _consecutive_first = 1
+            _prev_first_type = first_type
+        if _consecutive_first >= 3:
+            intensity = scene.get("intensity", 3)
+            # intensity≤2のシーンはmoan-firstにしない
+            # 次のタイプを決定
+            try:
+                cur_idx = _BUBBLE_TYPE_ORDER.index(first_type)
+            except ValueError:
+                cur_idx = 0
+            next_type = _BUBBLE_TYPE_ORDER[(cur_idx + 1) % len(_BUBBLE_TYPE_ORDER)]
+            # intensity≤2ではmoan-firstを回避
+            if intensity <= 2 and next_type == "moan":
+                next_type = _BUBBLE_TYPE_ORDER[(cur_idx + 2) % len(_BUBBLE_TYPE_ORDER)]
+            # 該当typeのバブルを先頭に移動
+            target_idx = None
+            for bi, b in enumerate(bubbles):
+                if b.get("type") == next_type and bi > 0:
+                    target_idx = bi
+                    break
+            if target_idx is not None:
+                moved = bubbles.pop(target_idx)
+                bubbles.insert(0, moved)
+                scene["bubbles"] = bubbles
+                _prev_first_type = next_type
+                _consecutive_first = 1
+                _bubble_rotate_count += 1
+    if _bubble_rotate_count > 0:
+        log_message(f"  バブル順序ローテーション: {_bubble_rotate_count}件（3連続同一first防止）")
 
     # 11. story_flow重複修正（同一テキストの2回目以降を空にする）
     _seen_flows = {}
@@ -3662,8 +4282,10 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     if _name_trunc_count > 0:
         log_message(f"  キャラ名途切れ修復: {_name_trunc_count}件（フルネーム→姓に置換）")
 
-    # 12. description先頭30字重複修正（全既出シーンと比較、最初の句点後に状況挿入）
-    # 方針: 「場所。状況描写...」の「。」の後にvariation文を挿入して先頭30字を変化させる
+    _progress("Step 12-20 description/title/感情修正")
+    # 12. description先頭15字重複修正（全既出シーンと比較、最初の句点後に状況挿入）
+    # v8.2根本修正: 30字→15字に短縮（「地方出張先のビジネスホテルの一室。」vs「一室、」の差を検出）
+    # 方針: 「場所。状況描写...」の「。」の後にvariation文を挿入して先頭を変化させる
     _INTENSITY_DESC_INSERTS = {
         1: [
             "不穏な空気が漂う中、", "緊張感が張り詰める中、", "嫌な予感を覚えながら、",
@@ -3694,15 +4316,16 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         ],
     }
     _desc_fix_count = 0
-    _seen_desc_prefixes = {}  # prefix_30char -> first scene_id
+    _DESC_PREFIX_LEN = 15  # v8.2: 30→15字に短縮（場所名の微差を検出）
+    _seen_desc_prefixes = {}  # prefix -> first scene_id
     for i, scene in enumerate(results):
         desc = scene.get("description", "")
-        if not desc or len(desc) < 30:
+        if not desc or len(desc) < _DESC_PREFIX_LEN:
             sid = scene.get("scene_id", i + 1)
             if desc:
-                _seen_desc_prefixes[desc[:30]] = sid
+                _seen_desc_prefixes[desc[:_DESC_PREFIX_LEN]] = sid
             continue
-        prefix30 = desc[:30]
+        prefix30 = desc[:_DESC_PREFIX_LEN]
         sid = scene.get("scene_id", i + 1)
         if prefix30 in _seen_desc_prefixes:
             intensity = scene.get("intensity", 3)
@@ -3724,7 +4347,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
             for try_idx in range(_desc_fix_count, _desc_fix_count + len(inserts)):
                 candidate = inserts[try_idx % len(inserts)]
                 new_desc = desc[:insert_pos] + candidate + desc[insert_pos:]
-                if new_desc[:30] not in _seen_desc_prefixes:
+                if new_desc[:_DESC_PREFIX_LEN] not in _seen_desc_prefixes:
                     chosen_insert = candidate
                     break
             # 2) 隣接intensity（±1）のバリエーションも試す
@@ -3735,7 +4358,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                     adj_inserts = _INTENSITY_DESC_INSERTS.get(adj_i, [])
                     for candidate in adj_inserts:
                         new_desc = desc[:insert_pos] + candidate + desc[insert_pos:]
-                        if new_desc[:30] not in _seen_desc_prefixes:
+                        if new_desc[:_DESC_PREFIX_LEN] not in _seen_desc_prefixes:
                             chosen_insert = candidate
                             break
                     if chosen_insert:
@@ -3747,7 +4370,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                         continue
                     for candidate in _INTENSITY_DESC_INSERTS.get(any_i, []):
                         new_desc = desc[:insert_pos] + candidate + desc[insert_pos:]
-                        if new_desc[:30] not in _seen_desc_prefixes:
+                        if new_desc[:_DESC_PREFIX_LEN] not in _seen_desc_prefixes:
                             chosen_insert = candidate
                             break
                     if chosen_insert:
@@ -3758,27 +4381,111 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 for any_i in range(1, 6):
                     for candidate in _INTENSITY_DESC_INSERTS.get(any_i, []):
                         new_desc = candidate + desc
-                        if new_desc[:30] not in _seen_desc_prefixes:
+                        if new_desc[:_DESC_PREFIX_LEN] not in _seen_desc_prefixes:
                             chosen_insert = candidate
                             break
                     if chosen_insert:
                         break
             if chosen_insert is None:
-                # 最終フォールバック: 全て枯渇（極稀）→ 先頭にシーン固有テキスト
-                chosen_insert = f"この場面では、"
+                # 最終フォールバック: 全て枯渇 → シーン番号入りで一意性保証
+                chosen_insert = f"シーン{sid}の場面では、"
                 insert_pos = 0
             new_desc = desc[:insert_pos] + chosen_insert + desc[insert_pos:]
             scene["description"] = new_desc
             _desc_fix_count += 1
             log_message(f"  S{sid}: description重複修正（S{_seen_desc_prefixes[prefix30]}と一致、挿入: {chosen_insert[:15]}...）")
-            # 修正後のprefix30も登録（二次重複防止）
-            new_prefix30 = new_desc[:30]
+            # 修正後のprefixも登録（二次重複防止）
+            new_prefix30 = new_desc[:_DESC_PREFIX_LEN]
             if new_prefix30 not in _seen_desc_prefixes:
                 _seen_desc_prefixes[new_prefix30] = sid
         else:
             _seen_desc_prefixes[prefix30] = sid
     if _desc_fix_count > 0:
         log_message(f"  description重複修正: {_desc_fix_count}件")
+
+    # 12a2. description先頭10字prefix二次チェック（"シャワー室の濡れた床で" 等の短い重複をキャッチ）
+    _DESC_PREFIX_LEN_SHORT = 10
+    _seen_short_prefix = {}  # prefix10 -> [scene_indices]
+    for i, scene in enumerate(results):
+        desc = scene.get("description", "")
+        if not desc or len(desc) < _DESC_PREFIX_LEN_SHORT:
+            continue
+        short_p = desc[:_DESC_PREFIX_LEN_SHORT]
+        _seen_short_prefix.setdefault(short_p, []).append(i)
+    _desc_short_fix = 0
+    for short_p, indices in _seen_short_prefix.items():
+        if len(indices) < 3:
+            continue
+        # 3回目以降にバリエーション挿入
+        for dup_idx in indices[2:]:
+            scene = results[dup_idx]
+            desc = scene.get("description", "")
+            intensity = scene.get("intensity", 3)
+            sid = scene.get("scene_id", dup_idx + 1)
+            inserts = _INTENSITY_DESC_INSERTS.get(intensity, _INTENSITY_DESC_INSERTS[3])
+            candidate = inserts[(_desc_short_fix + dup_idx) % len(inserts)]
+            insert_pos = desc.find("。")
+            if insert_pos >= 0 and insert_pos < len(desc) - 1:
+                insert_pos += 1
+            else:
+                insert_pos = 0
+            new_desc = desc[:insert_pos] + candidate + desc[insert_pos:]
+            # 10字prefixが変わったか確認
+            if new_desc[:_DESC_PREFIX_LEN_SHORT] != short_p:
+                scene["description"] = new_desc
+                _desc_short_fix += 1
+            else:
+                # 先頭挿入で確実に変える
+                new_desc = candidate + desc
+                scene["description"] = new_desc
+                _desc_short_fix += 1
+    if _desc_short_fix > 0:
+        log_message(f"  description短prefix重複修正: {_desc_short_fix}件（10字prefix 3回以上）")
+
+    # 12b. mood重複修正（同一moodの3回目以降をintensity別バリエーションで置換）
+    _MOOD_VARIANTS = {
+        1: ["静かな緊張感", "不安と期待が入り混じる空気", "甘い予感が漂う空間",
+            "戸惑いと好奇心の狭間", "穏やかだが張りつめた沈黙", "秘めた欲望が滲む雰囲気"],
+        2: ["高まる鼓動と熱気", "抗えない引力に満ちた空気", "肌が触れ合う甘い緊張",
+            "理性と欲望がせめぎ合う空間", "息遣いが重なる距離感", "抑えきれない衝動の予感"],
+        3: ["快楽に溺れる密室", "熱く絡み合う情欲の渦", "理性が崩れていく甘い地獄",
+            "汗ばむ肌と乱れる吐息", "止められない快感の連鎖", "貪り合う獣のような熱気"],
+        4: ["絶頂へ駆け上がる狂熱", "壊れそうなほどの快楽の嵐", "獣じみた情欲が支配する空間",
+            "限界を超えた快感の波状攻撃", "理性が完全に溶けた淫靡な世界", "果てしない絶頂の連鎖"],
+        5: ["全てを焼き尽くす最高潮", "意識が飛ぶほどの究極の快楽", "魂ごと蕩ける至福の瞬間",
+            "壮絶な絶頂が全身を貫く", "白く染まる意識の果て", "限界を遥かに超えた恍惚"],
+    }
+    _mood_fix_count = 0
+    _mood_seen_count = {}  # mood_text -> occurrence_count
+    _mood_used_variants = set()
+    for scene in results:
+        m = scene.get("mood", "")
+        if not m:
+            continue
+        _mood_seen_count[m] = _mood_seen_count.get(m, 0) + 1
+        if _mood_seen_count[m] >= 3:  # 3回目以降を置換
+            intensity = scene.get("intensity", 3)
+            variants = _MOOD_VARIANTS.get(intensity, _MOOD_VARIANTS[3])
+            chosen = None
+            for v in variants:
+                if v not in _mood_used_variants and v != m:
+                    chosen = v
+                    break
+            if chosen is None:
+                # 隣接intensityからも探索
+                for adj_i in [max(1, intensity - 1), min(5, intensity + 1)]:
+                    for v in _MOOD_VARIANTS.get(adj_i, []):
+                        if v not in _mood_used_variants:
+                            chosen = v
+                            break
+                    if chosen:
+                        break
+            if chosen:
+                scene["mood"] = chosen
+                _mood_used_variants.add(chosen)
+                _mood_fix_count += 1
+    if _mood_fix_count > 0:
+        log_message(f"  mood重複修正: {_mood_fix_count}件")
 
     # 13. character_feelings重複修正（全既出シーンと比較、一致→intensity別テンプレートで差し替え）
     _FEELINGS_VARIANTS = {
@@ -3827,7 +4534,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     _seen_feelings = {}  # frozen feelings values string -> first scene_id
     for i, scene in enumerate(results):
         cf = scene.get("character_feelings", {})
-        if not cf:
+        if not cf or not isinstance(cf, dict):
             continue
         sid = scene.get("scene_id", i + 1)
         # validate_scriptと同じロジック: values()のみで比較（キー名は無視）
@@ -3867,6 +4574,9 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     _STORYFLOW_PREFIXES = [
         "さらに、", "その後、", "やがて、", "次第に、", "一方で、",
         "そして、", "続けて、", "同時に、", "ここから、", "それから、",
+        # v8.2追加: 遷移バリエーション
+        "そこから、", "息つく間もなく、", "勢いのまま、", "流れるように、",
+        "間を置かず、", "畳みかけるように、", "一転して、",
     ]
     _sf_fix_count = 0
     _seen_sf = {}  # prefix20 -> first scene_id
@@ -3881,6 +4591,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         sid = scene.get("scene_id", i + 1)
         if sf20 in _seen_sf:
             # 先頭に接続詞を追加して20字を変化させる
+            _sf_fixed = False
             for try_idx in range(_sf_fix_count, _sf_fix_count + len(_STORYFLOW_PREFIXES)):
                 prefix = _STORYFLOW_PREFIXES[try_idx % len(_STORYFLOW_PREFIXES)]
                 new_sf = prefix + sf
@@ -3888,9 +4599,14 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                     scene["story_flow"] = new_sf
                     _sf_fix_count += 1
                     _seen_sf[new_sf[:20]] = sid
+                    _sf_fixed = True
                     break
-            else:
-                _seen_sf[sf20] = sid
+            if not _sf_fixed:
+                # 全プレフィックス枯渇 → シーン番号で一意化
+                new_sf = f"[S{sid}] " + sf
+                scene["story_flow"] = new_sf
+                _sf_fix_count += 1
+                _seen_sf[new_sf[:20]] = sid
         else:
             _seen_sf[sf20] = sid
     if _sf_fix_count > 0:
@@ -3910,16 +4626,27 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 continue
             if line in _seen_speech:
                 # 微小変化を付加: 末尾に「…」「っ」「♡」などを追加/変更
-                _SPEECH_SUFFIXES = ["…", "っ", "…♡", "…っ"]
+                _SPEECH_SUFFIXES = ["…", "っ", "…♡", "…っ", "♡", "…♡♡", "ぅ…", "ぁ…"]
                 modified = False
                 for suffix in _SPEECH_SUFFIXES:
-                    new_line = line.rstrip("…♡っ。、") + suffix
+                    new_line = line.rstrip("…♡っ。、ぅぁ") + suffix
                     if new_line != line and new_line not in _seen_speech:
                         b["text"] = new_line
                         _seen_speech[new_line] = (i, bi)
                         _sp_fix_count += 1
                         modified = True
                         break
+                if not modified:
+                    # 全サフィックス枯渇 → 先頭に感嘆詞追加で一意化
+                    _SPEECH_INTERJECTIONS = ["あっ…", "んっ…", "はぁ…", "ねぇ…"]
+                    for intj in _SPEECH_INTERJECTIONS:
+                        new_line = intj + line
+                        if new_line not in _seen_speech:
+                            b["text"] = new_line
+                            _seen_speech[new_line] = (i, bi)
+                            _sp_fix_count += 1
+                            modified = True
+                            break
                 if not modified:
                     _seen_speech[line] = (i, bi)
             else:
@@ -3958,6 +4685,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         "胸を", "腰を", "脚を", "太もも", "尻を",
     ]
     _desc_fix_count = 0
+    _seen_concrete_prefixes = set()  # 500シーン耐性: 具体化後のprefix30重複回避
     for i, scene in enumerate(results):
         intensity = scene.get("intensity", 0)
         if intensity < 4:
@@ -3967,11 +4695,32 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
             continue
         if any(kw in desc for kw in _CONCRETE_KW_CHECK):
             continue
-        # 具体表現を先頭に追加
+        # 具体表現を先頭に追加（prefix30重複回避付き）
         level = min(intensity, 5)
         additions = _CONCRETE_ADDITIONS.get(level, _CONCRETE_ADDITIONS[4])
-        addition = additions[i % len(additions)]
-        scene["description"] = addition + desc
+        chosen = None
+        for try_offset in range(len(additions)):
+            candidate = additions[(i + try_offset) % len(additions)]
+            new_prefix = (candidate + desc)[:30]
+            if new_prefix not in _seen_concrete_prefixes:
+                chosen = candidate
+                break
+        if chosen is None:
+            # 全addition使用済み→隣接intensityも試す
+            for adj_level in [max(4, level - 1), min(5, level + 1)]:
+                if adj_level == level:
+                    continue
+                for candidate in _CONCRETE_ADDITIONS.get(adj_level, []):
+                    new_prefix = (candidate + desc)[:30]
+                    if new_prefix not in _seen_concrete_prefixes:
+                        chosen = candidate
+                        break
+                if chosen:
+                    break
+        if chosen is None:
+            chosen = additions[i % len(additions)]  # フォールバック
+        scene["description"] = chosen + desc
+        _seen_concrete_prefixes.add((chosen + desc)[:30])
         _desc_fix_count += 1
     if _desc_fix_count > 0:
         log_message(f"  description具体化修正: {_desc_fix_count}件")
@@ -4007,6 +4756,32 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
             _desc_sim_fix += 1
     if _desc_sim_fix > 0:
         log_message(f"  description連続類似修正: {_desc_sim_fix}件")
+
+    # 16d. description外見反復修正（3連続で同一先頭30文字→2回目以降を短縮）
+    _appearance_fix_count = 0
+    _desc_prefixes = [s.get("description", "")[:30] for s in results]
+    for k in range(2, len(results)):
+        p0, p1, p2 = _desc_prefixes[k-2], _desc_prefixes[k-1], _desc_prefixes[k]
+        if p0 and p1 and p2 and p0 == p1 == p2:
+            # 中央シーン(k-1)のdescription先頭を短縮: キャラ名だけ残す
+            desc = results[k-1].get("description", "")
+            if correct_names:
+                # 「{キャラ名}が」「{キャラ名}は」の直後から残す
+                for cn in correct_names:
+                    for particle in ("が", "は", "の"):
+                        marker = cn + particle
+                        idx = desc.find(marker)
+                        if idx >= 0:
+                            desc = desc[idx:]
+                            break
+                    else:
+                        continue
+                    break
+            results[k-1]["description"] = desc
+            _desc_prefixes[k-1] = desc[:30]
+            _appearance_fix_count += 1
+    if _appearance_fix_count > 0:
+        log_message(f"  description外見反復修正: {_appearance_fix_count}件")
 
     # 16c. title品質修正（句点除去・location混入修正・description混入修正）
     _TITLE_MOOD_WORDS = [
@@ -4071,20 +4846,30 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     if _title_quality_fix > 0:
         log_message(f"  title品質修正: {_title_quality_fix}件")
 
-    # 17. title重複修正（同一titleの2回目以降を場所+状況で差し替え）
+    # 17. title重複修正（同一titleの2回目以降→行為/感情ベースの短いtitleに差し替え）
+    # v8.2根本修正: f"{mood}の{desc}" を廃止。短いキーワードベースに変更
+    _TITLE_ACTION_WORDS = [
+        "背徳", "快楽", "服従", "支配", "羞恥", "覚醒", "堕落", "恍惚",
+        "衝動", "情欲", "欲望", "執着", "解放", "陶酔", "狂乱", "震撼",
+    ]
+    _TITLE_BODY_WORDS = [
+        "唇", "胸", "腰", "脚", "首筋", "耳", "背中", "指先",
+        "太もも", "うなじ", "肌", "身体", "内腿",
+    ]
     _seen_titles_af = set()
     _title_fix_af = 0
     for scene in results:
         t = scene.get("title", "")
         if t in _seen_titles_af:
             sid = scene.get("scene_id", "?")
-            desc = scene.get("description", "")[:20]
-            loc = scene.get("location_detail", scene.get("location", ""))
-            mood = scene.get("mood", "")[:10]
-            new_title = f"{mood}の{desc}" if mood and desc else f"シーン{sid}"
+            _si = scene.get("intensity", 3)
+            # 行為 + 感情の短いタイトルを生成（12字以内）
+            _aw = _TITLE_ACTION_WORDS[(_title_fix_af + sid if isinstance(sid, int) else _title_fix_af) % len(_TITLE_ACTION_WORDS)]
+            _bw = _TITLE_BODY_WORDS[(_title_fix_af + (_si * 3)) % len(_TITLE_BODY_WORDS)]
+            new_title = f"{_aw}の{_bw}"
             # 重複しないようにする
             if new_title in _seen_titles_af:
-                new_title = f"{new_title}({sid})"
+                new_title = f"{_aw}と{_bw}({sid})"
             scene["title"] = new_title
             _title_fix_af += 1
             log_message(f"  S{sid}: title重複修正「{t}」→「{new_title}」")
@@ -4092,24 +4877,134 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
     if _title_fix_af > 0:
         log_message(f"  title重複修正: {_title_fix_af}件")
 
+    # 17b. title接頭辞反復修正（同一接頭辞が多すぎる → タイトル全体を再生成）
+    # v8.3修正: old_title[2:]の盲目的文字切断を廃止。description/moodからキーワード抽出して全体再生成
+    _title_prefix2_counter = {}
+    for scene in results:
+        t = scene.get("title", "")[:2]
+        if t:
+            _title_prefix2_counter.setdefault(t, []).append(scene)
+    _title_prefix_fix = 0
+    _all_titles_17b = set(s.get("title", "") for s in results)
+    _TITLE_REGEN_TEMPLATES = [
+        "{emotion}の{action}",
+        "{action}と{emotion}",
+        "{body}に走る{emotion}",
+        "{emotion}に濡れた{body}",
+        "{action}の先に",
+        "溢れる{emotion}",
+        "{body}が求めた{action}",
+        "{emotion}の{body}",
+    ]
+    _TITLE_REGEN_EMOTIONS = {
+        1: ["戸惑い", "緊張", "不安", "躊躇", "動揺"],
+        2: ["羞恥", "期待", "困惑", "ときめき", "誘惑"],
+        3: ["快感", "衝動", "陶酔", "情熱", "昂ぶり"],
+        4: ["絶頂", "狂熱", "暴走", "支配", "崩壊"],
+        5: ["恍惚", "極限", "解放", "至福", "白濁"],
+    }
+    _TITLE_REGEN_ACTIONS = [
+        "愛撫", "吐息", "囁き", "接触", "抱擁", "口づけ", "交わり",
+        "律動", "高まり", "震え", "疼き", "昂り", "絡み合い", "蜜月",
+    ]
+    _TITLE_REGEN_BODIES = [
+        "唇", "指先", "肌", "胸", "うなじ", "太もも", "腰",
+        "背中", "首筋", "耳たぶ", "素肌", "身体",
+    ]
+    for prefix, scenes_17b in _title_prefix2_counter.items():
+        if len(scenes_17b) < 4:
+            continue
+        # 4回目以降をタイトル全体再生成
+        for idx_17b, scene in enumerate(scenes_17b[3:]):
+            sid = scene.get("scene_id", "?")
+            old_title = scene.get("title", "")
+            intensity = scene.get("intensity", 3)
+            # intensityに応じた感情語を選択
+            emotions = _TITLE_REGEN_EMOTIONS.get(intensity, _TITLE_REGEN_EMOTIONS[3])
+            emotion = emotions[(idx_17b + _title_prefix_fix) % len(emotions)]
+            action = _TITLE_REGEN_ACTIONS[(idx_17b + intensity) % len(_TITLE_REGEN_ACTIONS)]
+            body = _TITLE_REGEN_BODIES[(idx_17b + (sid if isinstance(sid, int) else 0)) % len(_TITLE_REGEN_BODIES)]
+            tmpl = _TITLE_REGEN_TEMPLATES[(idx_17b + _title_prefix_fix) % len(_TITLE_REGEN_TEMPLATES)]
+            new_title = tmpl.format(emotion=emotion, action=action, body=body)
+            # 重複チェック
+            if new_title in _all_titles_17b:
+                new_title = f"{emotion}の{body}({sid})"
+            if len(new_title) > 25:
+                new_title = new_title[:25].rstrip("。、…")
+            scene["title"] = new_title
+            _all_titles_17b.add(new_title)
+            _title_prefix_fix += 1
+            log_message(f"  S{sid}: title接頭辞修正「{old_title}」→「{new_title}」")
+    if _title_prefix_fix > 0:
+        log_message(f"  title接頭辞修正: {_title_prefix_fix}件")
+
+    # 17c. title location leak検出（場所名がタイトルに混入→テンプレート再生成）
+    _TITLE_LOCATION_LEAK_WORDS = [
+        "タイル", "シャワー室", "プール", "白い壁", "天井", "床", "ベンチ", "更衣室",
+        "洗面台", "カーテン", "廊下", "階段", "エレベーター", "ドア", "窓", "机",
+    ]
+    _title_leak_fix = 0
+    for scene in results:
+        title = scene.get("title", "")
+        if not title:
+            continue
+        sid = scene.get("scene_id", "?")
+        needs_regen = False
+        # location語混入チェック
+        for leak_word in _TITLE_LOCATION_LEAK_WORDS:
+            if leak_word in title:
+                needs_regen = True
+                break
+        # 末尾切断チェック（「新」「の」「と」等1文字で終わる不自然なタイトル）
+        if not needs_regen and len(title) >= 3 and title[-1] in "新のとがをにでへは":
+            needs_regen = True
+        if needs_regen:
+            old_title = title
+            intensity = scene.get("intensity", 3)
+            emotions = _TITLE_REGEN_EMOTIONS.get(intensity, _TITLE_REGEN_EMOTIONS[3])
+            emotion = emotions[(_title_leak_fix + (sid if isinstance(sid, int) else 0)) % len(emotions)]
+            action = _TITLE_REGEN_ACTIONS[(_title_leak_fix + intensity) % len(_TITLE_REGEN_ACTIONS)]
+            body = _TITLE_REGEN_BODIES[(_title_leak_fix + 3) % len(_TITLE_REGEN_BODIES)]
+            tmpl = _TITLE_REGEN_TEMPLATES[(_title_leak_fix + 2) % len(_TITLE_REGEN_TEMPLATES)]
+            new_title = tmpl.format(emotion=emotion, action=action, body=body)
+            if new_title in _all_titles_17b:
+                new_title = f"{emotion}の{action}({sid})"
+            if len(new_title) > 25:
+                new_title = new_title[:25].rstrip("。、…")
+            scene["title"] = new_title
+            _all_titles_17b.add(new_title)
+            _title_leak_fix += 1
+            log_message(f"  S{sid}: title location leak修正「{old_title}」→「{new_title}」")
+    if _title_leak_fix > 0:
+        log_message(f"  title location leak修正: {_title_leak_fix}件")
+
     # 18. titleキーワード過剰使用修正（同じキーワードが3回以上→場所/mood/行為ベースに差し替え）
     _TITLE_KW_FIX = ["膣奥", "理性", "崩壊", "限界", "快感", "堕ち", "抵抗",
                       "連続", "激突", "責め", "声", "最後"]
+    _seen_kw_fix_titles = set(s.get("title", "") for s in results)  # 500シーン耐性: 既存title追跡
     for kw in _TITLE_KW_FIX:
         kw_scenes = [(i, s) for i, s in enumerate(results) if kw in s.get("title", "")]
         if len(kw_scenes) >= 3:
             # 3回目以降の出現を差し替え
+            _alt_kw = ["衝動", "背徳", "交わり", "激情", "陶酔", "震え", "熱", "嵐"]
             for idx, (i, scene) in enumerate(kw_scenes):
                 if idx < 2:
                     continue  # 最初の2回は許容
                 sid = scene.get("scene_id", "?")
                 old_title = scene["title"]
                 loc = scene.get("location_detail", scene.get("location", ""))[:10]
-                mood = scene.get("mood", "")[:10]
-                intensity = scene.get("intensity", 3)
-                _alt_kw = ["衝動", "背徳", "交わり", "激情", "陶酔", "震え", "熱", "嵐"]
-                alt = _alt_kw[i % len(_alt_kw)]
-                new_title = f"{alt}の{loc}" if loc else f"{alt}のシーン{sid}"
+                # 重複回避: _alt_kwを順に試す
+                new_title = None
+                for try_offset in range(len(_alt_kw)):
+                    alt = _alt_kw[(i + try_offset) % len(_alt_kw)]
+                    candidate = f"{alt}の{loc}" if loc else f"{alt}のシーン{sid}"
+                    if candidate not in _seen_kw_fix_titles:
+                        new_title = candidate
+                        break
+                if new_title is None:
+                    new_title = f"{_alt_kw[i % len(_alt_kw)]}のシーン{sid}"
+                _seen_kw_fix_titles.discard(old_title)
+                _seen_kw_fix_titles.add(new_title)
                 scene["title"] = new_title
                 log_message(f"  S{sid}: titleキーワード過剰修正「{old_title}」→「{new_title}」")
 
@@ -4119,8 +5014,13 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
         if len(title) > 25:
             scene["title"] = title[:25].rstrip("。、…")
 
-    # 20. intensity不一致自動修正（♡除去/丁寧語短縮）
+    # 20. intensity不一致自動修正（♡除去/丁寧語短縮/高intensity喘ぎ置換）
     _intensity_fix_count = 0
+    # i=5級喘ぎパターン（i≤3シーンで出現したらintensity相応の喘ぎに置換）
+    _HIGH_INTENSITY_MOAN_RE = re.compile(
+        r'ひぎ|んほ[ぉぅ]|あへ[ぇぁ]|ん゛|いぐ[ぅっ]|おほ[ぉっ]'
+        r'|らめ[ぇぅ]|こわれ[るっ]|ぶっ壊|いっちゃ[うぅ]')
+    _used_moan_fix20 = set()
     for scene in results:
         intensity = scene.get("intensity", 3)
         for bubble in scene.get("bubbles", []):
@@ -4134,6 +5034,13 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 txt = txt.replace("です", "")
                 txt = txt.replace("ます", "")
                 txt = txt.replace("ください", "…♡")
+            # i≤3のmoanにi=5級喘ぎが混入 → 適切なintensityの喘ぎに置換
+            if intensity <= 3 and bubble.get("type") == "moan" and _has_pool:
+                if _HIGH_INTENSITY_MOAN_RE.search(txt):
+                    pool = _get_moan_pool_with_char(intensity)
+                    repl = pick_replacement(pool, _used_moan_fix20, _normalize_bubble_text)
+                    if repl:
+                        txt = repl
             # 空になった場合は元に戻す
             stripped = txt.replace("…", "").replace("♡", "").strip()
             if not stripped:
@@ -4143,6 +5050,87 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "") 
                 _intensity_fix_count += 1
     if _intensity_fix_count > 0:
         log_message(f"  intensity不一致修正: {_intensity_fix_count}件")
+
+    # 21. エピローグ・ストーリーリセット検出＋修正
+    # 最後の10%のシーンでintensityがi=2以下に戻った場合、ストーリーがリセットしている
+    _progress("Step 21 エピローグリセット修正")
+    _total = len(results)
+    if _total >= 20:
+        _epilogue_start = max(1, _total - max(5, _total // 10))
+        _reset_count = 0
+        # 文脈無視のセリフ（導入的・日常的・挨拶・出会い）をプールから置換
+        _RESET_INDICATORS = frozenset([
+            "お腹すいた", "エッチ", "おはよう", "こんにちは", "はじめまして",
+            "なに？", "誰？", "どうした", "久しぶり", "元気？",
+            "よろしく", "初めまして", "いらっしゃい", "おじゃまします",
+            "ただいま", "おかえり", "行ってきます", "お邪魔します",
+            "はい、どうぞ", "ごめんください", "失礼します", "お久しぶり",
+            "今日は", "調子どう", "暇だ", "退屈", "何しよう",
+            "お茶", "ご飯", "勉強", "宿題", "仕事",
+        ])
+        _RESET_SPEECH_REPLACEMENTS = [
+            "まだ…終わらないの…",
+            "もう…むりぃ…♡",
+            "やだ…まだ…♡",
+            "いっちゃ…う…♡",
+            "おかしく…なる…♡",
+            "やめ…て…♡",
+            "もう…だめ…♡",
+            "とまんない…♡",
+        ]
+        _RESET_THOUGHT_REPLACEMENTS = [
+            "からだ…もう…",
+            "あたま…まっしろ…",
+            "もう…なにも…かんがえられない…",
+            "とまらない…からだ…",
+            "こわれ…ちゃう…",
+            "もどれない…もう…",
+            "きもちいい…のに…こわい…",
+            "おわらない…おわらない…",
+        ]
+        import random as _rng_reset
+        for i in range(_epilogue_start, _total):
+            scene = results[i]
+            si = scene.get("intensity", 3)
+            if si <= 2:
+                scene["intensity"] = 3
+                _reset_count += 1
+                # intensity 2以下のセリフが導入っぽいテキストなら修正
+                for b in scene.get("bubbles", []):
+                    txt = b.get("text", "")
+                    btype = b.get("type", "")
+                    if any(ri in txt for ri in _RESET_INDICATORS):
+                        if btype == "speech":
+                            b["text"] = _rng_reset.choice(_RESET_SPEECH_REPLACEMENTS)
+                        elif btype == "thought":
+                            b["text"] = _rng_reset.choice(_RESET_THOUGHT_REPLACEMENTS)
+                        _reset_count += 1
+        if _reset_count > 0:
+            log_message(f"  エピローグリセット修正: {_reset_count}件（i≤2→i=3 + セリフ置換）")
+
+    # 22. i=4連続過多の自動修正（5シーン超→i=3ブレイク挿入、i=5ピーク保護付き）
+    _consecutive_4 = 0
+    _i4_break_count = 0
+    for idx_22, scene in enumerate(results):
+        if scene.get("intensity", 3) == 4:
+            _consecutive_4 += 1
+            if _consecutive_4 > 5:
+                _next_is_peak = (idx_22 + 1 < len(results) and results[idx_22 + 1].get("intensity", 3) == 5)
+                if _next_is_peak:
+                    # i=5ピーク直前ではブレイクしない。1つ前のi=4をブレイクに変更
+                    if idx_22 > 0 and results[idx_22 - 1].get("intensity", 3) == 4:
+                        results[idx_22 - 1]["intensity"] = 3
+                        _consecutive_4 = 1
+                        _i4_break_count += 1
+                else:
+                    scene["intensity"] = 3
+                    _consecutive_4 = 0
+                    _i4_break_count += 1
+        else:
+            _consecutive_4 = 0
+    if _i4_break_count > 0:
+        _progress(f"Step 22 i=4連続ブレイク挿入: {_i4_break_count}箇所")
+        log_message(f"  i=4連続上限5: {_i4_break_count}箇所にi=3ブレイク挿入")
 
     return results
 
@@ -4155,6 +5143,10 @@ def _fix_consecutive_locations(results: list) -> None:
         "教室": ["教卓の前", "窓際の席", "ロッカーの陰", "教室の隅", "廊下に面した壁際"],
         "寝室": ["ベッドの上", "窓際", "クローゼットの前", "ドア付近", "鏡台の前"],
         "浴室": ["浴槽の中", "洗い場", "脱衣所", "シャワーの下", "浴室の壁際"],
+        "シャワー": ["シャワーヘッドの下", "壁に背を預けて", "ガラス戸の前", "排水口付近", "湯気の中"],
+        "プール": ["プールサイド", "更衣室の奥", "シャワー室", "監視台の裏", "深い方の端"],
+        "温泉": ["露天風呂の岩陰", "洗い場の隅", "脱衣所の棚前", "湯船の縁", "竹垣の奥"],
+        "海": ["砂浜の東屋", "岩場の陰", "海の家の裏", "波打ち際", "テントの中"],
         "オフィス": ["デスクの上", "応接ソファ", "給湯室", "会議室", "コピー機の裏"],
     }
     _LOC_VARIATIONS = [
@@ -4174,14 +5166,22 @@ def _fix_consecutive_locations(results: list) -> None:
         loc = scene.get("location_detail", scene.get("location", ""))
         locations_list.append(loc.strip().lower() if loc else "")
 
-    # --- 全体の同一location率チェック ---
+    # --- 全体の同一location率チェック（prefix 20文字で集計: 微妙な表現違いも同一扱い） ---
+    _LOC_PREFIX_LEN = 20
     if len(locations_list) >= 10:
         from collections import Counter as _Counter
-        loc_counter = _Counter(l for l in locations_list if l)
+        loc_prefix_list = [l[:_LOC_PREFIX_LEN] if l else "" for l in locations_list]
+        loc_counter = _Counter(lp for lp in loc_prefix_list if lp)
         if loc_counter:
-            most_common_loc, most_common_count = loc_counter.most_common(1)[0]
+            most_common_prefix, most_common_count = loc_counter.most_common(1)[0]
+            # 最頻prefixに対応するフルlocationを取得
+            most_common_loc = most_common_prefix
+            for l in locations_list:
+                if l and l[:_LOC_PREFIX_LEN] == most_common_prefix:
+                    most_common_loc = l
+                    break
             ratio = most_common_count / len(locations_list)
-            if ratio > 0.70:  # 70%以上が同一location
+            if ratio > 0.70:  # 70%以上が同一location prefix
                 # micro-locationで分散させる
                 micro_pool = None
                 for key, micros in _MICRO_LOCATIONS.items():
@@ -4195,7 +5195,7 @@ def _fix_consecutive_locations(results: list) -> None:
                 fix_micro = 0
                 for k, scene in enumerate(results):
                     loc = locations_list[k]
-                    if loc == most_common_loc and k % 3 == 1:  # 3シーンに1つ変化
+                    if loc and loc[:_LOC_PREFIX_LEN] == most_common_prefix and k % 3 == 1:  # 3シーンに1つ変化
                         new_micro = micro_pool[micro_idx % len(micro_pool)]
                         orig_loc_detail = scene.get("location_detail", scene.get("location", ""))
                         scene["location_detail"] = f"{orig_loc_detail}（{new_micro}）"
@@ -4205,11 +5205,14 @@ def _fix_consecutive_locations(results: list) -> None:
                 if fix_micro > 0:
                     log_message(f"  location同一率{ratio:.0%}→micro-location分散: {fix_micro}件")
 
-    # --- 3シーン連続同一locationの修正（既存ロジック維持） ---
+    # --- 3シーン連続同一locationの修正（prefix 20文字一致で判定） ---
     fix_count = 0
     for k in range(2, len(locations_list)):
-        if (locations_list[k]
-                and locations_list[k] == locations_list[k-1] == locations_list[k-2]):
+        lk = locations_list[k]
+        lk1 = locations_list[k-1]
+        lk2 = locations_list[k-2]
+        if (lk and lk1 and lk2
+                and lk[:_LOC_PREFIX_LEN] == lk1[:_LOC_PREFIX_LEN] == lk2[:_LOC_PREFIX_LEN]):
             mid = results[k - 1]
             orig_loc = mid.get("location_detail", mid.get("location", ""))
             if not orig_loc:
@@ -4241,7 +5244,7 @@ def _fix_consecutive_locations(results: list) -> None:
 # ---------------------------------------------------------------------------
 SETTING_STYLES = {
     "traditional_japanese_rural": {
-        "keywords": ["夜這い", "村", "田舎", "農村", "山里", "漁村", "集落",
+        "keywords": ["村", "田舎", "農村", "山里", "漁村", "集落",
                      "古民家", "昔ながら", "伝統", "風習", "因習", "祭り",
                      "大正", "昭和初期", "時代劇", "和風の村"],
         "replace": {
@@ -4307,8 +5310,8 @@ SETTING_STYLES = {
         "prompt_hint": "中世ファンタジー風（石造りの壁、蝋燭、松明、木製家具、革製品）。現代要素禁止",
     },
     "modern_school": {
-        "keywords": ["学園", "学校", "クラスメイト", "同級生", "先輩",
-                     "後輩", "教師", "先生", "生徒", "部活", "文化祭",
+        "keywords": ["学園", "学校", "クラスメイト", "同級生",
+                     "生徒", "文化祭",
                      "体育祭", "放課後", "部室", "屋上"],
         "replace": {
             "futon": "bed",
@@ -4319,7 +5322,7 @@ SETTING_STYLES = {
         },
         "prohibit": {"torch", "candlelight", "medieval", "stone",
                      "fantasy", "traditional", "rural"},
-        "append": ["school", "school_uniform", "indoors"],
+        "append": ["school", "indoors"],
         "prompt_hint": "現代日本の学園（教室、廊下、屋上、体育館、プール、図書室、保健室）。学校の雰囲気を重視",
     },
     "modern_urban": {
@@ -4390,12 +5393,38 @@ SETTING_STYLES = {
 }
 
 
-def _detect_setting_style(concept: str) -> Optional[dict]:
-    """コンセプト文字列からSETTING_STYLESのどれに該当するか判定する。"""
+def _detect_setting_style(concept: str, theme: str = "") -> Optional[dict]:
+    """コンセプト文字列からSETTING_STYLESのどれに該当するか判定する。
+
+    theme引数がある場合、テーマと矛盾するスタイルをスキップする。
+    """
     if not concept:
         return None
+
+    # テーマ×スタイル矛盾マップ（このスタイルはこのテーマでは不適切）
+    _THEME_STYLE_CONFLICTS = {
+        "office": {"modern_school", "traditional_japanese_rural", "traditional_japanese_urban",
+                   "fantasy_medieval", "hot_spring", "beach_resort"},
+        "medical": {"modern_school", "fantasy_medieval", "beach_resort"},
+        "sports": {"traditional_japanese_rural", "traditional_japanese_urban",
+                   "fantasy_medieval"},
+        "idol": {"traditional_japanese_rural", "fantasy_medieval"},
+        "neighbor": {"modern_school", "fantasy_medieval"},
+        "prostitution": {"modern_school", "fantasy_medieval"},
+        "sleep": {"modern_school", "beach_resort"},
+        "isekai": {"modern_school", "modern_urban"},
+        "monster": {"modern_school", "modern_urban"},
+        "tentacle": {"modern_school", "modern_urban"},
+        "onsen": {"modern_school", "fantasy_medieval", "sci_fi"},
+        "swimsuit": {"fantasy_medieval", "sci_fi"},
+        "chikan": {"traditional_japanese_rural", "fantasy_medieval"},
+    }
+    blocked_styles = _THEME_STYLE_CONFLICTS.get(theme, set()) if theme else set()
+
     concept_lower = concept.lower()
     for style_key, style in SETTING_STYLES.items():
+        if style_key in blocked_styles:
+            continue
         for kw in style["keywords"]:
             if kw in concept or kw in concept_lower:
                 return style
@@ -4408,7 +5437,8 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                        location_type: str = "",
                        sd_quality_tags: str = "",
                        sd_prefix_tags: str = "",
-                       sd_suffix_tags: str = "") -> list:
+                       sd_suffix_tags: str = "",
+                       theme: str = "") -> list:
     """全シーンのSDプロンプトを後処理で最適化（APIコスト不要）。
 
     - 日本語タグ除去
@@ -4438,21 +5468,45 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
     WEIGHT_ACTION = {"deep_penetration", "cum_in_pussy", "overflow",
                      "multiple_penises", "double_penetration"}
 
-    # intensity別 表情・身体反応タグ自動注入マップ
+    # intensity別 表情・身体反応タグ自動注入マップ（v7.6拡張: バリエーション増）
     _INTENSITY_EXPRESSION_MAP = {
-        1: ["calm", "closed_mouth", "looking_away", "embarrassed"],
+        1: ["calm", "closed_mouth", "looking_away", "embarrassed",
+            "slight_blush", "curious", "nervous_smile"],
         2: ["blush", "looking_down", "covering_face", "shy",
-            "averting_eyes", "fidgeting"],
+            "averting_eyes", "fidgeting", "pursed_lips",
+            "hand_on_own_chest", "embarrassed", "watery_eyes"],
         3: ["blush", "parted_lips", "panting", "nervous", "heavy_breathing",
-            "light_sweat", "clenched_teeth", "biting_lip"],
+            "light_sweat", "clenched_teeth", "biting_lip",
+            "furrowed_brow", "closed_eyes", "lip_biting",
+            "hand_over_mouth", "surprised", "gasping"],
         4: ["open_mouth", "moaning", "tears", "sweating", "head_back",
             "arched_back", "clenched_fists", "trembling",
             "sweat_drops", "sweaty_body", "flushed_skin",
-            "spread_legs", "gripping_sheets", "messy_hair"],
+            "spread_legs", "gripping_sheets", "messy_hair",
+            "half-closed_eyes", "glazed_eyes", "crying_with_eyes_open",
+            "o-ring_mouth", "biting_own_lip", "scrunched_face"],
         5: ["ahegao", "rolling_eyes", "tongue_out", "drooling", "head_back",
             "arched_back", "toes_curling", "full_body_arch", "tears",
             "sweat_drops", "sweaty_body", "sweat_glistening", "skin_glistening",
-            "heart_pupils", "cross-eyed", "saliva_drip", "fucked_silly"],
+            "heart_pupils", "cross-eyed", "saliva_drip", "fucked_silly",
+            "vacant_eyes", "steam", "trembling_legs",
+            "eye_roll", "slack_jaw", "convulsing"],
+    }
+
+    # intensity別 カメラアングル/構図タグプール
+    # シーンごとにローテーションで選択し、連続重複を防ぐ
+    _CAMERA_ANGLE_POOL = {
+        1: ["upper_body", "portrait", "from_side", "straight-on"],
+        2: ["upper_body", "cowboy_shot", "from_side", "close-up",
+            "from_above", "looking_at_viewer"],
+        3: ["pov", "from_above", "from_side", "cowboy_shot",
+            "dutch_angle", "close-up", "from_below"],
+        4: ["pov", "from_below", "from_above", "from_side",
+            "wide_shot", "dutch_angle", "from_behind",
+            "close-up", "between_legs"],
+        5: ["pov", "from_below", "from_above", "wide_shot",
+            "from_behind", "dutch_angle", "from_side",
+            "close-up", "full_body", "between_legs"],
     }
 
     # intensity別 衣装状態エスカレーション
@@ -4484,6 +5538,8 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
     }
 
     _prev_scene_positions = set()  # 前シーンの体位タグ（重複防止用）
+    _prev_camera_angle = ""  # 前シーンのカメラアングル（連続重複防止用）
+    _camera_scene_idx = 0  # カメラアングルローテーション用カウンタ
 
     for scene in results:
         sd = scene.get("sd_prompt", "")
@@ -4510,6 +5566,22 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             _rm_out = {"sky", "cloud", "horizon"}
             if "open_air_bath" not in " ".join(tags).lower():
                 tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in _rm_out]
+
+        # 1.6. 時間帯矛盾タグ自動除去（全シーンにnight/moonlight混入防止）
+        _tags_norm_16 = {t.strip().lower().replace(" ", "_") for t in tags}
+        _daytime_mk = {"morning", "sunrise", "daytime", "afternoon", "sunlight", "bright"}
+        _nighttime_mk = {"night", "midnight", "late_night"}
+        _night_tags_rm = {"moonlight", "darkness", "night_sky", "starlight", "dark", "night", "midnight", "late_night"}
+        _day_tags_rm = {"sunlight", "bright_daylight", "blue_sky", "morning_light", "morning", "sunrise", "daytime", "afternoon"}
+        _has_daytime = bool(_tags_norm_16 & _daytime_mk)
+        _has_nighttime = bool(_tags_norm_16 & _nighttime_mk)
+        if _has_daytime and not _has_nighttime:
+            tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in _night_tags_rm]
+        elif _has_nighttime and not _has_daytime:
+            tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in _day_tags_rm]
+        # 室内（window無し）+ moonlight → moonlight除去
+        if (_tags_norm_16 & _indoor_mk) and not _has_win and not (_tags_norm_16 & _nighttime_mk):
+            tags = [t for t in tags if t.strip().lower().replace(" ", "_") != "moonlight"]
 
         # 1.7. ユーザー指定の場所タイプ強制
         if location_type:
@@ -4707,14 +5779,19 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     tags.append(mt)
                     existing_lower.add(mt)
 
-        # 4.6. intensity別 表情・身体反応タグ自動注入
-        if intensity >= 3:
-            inject_tags = _INTENSITY_EXPRESSION_MAP.get(min(intensity, 5), [])
+        # 4.6. intensity別 表情・身体反応タグ自動注入（プールからサンプリング）
+        if intensity >= 1:
+            _expr_pool = _INTENSITY_EXPRESSION_MAP.get(min(intensity, 5), [])
             existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
-            for et in inject_tags:
-                if et not in existing_lower:
-                    tags.append(et)
-                    existing_lower.add(et)
+            # 既存タグにないものだけ候補に
+            _avail = [et for et in _expr_pool if et not in existing_lower]
+            # intensity 1-2: 2-3個, intensity 3: 4-5個, 4-5: 5-6個
+            _max_inject = {1: 2, 2: 3, 3: 5, 4: 6, 5: 6}.get(min(intensity, 5), 4)
+            import random as _rnd_expr
+            _selected = _rnd_expr.sample(_avail, min(len(_avail), _max_inject))
+            for et in _selected:
+                tags.append(et)
+                existing_lower.add(et)
 
         # 4.7. intensity別 衣装状態タグ自動注入
         _clothing_tags = CLOTHING_ESCALATION.get(min(intensity, 5), [])
@@ -4740,6 +5817,24 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     tags.append(ft)
                     existing_lower.add(ft)
                     _injected_fluid += 1
+
+        # 4.9. カメラアングル/構図タグ自動注入（intensity≥2、ローテーション）
+        if intensity >= 2:
+            _angle_pool = _CAMERA_ANGLE_POOL.get(min(intensity, 5), [])
+            _exist_angles = {t.strip().lower().replace(" ", "_") for t in tags}
+            # 既にアングル系タグがあればスキップ
+            _angle_kw_check = {"pov", "from_above", "from_below", "from_behind",
+                               "from_side", "straight-on", "dutch_angle",
+                               "between_legs", "wide_shot", "full_body"}
+            if not (_exist_angles & _angle_kw_check):
+                # ローテーションで前シーンと異なるアングルを選択
+                _candidates = [a for a in _angle_pool if a != _prev_camera_angle]
+                if _candidates:
+                    _pick_idx = _camera_scene_idx % len(_candidates)
+                    _chosen_angle = _candidates[_pick_idx]
+                    tags.append(_chosen_angle)
+                    _prev_camera_angle = _chosen_angle
+                    _camera_scene_idx += 1
 
         # 5. 設定スタイル適用（タグ置換・禁止・追加）
         if setting_style:
@@ -4768,6 +5863,68 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 if at.lower().replace(" ", "_") not in existing_norm:
                     tags.append(at)
                     existing_norm.add(at.lower().replace(" ", "_"))
+
+        # 5.3. テーマ×服装/場所タグ矛盾除去
+        if theme:
+            # 共通カテゴリ定義
+            _SCHOOL_TAGS = {"school_uniform", "sailor_uniform", "serafuku", "blazer",
+                            "plaid_skirt", "gym_uniform", "buruma", "school_swimsuit",
+                            "school", "classroom", "school_bag"}
+            _OFFICE_TAGS = {"business_suit", "pencil_skirt", "office_lady", "office"}
+            _FANTASY_TAGS = {"armor", "gauntlets", "breastplate", "medieval", "fantasy"}
+            _SHRINE_TAGS = {"miko", "hakama"}
+            _MAID_TAGS = {"maid", "maid_headdress"}
+            _NURSE_TAGS = {"nurse", "nurse_cap"}
+
+            _THEME_CLOTHING_CONFLICTS = {
+                # OL → 学校/ファンタジー/神社系除去（blazerはOLも着るが学校系と
+                # セットで来た場合plaid_skirt等が問題なので一括除去）
+                "office": (_SCHOOL_TAGS | _FANTASY_TAGS | _SHRINE_TAGS)
+                          - {"blazer"},  # OLのblazerは許容
+                # 先生・生徒 → OL系除去（スーツは先生が着るので許容）
+                "teacher_student": {"office_lady"},
+                # 異世界 → 現代系全般除去
+                "isekai": (_SCHOOL_TAGS | _OFFICE_TAGS | _NURSE_TAGS
+                           | {"modern", "neon", "smartphone"}),
+                # 温泉 → 学校/OL/ファンタジー除去
+                "onsen": (_SCHOOL_TAGS | _OFFICE_TAGS | _FANTASY_TAGS),
+                # 水着 → OL/ファンタジー/神社除去
+                "swimsuit": (_OFFICE_TAGS | _FANTASY_TAGS | _SHRINE_TAGS),
+                # 医療 → 学校/ファンタジー/メイド/神社除去
+                "medical": (_SCHOOL_TAGS | _FANTASY_TAGS | _MAID_TAGS | _SHRINE_TAGS),
+                # メイド → 学校/OL/ファンタジー除去
+                "maid": (_SCHOOL_TAGS | _OFFICE_TAGS | _FANTASY_TAGS
+                         | {"serafuku", "buruma", "pencil_skirt"}),
+                # 痴漢 → ファンタジー/神社除去（服装は維持=通学/通勤中あり得る）
+                "chikan": (_FANTASY_TAGS | _SHRINE_TAGS
+                           | {"classroom", "school", "gym"}),
+                # モンスター → 現代系除去
+                "monster": (_OFFICE_TAGS | _NURSE_TAGS
+                            | {"school_uniform", "classroom", "school"}),
+                # 触手 → 現代OL系除去
+                "tentacle": (_OFFICE_TAGS | {"pencil_skirt",
+                             "school_uniform", "classroom", "school"}),
+                # スポーツ → OL/ファンタジー/神社除去
+                "sports": (_OFFICE_TAGS | _FANTASY_TAGS | _SHRINE_TAGS),
+                # アイドル → 体操着/ファンタジー/神社除去
+                "idol": (_FANTASY_TAGS | _SHRINE_TAGS
+                         | {"gym_uniform", "buruma"}),
+                # 風俗 → 学校/ファンタジー除去
+                "prostitution": (_SCHOOL_TAGS | _FANTASY_TAGS
+                                 | {"serafuku", "buruma"}),
+                # 睡眠 → 学校/OL/ファンタジー除去
+                "sleep": (_SCHOOL_TAGS | _OFFICE_TAGS | _FANTASY_TAGS
+                          | {"sailor_uniform", "gym_uniform", "buruma"}),
+                # 近親 → ファンタジー除去
+                "incest": (_FANTASY_TAGS | {"classroom", "school", "office"}),
+                # 隣人 → 学校/ファンタジー除去
+                "neighbor": (_SCHOOL_TAGS | _FANTASY_TAGS
+                             | {"office", "gym"}),
+            }
+            _conflicts = _THEME_CLOTHING_CONFLICTS.get(theme, set())
+            if _conflicts:
+                tags = [t for t in tags
+                        if t.strip().lower().replace(" ", "_") not in _conflicts]
 
         # 5.5. 矛盾する体位/行為タグの相互排他チェック
         # 同時に成立しない行為の組み合わせを検出し、descriptionに近い方を残す
@@ -4872,7 +6029,7 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         parts.append(main_prompt)
         if sd_suffix_tags:
             parts.append(sd_suffix_tags)
-        scene["sd_prompt"] = ", ".join(parts)
+        scene["sd_prompt"] = ", ".join(parts).replace(",,", ",").strip(", ")
 
     # 8. 体位分布リバランス（spread_legsが40%超過→一部を代替体位に自動置換）
     import re as _re8
@@ -5200,6 +6357,8 @@ class CostTracker:
     haiku_fast_output: int = 0
     sonnet_input: int = 0
     sonnet_output: int = 0
+    opus_input: int = 0
+    opus_output: int = 0
     cache_creation: int = 0
     cache_read: int = 0
     # モデル別キャッシュ追跡（正確なコスト計算用）
@@ -5209,16 +6368,24 @@ class CostTracker:
     haiku_fast_cache_read: int = 0
     sonnet_cache_creation: int = 0
     sonnet_cache_read: int = 0
+    opus_cache_creation: int = 0
+    opus_cache_read: int = 0
     api_calls: int = 0
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     def add(self, model: str, input_tokens: int, output_tokens: int,
-            cache_creation_tokens: int = 0, cache_read_tokens: int = 0):
+            cache_creation_tokens: int = 0, cache_read_tokens: int = 0,
+            batch: bool = False):
         with self._lock:
             self.api_calls += 1
             self.cache_creation += cache_creation_tokens
             self.cache_read += cache_read_tokens
-            if "sonnet" in model:
+            if "opus" in model:
+                self.opus_input += input_tokens
+                self.opus_output += output_tokens
+                self.opus_cache_creation += cache_creation_tokens
+                self.opus_cache_read += cache_read_tokens
+            elif "sonnet" in model:
                 self.sonnet_input += input_tokens
                 self.sonnet_output += output_tokens
                 self.sonnet_cache_creation += cache_creation_tokens
@@ -5240,7 +6407,8 @@ class CostTracker:
         hf_cost = COSTS.get(MODELS["haiku_fast"], {"input": 0.25, "output": 1.25})
         h_cost = COSTS.get(MODELS["haiku"], {"input": 1.00, "output": 5.00})
         s_cost = COSTS.get(MODELS["sonnet"], {"input": 3.00, "output": 15.00})
-        return (
+        o_cost = COSTS.get(MODELS["opus"], {"input": 5.00, "output": 25.00})
+        claude_cost = (
             # Haiku fast（非キャッシュ入力 + 出力 + キャッシュ作成 + キャッシュ読取）
             (self.haiku_fast_input / 1_000_000) * hf_cost["input"] +
             (self.haiku_fast_output / 1_000_000) * hf_cost["output"] +
@@ -5255,19 +6423,27 @@ class CostTracker:
             (self.sonnet_input / 1_000_000) * s_cost["input"] +
             (self.sonnet_output / 1_000_000) * s_cost["output"] +
             (self.sonnet_cache_creation / 1_000_000) * s_cost["input"] * 1.25 +
-            (self.sonnet_cache_read / 1_000_000) * s_cost["input"] * 0.10
+            (self.sonnet_cache_read / 1_000_000) * s_cost["input"] * 0.10 +
+            # Opus
+            (self.opus_input / 1_000_000) * o_cost["input"] +
+            (self.opus_output / 1_000_000) * o_cost["output"] +
+            (self.opus_cache_creation / 1_000_000) * o_cost["input"] * 1.25 +
+            (self.opus_cache_read / 1_000_000) * o_cost["input"] * 0.10
         )
+        return claude_cost
 
     def _cache_savings_usd(self) -> float:
         """キャッシュによる節約額（キャッシュなしの場合との差分）"""
         h_cost = COSTS.get(MODELS["haiku"], {"input": 1.00, "output": 5.00})
         s_cost = COSTS.get(MODELS["sonnet"], {"input": 3.00, "output": 15.00})
         hf_cost = COSTS.get(MODELS["haiku_fast"], {"input": 0.25, "output": 1.25})
+        o_cost = COSTS.get(MODELS["opus"], {"input": 5.00, "output": 25.00})
         # キャッシュ読み取りがフル入力だった場合のコスト差分（90%節約）
         return (
             (self.haiku_cache_read / 1_000_000) * h_cost["input"] * 0.90 +
             (self.sonnet_cache_read / 1_000_000) * s_cost["input"] * 0.90 +
-            (self.haiku_fast_cache_read / 1_000_000) * hf_cost["input"] * 0.90
+            (self.haiku_fast_cache_read / 1_000_000) * hf_cost["input"] * 0.90 +
+            (self.opus_cache_read / 1_000_000) * o_cost["input"] * 0.90
         )
 
     def summary(self) -> str:
@@ -5278,6 +6454,8 @@ class CostTracker:
             lines.append(f"Haiku(4.5): {self.haiku_input:,} in / {self.haiku_output:,} out")
         if self.sonnet_input or self.sonnet_output:
             lines.append(f"Sonnet: {self.sonnet_input:,} in / {self.sonnet_output:,} out")
+        if self.opus_input or self.opus_output:
+            lines.append(f"Opus: {self.opus_input:,} in / {self.opus_output:,} out")
         if self.cache_read or self.cache_creation:
             lines.append(f"Cache: {self.cache_read:,} read / {self.cache_creation:,} create")
             savings = self._cache_savings_usd()
@@ -5290,9 +6468,10 @@ class CostTracker:
 
 def estimate_cost(num_scenes: int, use_sonnet_polish: bool = True) -> dict:
     """生成前にコストを予測（Prompt Caching反映版）
-    haiku=圧縮/あらすじ/アウトライン+低intensityシーン, sonnet=i4以上シーン"""
+    haiku=圧縮/あらすじ/アウトライン+低intensityシーン, sonnet=i4以上シーン, opus=i5清書"""
     h_cost = COSTS.get(MODELS["haiku"], {"input": 1.00, "output": 5.00})
     s_cost = COSTS.get(MODELS["sonnet"], {"input": 3.00, "output": 15.00})
+    o_cost = COSTS.get(MODELS["opus"], {"input": 5.00, "output": 25.00})
 
     # Phase 1: コンテキスト圧縮 + あらすじ (haiku 4.5)
     fast_input = 500 + 600
@@ -5313,37 +6492,43 @@ def estimate_cost(num_scenes: int, use_sonnet_polish: bool = True) -> dict:
     haiku_scenes = int(num_scenes * 0.40)  # intensity 1-3 → haiku
     sonnet_scenes = num_scenes - haiku_scenes  # intensity 4-5 → sonnet
 
-    # Prompt Caching効果: system prompt ~16000tokはキャッシュされる
-    # 初回のみcache_creation(1.25x)、以降はcache_read(0.1x)
-    cached_system_tokens = 16000  # 圧縮後のsystemプロンプト推定サイズ
+    # Opus清書対象（intensity 5 ≒ シーン数の ~13%）
+    opus_scenes = max(2, num_scenes // 15)
+
     # シーン固有の非キャッシュ入力（user prompt: context + story_so_far + scene指示）
     avg_user_tokens = 3000  # 平均user prompt（story_so_far含む）
 
+    # Claude: Prompt Caching効果
+    cached_system_tokens = 16000
     # Haiku シーン: 1回cache_create + (N-1)回cache_read
-    haiku_cache_create_cost = (cached_system_tokens / 1_000_000) * h_cost["input"] * 1.25  # 初回
+    haiku_cache_create_cost = (cached_system_tokens / 1_000_000) * h_cost["input"] * 1.25
     haiku_cache_read_cost = (cached_system_tokens / 1_000_000) * h_cost["input"] * 0.10 * max(0, haiku_scenes - 1)
     haiku_uncached_input = haiku_scenes * avg_user_tokens
     haiku_input += haiku_uncached_input
     haiku_output += haiku_scenes * 650
-
     # Sonnet シーン: 1回cache_create + (N-1)回cache_read
     sonnet_cache_create_cost = (cached_system_tokens / 1_000_000) * s_cost["input"] * 1.25 if sonnet_scenes > 0 else 0
     sonnet_cache_read_cost = (cached_system_tokens / 1_000_000) * s_cost["input"] * 0.10 * max(0, sonnet_scenes - 1)
     sonnet_input = sonnet_scenes * avg_user_tokens
     sonnet_output = sonnet_scenes * 700
-
+    # Opus清書: 各シーンJSON往復（入力~2000tok, 出力~1500tok）
+    opus_input = opus_scenes * 2000
+    opus_output = opus_scenes * 1500
     estimated_usd = (
         (haiku_input / 1_000_000) * h_cost["input"] +
         (haiku_output / 1_000_000) * h_cost["output"] +
         haiku_cache_create_cost + haiku_cache_read_cost +
         (sonnet_input / 1_000_000) * s_cost["input"] +
         (sonnet_output / 1_000_000) * s_cost["output"] +
-        sonnet_cache_create_cost + sonnet_cache_read_cost
+        sonnet_cache_create_cost + sonnet_cache_read_cost +
+        (opus_input / 1_000_000) * o_cost["input"] +
+        (opus_output / 1_000_000) * o_cost["output"]
     )
 
     return {
         "haiku_tokens": haiku_input + haiku_output,
         "sonnet_tokens": sonnet_input + sonnet_output,
+        "opus_tokens": opus_input + opus_output,
         "estimated_usd": estimated_usd,
         "estimated_jpy": estimated_usd * 150  # 概算レート
     }
@@ -5811,7 +6996,7 @@ def _call_api(
     max_tokens: int = 4096,
     callback: Optional[Callable] = None
 ) -> str:
-    """Claude API呼び出し"""
+    """API呼び出し（Claude）"""
     return call_claude(client, model, system, user, cost_tracker, max_tokens, callback)
 
 
@@ -6250,7 +7435,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
             background_tags = f"{background_tags}, {theme_sd_tags}"
 
         # 設定スタイルの背景タグ追加
-        batch_setting_style = _detect_setting_style(context.get("setting", ""))
+        batch_setting_style = _detect_setting_style(context.get("setting", ""), theme=theme)
         if batch_setting_style:
             style_append = ", ".join(batch_setting_style.get("append", []))
             if style_append:
@@ -6268,7 +7453,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
         })
 
     # 設定スタイルのヒント行（バッチ共通）
-    batch_setting_style = _detect_setting_style(context.get("setting", ""))
+    batch_setting_style = _detect_setting_style(context.get("setting", ""), theme=theme)
     batch_setting_hint = ""
     if batch_setting_style:
         batch_setting_hint = f"\n背景スタイル必須: {batch_setting_style.get('prompt_hint', '')}"
@@ -6397,15 +7582,60 @@ def _generate_outline_chunk(
     act_info: str,
     previous_scenes: list,
     cost_tracker: CostTracker,
-    callback: Optional[Callable] = None
+    callback: Optional[Callable] = None,
+    extra_instructions: str = "",
 ) -> list:
     """アウトラインを10シーンずつチャンク生成（常にフル12フィールド形式）"""
 
     # 前チャンクの要約を構築（スライディングウィンドウ: 直近20件+古い分は1行要約）
     prev_summary = ""
+    # v8.2根本修正: 完了済みアクション一覧を構築（重複防止の要）
+    _completed_actions = ""
     if previous_scenes:
         prev_lines = []
         n_prev = len(previous_scenes)
+
+        # 完了済みアクション・行為の一覧（全シーンから抽出）
+        _action_set = set()
+        for s in previous_scenes:
+            sit = s.get("situation", "")[:40]
+            if sit:
+                _action_set.add(sit)
+            ttl = s.get("title", "")
+            if ttl:
+                _action_set.add(ttl)
+        # v8.5: 体位/行為キーワード抽出（直近チャンクからの繰り返し防止）
+        _POSITION_KEYWORDS = [
+            "騎乗位", "正常位", "バック", "立ちバック", "対面座位", "駅弁",
+            "四つん這い", "寝バック", "側位", "松葉崩し", "背面座位",
+            "膝立ち", "立位", "仰向け", "うつ伏せ", "跨が",
+            "フェラ", "パイズリ", "手コキ", "クンニ", "69", "素股",
+            "挿入", "中出し", "顔射", "口内射精", "二穴",
+        ]
+        _used_positions = set()
+        for s in previous_scenes[-10:]:  # 直近10シーンから抽出
+            sit = s.get("situation", "")
+            for kw in _POSITION_KEYWORDS:
+                if kw in sit:
+                    _used_positions.add(kw)
+        _position_warning = ""
+        if _used_positions:
+            _pos_list = sorted(_used_positions)
+            _position_warning = (
+                f"\n## ⚠️ 直近チャンクで使用済みの体位/行為（繰り返し厳禁）\n"
+                f"🔁 {', '.join(_pos_list)}\n"
+                f"**上記の体位/行為は直近で使用済み。必ず異なる体位/行為で新しい展開にすること。**\n"
+            )
+
+        if _action_set:
+            _action_list = sorted(_action_set)[:30]  # 最大30件（トークン制限）
+            _completed_actions = (
+                "\n## ⚠️ 完了済みアクション（以下は既に描写済み。絶対に繰り返すな）\n"
+                + "\n".join(f"❌ {a}" for a in _action_list)
+                + "\n**上記と同一・類似のsituationやtitleは使用禁止。必ず新しい展開を書け。**\n"
+            )
+        # _action_setが空でも体位警告は有効
+        _completed_actions += _position_warning
 
         # 古いシーン（20件より前）: 1行要約でトークン節約
         if n_prev > 20:
@@ -6432,7 +7662,7 @@ def _generate_outline_chunk(
             prev_lines.append(f"[{sid}] {title} (i={intensity}, {loc}) {situation} ({emo})")
         prev_summary = f"""## 確定済みシーン（これに続けて書くこと。重複禁止）
 {chr(10).join(prev_lines)}
-"""
+{_completed_actions}"""
 
     start_id = chunk_offset + 1
     end_id = chunk_offset + chunk_size
@@ -6474,18 +7704,22 @@ def _generate_outline_chunk(
 
 ## シーン配分（全{total_scenes}シーン）
 {act_info}
-
+{extra_instructions}
 {output_format}
 
 ## 絶対ルール
 1. あらすじの内容を忠実にこのチャンク分に割り当てること
-2. 確定済みシーンの直後から自然に繋がること
+2. 確定済みシーンの直後から自然に繋がること（ストーリーのリセット・巻き戻り禁止）
 3. situationは具体的に記述（抽象表現禁止）
 4. 各シーンのsituationは前シーンと異なる具体的展開にすること
 5. locationは3シーン連続で同じ場所にしてはならない
 6. emotional_arcのstartは前シーンのendと一致させること
-7. intensity 5は全体で最大2シーン。段階的にエスカレートすること
+7. intensity 4が5シーン連続したら、必ずintensity 3のシーン（体位変更・心理描写・休憩）を1つ挟むこと
 8. story_flowは各シーン固有の内容を書け（重複禁止）
+9. intensity 5は各mini-arc（15シーン程度）のクライマックスとして使え
+10. titleは4-12文字。行為/体位/感情を反映。location名（「トイレ」「教室」等）をtitleに含めるな
+11. 同じ場所が続く場合も場所内の位置を変えよ（例: 便座→壁際→洗面台→床）
+12. 男性セリフは5パターン（脅迫/挑発/命令/嘲笑/独白）を均等に使え。観察実況（「～だな」）禁止
 
 ## ⚠️ 体位・行為バリエーション強制（違反即不合格）
 - 本番シーン（intensity 4-5）は全て異なる体位・行為を指定すること
@@ -6493,8 +7727,14 @@ def _generate_outline_chunk(
 - 同じ体位の2連続禁止。同じsituation表現の繰り返し禁止
 - titleの重複禁止。同じキーワードを含むtitleは最大2回まで
 - 確定済みシーンのsituation/titleと被らないこと
-
-JSON配列のみ出力。"""
+{f'''
+## ⚠️ 最終チャンク特別ルール（エピローグ）
+- これは作品の最後のチャンクです。ストーリーを適切に完結させてください
+- 導入シーンの繰り返しは絶対禁止。第1幕の内容を再び書いてはならない
+- intensity は3-4で余韻を描写（行為の事後、関係性の変化、心情の変化）
+- 「呼び出し」「始まり」「出会い」等の導入表現は使わないこと
+''' if end_id >= total_scenes else ''}
+JSON配列のみ出力。\"\"\""""
 
     if callback:
         callback(f"[INFO]アウトラインチャンク生成: シーン{start_id}〜{end_id}")
@@ -6552,15 +7792,17 @@ def _get_intensity_curve_instruction(theme_guide: dict) -> str:
             "\n## intensity展開パターン: 高原型（intensity 4を長く維持）\n"
             "このテーマではintensity 4の状態を長く維持し、最後に一気にクライマックスへ。\n"
             "例: 1→2→3→4→4→4→4→4→5→4（じわじわ快感を蓄積し最後に爆発）\n"
-            "高原部分では体位・アングルの変化で単調さを防ぐこと。"
+            "高原部分では体位・アングルの変化で単調さを防ぐこと。\n"
+            "ただしi=4が5シーン連続したら必ずi=3を1つ挟むこと。"
         )
     # ascending（デフォルト）
     return (
         "\n## intensity展開パターン: 上昇型（基本）\n"
         "基本は1→2→3→4→5の上昇型だが、単調な右肩上がりにしないこと。\n"
-        "本番パート（intensity 4）の中にも緩急をつけること:\n"
-        "例: 1→2→3→4→3→4→4→5→4→3→4→5→4（中盤に小さな谷を作る）\n"
-        "intensity 4が5シーン以上連続する場合は、間にintensity 3のシーンを1つ挟むこと。"
+        "本番パートはmini-arc（小さな山）の連続で構成せよ:\n"
+        "各mini-arc: i=3(転換/休憩)→i=4→i=4→i=4→i=5(小クライマックス)→i=3(次へ)\n"
+        "例（30シーン）: 1→2→2→3→3→4→4→4→5→3→4→4→4→4→5→3→4→4→4→5→3→4→4→4→4→5→4→3→3→4\n"
+        "**i=4が5シーン連続したら必ずi=3を1つ挟むこと。これは絶対ルール。**"
     )
 
 
@@ -6651,14 +7893,21 @@ def generate_outline(
     # 大量シーン時の追加指示
     long_script_section = ""
     if num_scenes >= 25:
+        # mini-arc数を計算（15-20シーンごとに1つのmini-arc）
+        _mini_arc_count = max(3, act3 // 15)
+        _mini_arc_size = act3 // _mini_arc_count
+        _i5_peaks = max(2, _mini_arc_count)  # mini-arcごとに1つのi=5ピーク
         long_script_section = f"""
 ## ⚠️ 大量シーン（{num_scenes}シーン）追加ルール
 
-1. **本番パートにmini-arc**: {act3}シーンの本番パートは、3-4個のmini-arc（小さな起承転結）に分割せよ。各mini-arcは「新しい行為/体位で開始→エスカレート→小さなクライマックス→次への転換」で構成
-2. **intensity 4の連続上限5**: intensity 4が5シーン以上連続する場合、必ず間にintensity 3のシーン（休憩/体位変更/心理描写）を1つ挟むこと
-3. **男性セリフ多様性**: 男性のセリフは5パターン（脅迫/挑発/命令/嘲笑/独白）を均等に使え。同じ意味のセリフの連続禁止。末尾フレーズの重複は最大2回まで。観察実況（「～だな」「～してるな」）禁止
-4. **locationの位置変化**: 同じ場所が続く場合も「場所内の位置」を変えよ（例: 便座→壁際→洗面台→床）
-5. **titleルール**: titleは4-12文字、行為/体位/感情を反映。location名（「トイレ」「教室」等）をtitleに含めてはならない
+1. **本番パートにmini-arc**: {act3}シーンの本番パートは、{_mini_arc_count}個のmini-arc（各約{_mini_arc_size}シーン）に分割せよ。各mini-arcは「i=3(導入/転換)→i=4(エスカレート)→i=5(小クライマックス)→i=3(休憩/心理描写)」で構成
+2. **intensity 4の連続上限5**: intensity 4が5シーン以上連続する場合、必ず間にintensity 3のシーン（休憩/体位変更/心理描写）を1つ挟むこと。これは絶対ルール
+3. **intensity 5は{_i5_peaks}回**: 各mini-arcのクライマックスでintensity 5を使え（合計{_i5_peaks}回）。最後のmini-arcのi=5が全体のクライマックス
+4. **男性セリフ多様性**: 男性のセリフは5パターン（脅迫/挑発/命令/嘲笑/独白）を均等に使え。同じ意味のセリフの連続禁止。末尾フレーズの重複は最大2回まで。観察実況（「～だな」「～してるな」）禁止
+5. **locationの位置変化**: 同じ場所が続く場合も「場所内の位置」を変えよ（例: 便座→壁際→洗面台→床）
+6. **titleルール**: titleは4-12文字、行為/体位/感情を反映。location名（「トイレ」「教室」等）をtitleに含めてはならない
+7. **第4幕（余韻）はリセット禁止**: 余韻シーンはintensity 3-4で、行為の事後・余韻・関係性の変化を描け。導入シーンの繰り返しは絶対禁止
+8. **mood多様性**: moodは毎シーン異なる表現にすること。同じmoodの連続使用禁止。intensityが同じでも表現を変えよ
 """
 
     prompt = f"""以下のストーリーあらすじを{num_scenes}シーンに分割し、各シーンの詳細をJSON配列で出力してください。
@@ -6679,8 +7928,8 @@ def generate_outline(
 ## シーン配分（{num_scenes}シーン・エロ70%以上）
 - 第1幕・導入: {act1}シーン → intensity 1-2（最低限の状況設定。1ページで済ませる）
 - 第2幕・前戯: {act2}シーン → intensity 3（焦らし・脱衣・愛撫）
-- 第3幕・本番: {act3}シーン → intensity 4（基本）と5（クライマックスのみ最大2シーン）。必ず4→4→5→5→4のように段階をつけること
-- 第4幕・余韻: {act4}シーン → intensity 3-4（事後・余韻。エロの余韻を残す）
+- 第3幕・本番: {act3}シーン → intensity 3-5を使い分けること。i=4を基本としつつ、5シーンごとにi=3の緩急を入れ、各mini-arcのクライマックスでi=5を使え
+- 第4幕・余韻: {act4}シーン → intensity 3-4（事後・余韻。エロの余韻を残す。第1幕のリピート禁止）
 ※ FANZA CG集は読者がエロを求めて購入する。導入は短く、エロシーンを手厚く。
 {_get_intensity_curve_instruction(theme_guide)}
 {long_script_section}
@@ -6696,7 +7945,7 @@ def generate_outline(
 6. 最後から2番目のシーンがクライマックス（intensity 5）であること
 7. 各シーンのsituationは必ず前シーンと異なる具体的展開にすること（「近づく」「囲まれる」等の同パターン繰り返し禁止）
 8. **locationは3シーン連続で同じ場所にしてはならない**。場所を変えてストーリーを進めること。例: 部屋→廊下→浴室、教室→体育館倉庫→屋上
-9. intensity 5は最大2シーンまで。残りの本番はintensity 4にして、緩急をつけること
+9. intensity 5のシーン数: 20シーン以下は最大2シーン、それ以上は15シーンにつき1回（例: 30シーン→2回、60シーン→4回、100シーン→6回）
 10. intensity 1の次にintensity 3以上は禁止。必ずintensity 2を挟むこと（1→2→3→4→5の段階的上昇）
 11. **視点**: situationは女性キャラ視点で記述。男性の行動ではなく、女性の体験・反応・感情を中心に書く
 
@@ -6777,6 +8026,13 @@ JSON配列のみ出力。"""
             # 13シーン以上: チャンク分割生成（10シーンずつ、常にフル形式）
             chunk_size = 10
             outline = []
+            # v8.2根本修正: long_script_section/intensity_curve/story_patternをチャンクにも渡す
+            _chunk_extra_instructions = ""
+            if long_script_section:
+                _chunk_extra_instructions += long_script_section
+            _chunk_extra_instructions += _get_intensity_curve_instruction(theme_guide)
+            if story_pattern_section:
+                _chunk_extra_instructions += story_pattern_section
             for offset in range(0, num_scenes, chunk_size):
                 this_chunk = min(chunk_size, num_scenes - offset)
                 log_message(f"チャンクアウトライン: シーン{offset+1}〜{offset+this_chunk} ({this_chunk}シーン)")
@@ -6785,7 +8041,8 @@ JSON配列のみ出力。"""
                     theme_name, story_arc, key_emotions, elements_str,
                     synopsis, char_names, act_info,
                     outline,  # 確定済みシーンを渡す
-                    cost_tracker, callback
+                    cost_tracker, callback,
+                    extra_instructions=_chunk_extra_instructions,
                 )
                 outline.extend(chunk)
                 log_message(f"チャンク完了: {len(chunk)}シーン取得、合計{len(outline)}シーン")
@@ -6815,17 +8072,56 @@ JSON配列のみ出力。"""
             scene.setdefault("viewer_hook", "")
 
         # intensity分布の自動修正
+        _n_scenes = len(outline)
+        _max_i5 = max(2, _n_scenes // 15)  # 15シーンにつき1回のi=5ピーク
+
+        # 1. intensity 5の上限制御（mini-arc分散）
         intensity_5_count = sum(1 for s in outline if s.get("intensity", 3) == 5)
-        if intensity_5_count > 2:
-            # intensity 5を最大2シーンに制限（最後の2シーンを5にし、残りを4に）
+        if intensity_5_count > _max_i5:
             five_indices = [i for i, s in enumerate(outline) if s.get("intensity", 3) == 5]
-            keep_five = five_indices[-2:]  # 最後の2つを5のまま
+            # 均等分散: mini-arcごとに1つのi=5を残す
+            _spacing = max(1, len(five_indices) // _max_i5)
+            keep_five = set(five_indices[i] for i in range(0, len(five_indices), _spacing))
+            # 最後のi=5は必ず残す
+            keep_five.add(five_indices[-1])
+            if len(five_indices) >= 2:
+                keep_five.add(five_indices[-2])
+            # _max_i5個に制限
+            keep_five = sorted(keep_five)[-_max_i5:]
             for i in five_indices:
                 if i not in keep_five:
                     outline[i]["intensity"] = 4
-            log_message(f"intensity 5を{intensity_5_count}→2シーンに自動修正")
+            log_message(f"intensity 5を{intensity_5_count}→{len(keep_five)}シーンに自動修正（{_max_i5}上限）")
 
-        # intensity 1→3以上の飛躍を修正
+        # 2. intensity 5が不足時の自動挿入（50シーン以上で不足なら追加）
+        if _n_scenes >= 50:
+            _current_i5 = sum(1 for s in outline if s.get("intensity", 3) == 5)
+            if _current_i5 < _max_i5:
+                # Act 3内にmini-arcのクライマックスを挿入
+                _act3_start = act1 + act2
+                _act3_end = _act3_start + act3
+                _need_i5 = _max_i5 - _current_i5
+                _arc_size = act3 // _max_i5 if _max_i5 > 0 else act3
+                for arc_idx in range(_max_i5):
+                    if _need_i5 <= 0:
+                        break
+                    peak_pos = _act3_start + (arc_idx + 1) * _arc_size - 1
+                    peak_pos = min(peak_pos, _act3_end - 1)
+                    if peak_pos < len(outline) and outline[peak_pos].get("intensity", 3) != 5:
+                        # 既にi=5のシーンが近くにあればスキップ
+                        _nearby_5 = any(
+                            outline[j].get("intensity", 3) == 5
+                            for j in range(max(0, peak_pos - 3), min(len(outline), peak_pos + 4))
+                        )
+                        if not _nearby_5:
+                            # ピーク前のシーンをi=4にランプアップ（3→5飛躍防止）
+                            if peak_pos > 0 and outline[peak_pos - 1].get("intensity", 3) < 4:
+                                outline[peak_pos - 1]["intensity"] = 4
+                            outline[peak_pos]["intensity"] = 5
+                            _need_i5 -= 1
+                            log_message(f"シーン{peak_pos+1}: mini-arcクライマックスとしてi=5挿入")
+
+        # 3. intensity 1→3以上の飛躍を修正
         for i in range(1, len(outline)):
             prev_intensity = outline[i-1].get("intensity", 3)
             curr_intensity = outline[i].get("intensity", 3)
@@ -6833,14 +8129,183 @@ JSON配列のみ出力。"""
                 outline[i]["intensity"] = 2
                 log_message(f"シーン{i+1}: intensity {curr_intensity}→2に修正（1→3以上の飛躍防止）")
 
-        # intensity 2段階以上の飛躍を修正（2→4, 2→5, 3→5 等）
+        # 4. intensity 2段階以上の上昇飛躍を修正（2→4, 2→5, 3→5 等）
+        # v8.2根本修正: i=5ピークを保護（3→5の場合は前のシーンを4にランプアップ）
         for i in range(1, len(outline)):
             prev_intensity = outline[i-1].get("intensity", 3)
             curr_intensity = outline[i].get("intensity", 3)
             if curr_intensity - prev_intensity >= 2:
-                fixed = prev_intensity + 1
+                if curr_intensity == 5 and prev_intensity >= 3:
+                    # i=5ピーク保護: ピークを維持し、前のシーンをランプアップ
+                    outline[i-1]["intensity"] = 4
+                    log_message(f"シーン{i}: intensity {prev_intensity}→4にランプアップ（i=5ピーク保護）")
+                else:
+                    fixed = prev_intensity + 1
+                    outline[i]["intensity"] = fixed
+                    log_message(f"シーン{i+1}: intensity {curr_intensity}→{fixed}に修正（{prev_intensity}→{curr_intensity}の上昇飛躍防止）")
+
+        # 5. intensity 3段階以上の下降ジャンプを修正（5→2, 5→1, 4→1 等）
+        for i in range(1, len(outline)):
+            prev_intensity = outline[i-1].get("intensity", 3)
+            curr_intensity = outline[i].get("intensity", 3)
+            if prev_intensity - curr_intensity >= 3:
+                fixed = prev_intensity - 2
                 outline[i]["intensity"] = fixed
-                log_message(f"シーン{i+1}: intensity {curr_intensity}→{fixed}に修正（{prev_intensity}→{curr_intensity}の飛躍防止）")
+                log_message(f"シーン{i+1}: intensity {curr_intensity}→{fixed}に修正（{prev_intensity}→{curr_intensity}の急降下防止）")
+
+        # 6. consecutive i=4上限: 5シーン連続でi=3ブレイクを強制挿入
+        _consecutive_4 = 0
+        _break_count = 0
+        for i, s in enumerate(outline):
+            if s.get("intensity", 3) == 4:
+                _consecutive_4 += 1
+                if _consecutive_4 > 5:
+                    # i=5ピーク直前にブレイクを入れると、Step8aでピークが潰されるため回避
+                    _next_is_peak = (i + 1 < len(outline) and outline[i + 1].get("intensity", 3) == 5)
+                    if _next_is_peak:
+                        # 1つ前のi=4をブレイクに変更（ピークへのランプアップを保護）
+                        if i > 0 and outline[i - 1].get("intensity", 3) == 4:
+                            outline[i - 1]["intensity"] = 3
+                            _consecutive_4 = 1  # 現在のi=4からカウント再開
+                            _break_count += 1
+                        # 前がi=4でなければブレイクなし（ピーク保護優先）
+                    else:
+                        s["intensity"] = 3
+                        _consecutive_4 = 0
+                        _break_count += 1
+            else:
+                _consecutive_4 = 0
+        if _break_count > 0:
+            log_message(f"i=4連続上限5: {_break_count}箇所にi=3ブレイク挿入")
+
+        # 6b. consecutive i≤2上限: 5シーン連続で中間にi=3を挿入（テンポ停滞防止）
+        _consecutive_low = 0
+        _low_break_count = 0
+        for i, s in enumerate(outline):
+            if s.get("intensity", 3) <= 2:
+                _consecutive_low += 1
+                if _consecutive_low > 5:
+                    s["intensity"] = 3
+                    _consecutive_low = 0
+                    _low_break_count += 1
+            else:
+                _consecutive_low = 0
+        if _low_break_count > 0:
+            log_message(f"i≤2連続上限5: {_low_break_count}箇所にi=3挿入（テンポ停滞防止）")
+
+        # 6c. i=4の総数上限制御（40%超の場合、超過分を位置に応じて再割当）
+        _i4_count = sum(1 for s in outline if s.get("intensity", 3) == 4)
+        _i4_ratio = _i4_count / max(_n_scenes, 1)
+        if _i4_ratio > 0.40:
+            _i4_target = int(_n_scenes * 0.40)
+            _i4_excess = _i4_count - _i4_target
+            _i4_indices = [i for i, s in enumerate(outline) if s.get("intensity", 3) == 4]
+            _current_i5_6c = sum(1 for s in outline if s.get("intensity", 3) == 5)
+            _rebalance_count = 0
+            for idx_6c in _i4_indices:
+                if _rebalance_count >= _i4_excess:
+                    break
+                ratio_6c = idx_6c / max(_n_scenes, 1)
+                if ratio_6c < 0.15:
+                    # イントロ区間 → i=2に降格
+                    outline[idx_6c]["intensity"] = 2
+                    _rebalance_count += 1
+                elif ratio_6c < 0.35:
+                    # 前半ビルドアップ → i=3に降格
+                    outline[idx_6c]["intensity"] = 3
+                    _rebalance_count += 1
+                elif _current_i5_6c < _max_i5 and 0.5 <= ratio_6c <= 0.85:
+                    # Act3内でi=5が不足なら昇格
+                    # 前後のi=5との距離をチェック（近接i=5回避）
+                    _near_5_6c = any(
+                        outline[j].get("intensity", 3) == 5
+                        for j in range(max(0, idx_6c - 5), min(len(outline), idx_6c + 6))
+                    )
+                    if not _near_5_6c:
+                        outline[idx_6c]["intensity"] = 5
+                        _current_i5_6c += 1
+                        _rebalance_count += 1
+                        # ピーク前をi=4にランプアップ
+                        if idx_6c > 0 and outline[idx_6c - 1].get("intensity", 3) < 4:
+                            outline[idx_6c - 1]["intensity"] = 4
+            if _rebalance_count > 0:
+                log_message(f"i=4上限40%制御: {_i4_count}→{_i4_count - _rebalance_count}シーンに再割当（{_rebalance_count}件変更）")
+
+        # 7. エピローグのストーリーリセット防止: 最終act4がi=2以下にならないよう制限
+        if _n_scenes >= 20:
+            _epilogue_start = act1 + act2 + act3
+            for i in range(_epilogue_start, len(outline)):
+                curr_i = outline[i].get("intensity", 3)
+                if curr_i <= 2:
+                    outline[i]["intensity"] = 3
+                    log_message(f"シーン{i+1}: エピローグi={curr_i}→3に修正（余韻リセット防止）")
+
+        # 8. 最終スムージング: step6/7が生成した飛躍を修正し、制約を再適用
+        _epilogue_start_8 = (act1 + act2 + act3) if _n_scenes >= 20 else len(outline)
+        for _pass in range(3):  # 最大3パスで収束
+            _smooth_count = 0
+            # 8a. 飛躍修正（前方パス）- i=5ピークは保護
+            for i in range(1, len(outline)):
+                prev_i = outline[i-1].get("intensity", 3)
+                curr_i = outline[i].get("intensity", 3)
+                if curr_i - prev_i >= 2:
+                    if curr_i == 5 and prev_i >= 3:
+                        # i=5ピーク保護: ピークを下げるのではなく前のシーンをランプアップ
+                        outline[i-1]["intensity"] = 4
+                        _smooth_count += 1
+                    else:
+                        outline[i]["intensity"] = prev_i + 1
+                        _smooth_count += 1
+                elif prev_i - curr_i >= 3:
+                    outline[i]["intensity"] = prev_i - 2
+                    _smooth_count += 1
+            # 8b. consecutive i=4上限の再適用（i=5ピーク直前保護付き）
+            _consecutive_4_8 = 0
+            for i, s in enumerate(outline):
+                if s.get("intensity", 3) == 4:
+                    _consecutive_4_8 += 1
+                    if _consecutive_4_8 > 5:
+                        _next_is_peak = (i + 1 < len(outline) and outline[i + 1].get("intensity", 3) == 5)
+                        if _next_is_peak:
+                            if i > 0 and outline[i - 1].get("intensity", 3) == 4:
+                                outline[i - 1]["intensity"] = 3
+                                _consecutive_4_8 = 1
+                                _smooth_count += 1
+                        else:
+                            s["intensity"] = 3
+                            _consecutive_4_8 = 0
+                            _smooth_count += 1
+                else:
+                    _consecutive_4_8 = 0
+            # 8b2. consecutive i≤2上限の再適用
+            _consecutive_low_8 = 0
+            for i, s in enumerate(outline):
+                if s.get("intensity", 3) <= 2:
+                    _consecutive_low_8 += 1
+                    if _consecutive_low_8 > 5:
+                        s["intensity"] = 3
+                        _consecutive_low_8 = 0
+                        _smooth_count += 1
+                else:
+                    _consecutive_low_8 = 0
+            # 8c. エピローグi<=2防止の再適用（境界の飛躍も修正）
+            for i in range(_epilogue_start_8, len(outline)):
+                if outline[i].get("intensity", 3) <= 2:
+                    outline[i]["intensity"] = 3
+                    _smooth_count += 1
+            # エピローグ境界: 直前シーンがi<=1だとi=3へ+2飛躍になるので直前をi=2に引き上げ
+            if _epilogue_start_8 > 0 and _epilogue_start_8 < len(outline):
+                _pre_epi = outline[_epilogue_start_8 - 1].get("intensity", 3)
+                if _pre_epi < 2:
+                    outline[_epilogue_start_8 - 1]["intensity"] = 2
+                    _smooth_count += 1
+            if _smooth_count == 0:
+                break
+        if _pass > 0:
+            if _smooth_count == 0:
+                log_message(f"最終スムージング: {_pass + 1}パスで収束")
+            else:
+                log_message(f"最終スムージング: 3パスで未収束（残り{_smooth_count}箇所）")
 
         # erotic_levelとintensityの整合性を修正
         erotic_map = {1: "none", 2: "light", 3: "medium", 4: "heavy", 5: "climax"}
@@ -7013,7 +8478,7 @@ def extract_scene_summary(scene: dict) -> str:
     
     # 心情の要約
     feelings = scene.get("character_feelings", {})
-    feelings_str = ", ".join(f"{k}: {v}" for k, v in feelings.items()) if feelings else ""
+    feelings_str = ", ".join(f"{k}: {v}" for k, v in feelings.items()) if isinstance(feelings, dict) and feelings else ""
     
     # ストーリーフロー（次への繋がり）
     story_flow = scene.get("story_flow", "")
@@ -7062,7 +8527,7 @@ def _build_story_so_far(story_summaries: list, scene_results: list) -> str:
 
     - 直近3シーン: フルテキスト（extract_scene_summary）
     - 4-8シーン前: 圧縮要約（_compact_scene_summary）※セリフ/SE情報保持
-    - 9シーン以上前: 1行概要（トークン節約）
+    - 9シーン以上前: 直近20件の1行概要 + さらに古い分は件数のみ（トークン節約）
 
     セリフ重複防止のブラックリストは別途used_blacklistで処理されるため、
     古いシーンの詳細をstory_so_farに保持する必要は薄い。
@@ -7073,11 +8538,19 @@ def _build_story_so_far(story_summaries: list, scene_results: list) -> str:
 
     parts = []
 
-    # 9シーン以上前: 1行概要（トークン節約: ~20トークン/シーン）
+    # 9シーン以上前: 1行概要（スライディングウィンドウ: 直近20件のみ、それ以前は省略）
     oneline_end = max(0, n - 8)
     if oneline_end > 0:
         parts.append("--- 序盤の展開 ---")
-        for j in range(oneline_end):
+        # 20件を超える古いシーンは件数表示のみ（トークン爆発防止）
+        _ONELINE_MAX = 20
+        if oneline_end > _ONELINE_MAX:
+            _skipped = oneline_end - _ONELINE_MAX
+            parts.append(f"（シーン1〜{_skipped}: {_skipped}シーン確定済み、省略）")
+            oneline_start = oneline_end - _ONELINE_MAX
+        else:
+            oneline_start = 0
+        for j in range(oneline_start, oneline_end):
             if j < len(scene_results):
                 sc = scene_results[j]
                 sid = sc.get("scene_id", j + 1)
@@ -7119,6 +8592,9 @@ def generate_scene_draft(
     synopsis: str = "",
     outline_roadmap: str = "",
     male_description: str = "",
+    scene_index: int = -1,
+    total_scenes: int = 0,
+    _return_prompt_only: bool = False,
 ) -> dict:
     skill = load_skill("low_cost_pipeline")
 
@@ -7531,7 +9007,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
         background_tags = f"{background_tags}, {theme_sd_tags}"
 
     # 設定スタイルから背景ヒントを取得
-    setting_style = _detect_setting_style(context.get("setting", ""))
+    setting_style = _detect_setting_style(context.get("setting", ""), theme=theme)
     setting_hint_line = ""
     if setting_style:
         hint = setting_style.get("prompt_hint", "")
@@ -7637,11 +9113,34 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 ---
 """
 
+    # エピローグ・最終シーン指示（大量シーン時に物語完結を明示）
+    epilogue_scene_instruction = ""
+    if total_scenes > 0 and scene_index >= 0:
+        scene_id = scene.get("scene_id", scene_index + 1)
+        remaining = total_scenes - scene_id
+        if scene_id == total_scenes:
+            epilogue_scene_instruction = f"""
+## ⚠️ 最終シーン（シーン{scene_id}/{total_scenes}）
+これは作品の**最後のシーン**です。ストーリーを完結させてください。
+- 余韻・事後描写で締めくくること
+- 導入の繰り返しや新展開の開始は絶対禁止
+- 関係性の変化・心情の決着を描くこと
+- intensity 3-4で穏やかに（または余韻のあるエロで）終わらせること
+"""
+        elif remaining <= 3 and remaining > 0:
+            epilogue_scene_instruction = f"""
+## ⚠️ エピローグ（シーン{scene_id}/{total_scenes}、残り{remaining}シーン）
+作品の終盤です。ストーリーの収束に向かってください。
+- 新しい展開や新キャラの登場は禁止
+- 既存の関係性・感情の決着を描くこと
+- 導入シーンの繰り返しは絶対禁止
+"""
+
     # アウトラインフィールドを明示的にフォーマット（JSON dumpの代わり）
     _ea = scene.get("emotional_arc", {})
     _ea_start = _ea.get("start", "") if isinstance(_ea, dict) else ""
     _ea_end = _ea.get("end", "") if isinstance(_ea, dict) else ""
-    scene_instruction = f"""## このシーンの設計指示
+    scene_instruction = f"""{epilogue_scene_instruction}## このシーンの設計指示
 - シーンID: {scene['scene_id']}
 - タイトル: {scene.get('title', '')}
 - 目的(goal): {scene.get('goal', '指定なし')}
@@ -7750,7 +9249,11 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
     
     if callback:
         callback(f"シーン {scene['scene_id']} 生成中 ({model_name}, 重要度{intensity}, {theme_name}, セリフ:{serihu_skill_name})...")
-    
+
+    # Batch APIモード: プロンプトのみ返す（API呼出なし）
+    if _return_prompt_only:
+        return {"system": system_with_cache, "user": prompt, "model": model}
+
     response = _call_api(
         client, model,
         system_with_cache,
@@ -7779,7 +9282,8 @@ def polish_scene(
     draft: dict,
     char_profiles: list = None,
     cost_tracker: CostTracker = None,
-    callback: Optional[Callable] = None
+    callback: Optional[Callable] = None,
+    model: str = None
 ) -> dict:
     # キャラプロファイルをフル活用
     char_guide = ""
@@ -7859,7 +9363,7 @@ Output JSON only."""
 同じJSON形式で出力。JSONのみ。"""
 
     response = _call_api(
-        client, MODELS["sonnet"],
+        client, model or MODELS["sonnet"],
         system_prompt,
         prompt, cost_tracker, 2500, callback
     )
@@ -7956,6 +9460,8 @@ def _generate_single_scene_for_wave(
             synopsis=extra_kwargs.get("synopsis_override", synopsis),
             outline_roadmap=current_roadmap,
             male_description=male_description,
+            scene_index=scene_index,
+            total_scenes=total_scenes,
         )
         draft["intensity"] = intensity
         scene_val = validate_scene(draft, scene_index)
@@ -8142,6 +9648,7 @@ def generate_pipeline(
     sd_quality_tags: str = "",
     sd_prefix_tags: str = "",
     sd_suffix_tags: str = "",
+    provider: str = "",
 ) -> tuple[list, CostTracker]:
     client = anthropic.Anthropic(api_key=api_key)
     log_message("Claude (Anthropic) バックエンドで生成開始")
@@ -8466,6 +9973,8 @@ def generate_pipeline(
                     synopsis=synopsis,
                     outline_roadmap=current_roadmap,
                     male_description=male_description,
+                    scene_index=i,
+                    total_scenes=len(outline),
                 )
 
                 draft["intensity"] = intensity
@@ -8513,7 +10022,10 @@ def generate_pipeline(
                             client, context, scene, jailbreak,
                             cost_tracker, theme, char_profiles, callback,
                             story_so_far=story_so_far, synopsis=synopsis,
-                            outline_roadmap=current_roadmap
+                            outline_roadmap=current_roadmap,
+                            male_description=male_description,
+                            scene_index=i,
+                            total_scenes=len(outline),
                         )
                         draft["intensity"] = intensity
                         results.append(draft)
@@ -8545,7 +10057,11 @@ def generate_pipeline(
                                 client, context, scene, jailbreak,
                                 cost_tracker, theme, char_profiles, callback,
                                 story_so_far=story_so_far,
-                                synopsis="" if is_refusal else synopsis
+                                synopsis="" if is_refusal else synopsis,
+                                outline_roadmap=current_roadmap,
+                                male_description=male_description,
+                                scene_index=i,
+                                total_scenes=len(outline),
                             )
                             draft["intensity"] = intensity
                             results.append(draft)
@@ -8598,61 +10114,131 @@ def generate_pipeline(
         callback("[CHECK]Phase 5: 品質検証 + SDプロンプト最適化")
 
     # 5-1: FANZA基準で自動検証
-    validation = validate_script(results, theme, char_profiles)
-    log_message(f"品質検証完了: {validation['summary']}")
-    if callback:
-        callback(f"[STAT]{validation['summary']}")
-
-    # シーン別問題をログ
-    for sid, issues in validation["scene_issues"].items():
-        for issue in issues:
-            log_message(f"  シーン{sid}: {issue}")
-            if callback:
-                callback(f"  [WARN]シーン{sid}: {issue}")
-
-    # 喘ぎ重複
-    if validation["repeated_moans"]:
-        for text, sids in validation["repeated_moans"].items():
-            msg = f"喘ぎ重複「{text}」→ シーン{', '.join(str(s) for s in sids)}"
-            log_message(f"  {msg}")
-            if callback:
-                callback(f"  [WARN]{msg}")
-
-    # オノマトペ連続重複
-    for s1, s2 in validation["repeated_onomatopoeia"]:
-        msg = f"オノマトペ連続重複: シーン{s1}→{s2}"
-        log_message(f"  {msg}")
+    try:
+        validation = validate_script(results, theme, char_profiles)
+        log_message(f"品質検証完了: {validation['summary']}")
         if callback:
-            callback(f"  [WARN]{msg}")
+            callback(f"[STAT]{validation['summary']}")
+
+        # シーン別問題をログ（詳細はファイルのみ、GUIはサマリー）
+        _scene_issue_count = sum(len(v) for v in validation["scene_issues"].values())
+        for sid, issues in validation["scene_issues"].items():
+            for issue in issues:
+                log_message(f"  シーン{sid}: {issue}")
+        if _scene_issue_count > 0 and callback:
+            callback(f"  [WARN]シーン別問題: {_scene_issue_count}件検出（詳細はログファイル参照）")
+
+        # 喘ぎ重複（詳細はファイルのみ）
+        _moan_dup_count = len(validation.get("repeated_moans", {}))
+        if _moan_dup_count > 0:
+            for text, sids in validation["repeated_moans"].items():
+                log_message(f"  喘ぎ重複「{text}」→ シーン{', '.join(str(s) for s in sids)}")
+            if callback:
+                callback(f"  [WARN]喘ぎ重複: {_moan_dup_count}件検出（自動修正で置換します）")
+
+        # オノマトペ連続重複（詳細はファイルのみ）
+        _ono_dup_count = len(validation.get("repeated_onomatopoeia", []))
+        for s1, s2 in validation["repeated_onomatopoeia"]:
+            log_message(f"  オノマトペ連続重複: シーン{s1}→{s2}")
+        if _ono_dup_count > 0 and callback:
+            callback(f"  [WARN]オノマトペ重複: {_ono_dup_count}件検出")
+    except Exception as _validate_err:
+        log_message(f"[WARN]品質検証エラー（スキップ）: {_validate_err}")
+        import traceback
+        log_message(traceback.format_exc())
+        validation = {"summary": "検証スキップ", "score": 0, "scene_issues": {},
+                      "repeated_moans": {}, "repeated_onomatopoeia": [],
+                      "position_variety": {}, "total_issues": 0}
 
     # 5-2: SDプロンプト最適化（設定スタイル適用）
-    setting_style = _detect_setting_style(concept)
+    setting_style = _detect_setting_style(concept, theme=theme)
     if setting_style:
         log_message(f"設定スタイル検出: {setting_style.get('prompt_hint', '')[:40]}...")
         if callback:
             callback(f"🏠 設定スタイル適用: {setting_style.get('prompt_hint', '')[:30]}...")
-    results = enhance_sd_prompts(results, char_profiles, setting_style=setting_style,
-                                    male_tags=male_tags, time_tags=time_tags,
-                                    location_type=location_type,
-                                    sd_quality_tags=sd_quality_tags,
-                                    sd_prefix_tags=sd_prefix_tags,
-                                    sd_suffix_tags=sd_suffix_tags)
-    log_message("SDプロンプト最適化完了")
-    if callback:
-        callback("[OK]SDプロンプト最適化完了")
+    try:
+        results = enhance_sd_prompts(results, char_profiles, setting_style=setting_style,
+                                        male_tags=male_tags, time_tags=time_tags,
+                                        location_type=location_type,
+                                        sd_quality_tags=sd_quality_tags,
+                                        sd_prefix_tags=sd_prefix_tags,
+                                        sd_suffix_tags=sd_suffix_tags,
+                                        theme=theme)
+        log_message("SDプロンプト最適化完了")
+        if callback:
+            callback("[OK]SDプロンプト最適化完了")
+    except Exception as _sd_err:
+        log_message(f"[WARN]SDプロンプト最適化エラー（結果はそのまま使用）: {_sd_err}")
+        import traceback
+        log_message(traceback.format_exc())
+
+    # 5-2.5: 中間結果を自動保存（auto_fix前にAPI生成結果を保全）
+    if len(results) >= 10:
+        try:
+            _ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            _raw_path = EXPORTS_DIR / f"script_{_ts}_raw.json"
+            export_json(results, _raw_path)
+            log_message(f"中間結果保存: {_raw_path}")
+            if callback:
+                callback(f"💾 中間結果保存済み（{len(results)}シーン）")
+        except Exception as _save_err:
+            log_message(f"中間結果保存失敗: {_save_err}")
+
+    # 5-3.5: Opusクライマックス清書パス（intensity >= 5 のシーンのみ）
+    opus_targets = [i for i, r in enumerate(results) if r.get("intensity", 0) >= 5]
+    if opus_targets:
+        log_message(f"Opus清書パス: {len(opus_targets)}シーン対象（intensity >= 5）")
+        if callback:
+            callback(f"[POLISH]Opus清書: {len(opus_targets)}シーン開始...")
+        _opus_ok = 0
+        for idx in opus_targets:
+            scene = results[idx]
+            _sid = scene.get("scene_id", idx + 1)
+            _orig_intensity = scene.get("intensity", 0)
+            _orig_scene_id = scene.get("scene_id")
+            try:
+                _opus_context = {"concept": concept, "theme": theme}
+                polished = polish_scene(
+                    client, _opus_context,
+                    scene, char_profiles, cost_tracker, callback,
+                    model=MODELS["opus"]
+                )
+                if polished and isinstance(polished, dict):
+                    # intensity/scene_idの上書き保護
+                    polished["intensity"] = _orig_intensity
+                    if _orig_scene_id is not None:
+                        polished["scene_id"] = _orig_scene_id
+                    results[idx] = polished
+                    _opus_ok += 1
+                    log_message(f"  Opus清書OK: シーン{_sid}")
+            except Exception as _opus_err:
+                log_message(f"  [WARN]Opus清書失敗（シーン{_sid}、元データ維持）: {_opus_err}")
+        log_message(f"Opus清書パス完了: {_opus_ok}/{len(opus_targets)}シーン成功")
+        if callback:
+            callback(f"[OK]Opus清書完了: {_opus_ok}/{len(opus_targets)}シーン")
 
     # 5-3: 自動修正（文字数マーカー除去、キャラ名統一、SDタグ整理、セリフ重複置換）
-    results = auto_fix_script(results, char_profiles, theme=theme)
-    log_message("自動修正完了")
+    if callback:
+        callback("🔧 自動修正開始...")
+    try:
+        results = auto_fix_script(results, char_profiles, theme=theme, callback=callback)
+        log_message("自動修正完了")
+    except Exception as _autofix_err:
+        log_message(f"[WARN]自動修正中にエラー発生（結果はそのまま使用）: {_autofix_err}")
+        import traceback
+        log_message(traceback.format_exc())
     if callback:
         callback("🔧 自動修正完了")
 
     # 5-4: dedup後の再検証（文字数超過・男性セリフ数の最終チェック）
-    post_validation = validate_script(results, theme, char_profiles)
-    if post_validation.get("issues"):
-        log_message(f"再検証: {len(post_validation['issues'])}件の警告")
-        for issue in post_validation["issues"][:5]:
-            log_message(f"  {issue}")
+    try:
+        post_validation = validate_script(results, theme, char_profiles)
+        if post_validation.get("issues"):
+            log_message(f"再検証: {len(post_validation['issues'])}件の警告")
+            for issue in post_validation["issues"][:5]:
+                log_message(f"  {issue}")
+    except Exception as _post_val_err:
+        log_message(f"[WARN]再検証エラー（スキップ）: {_post_val_err}")
 
     # 完了サマリー
     success_count = sum(1 for r in results if r.get("mood") != "エラー")
@@ -8672,7 +10258,10 @@ def generate_pipeline(
         "story_structure": story_structure,
         "cost": cost_tracker.summary(),
         "quality_score": validation.get("score", 0),
-        "model_versions": {"haiku": MODELS["haiku"], "sonnet": MODELS["sonnet"]},
+        "provider": provider,
+        "model_versions": (
+            {"haiku": MODELS["haiku"], "sonnet": MODELS["sonnet"], "opus": MODELS["opus"]}
+        ),
         "synopsis": synopsis,
     }
 
@@ -10504,7 +12093,21 @@ class App(ctk.CTk):
         ).pack(anchor="w", padx=20, pady=(12, 8))
         ctk.CTkFrame(api_card, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", padx=20, pady=(0, 8))
 
-        # APIキー
+        # プロバイダー選択
+        provider_row = ctk.CTkFrame(api_card, fg_color="transparent")
+        provider_row.pack(fill="x", padx=20, pady=(0, 8))
+        ctk.CTkLabel(
+            provider_row, text="バックエンド:",
+            font=ctk.CTkFont(size=13), text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(side="left", padx=(0, 8))
+        self._provider_var = tk.StringVar(value=PROVIDER_CLAUDE)
+        ctk.CTkRadioButton(
+            provider_row, text="Claude (Anthropic)", variable=self._provider_var,
+            value=PROVIDER_CLAUDE, font=ctk.CTkFont(size=13),
+            text_color=MaterialColors.ON_SURFACE,
+            command=self._on_provider_changed
+        ).pack(side="left", padx=(0, 12))
+        # Claude APIキー
         self.api_field = ctk.CTkEntry(
             api_card, height=42, placeholder_text="Anthropic API Key (sk-ant-...)", show="*",
             font=ctk.CTkFont(size=15),
@@ -10512,7 +12115,10 @@ class App(ctk.CTk):
             placeholder_text_color="#3D3D3D",
             corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE
         )
-        self.api_field.pack(fill="x", padx=20, pady=(0, 12))
+        self.api_field.pack(fill="x", padx=20, pady=(0, 4))
+
+        # 下部余白
+        ctk.CTkFrame(api_card, fg_color="transparent", height=8).pack(fill="x", padx=20)
 
         # ══════════════════════════════════════════════════════════════
         # 2. プロファイル管理（キャラ生成より上に配置）
@@ -11421,6 +13027,10 @@ class App(ctk.CTk):
             self.api_field.insert(0, value)
 
     def load_saved_config(self):
+        # プロバイダー復元
+        if self.config_data.get("provider"):
+            self._provider_var.set(self.config_data["provider"])
+            self._on_provider_changed()
         if self.config_data.get("api_key"):
             self._set_api_field(self.config_data["api_key"])
         if self.config_data.get("concept"):
@@ -11515,6 +13125,10 @@ class App(ctk.CTk):
             pass
 
     # --- SDプロンプト設定コールバック ---
+    def _on_provider_changed(self):
+        """プロバイダー切替時のUI更新"""
+        self.update_cost_preview()
+
     def _on_sd_quality_mode_changed(self):
         """auto/manual切替でカスタム入力欄のstate変更"""
         if self.sd_quality_mode_var.get() == "manual":
@@ -11653,7 +13267,7 @@ class App(ctk.CTk):
             est = estimate_cost(num_scenes)
             self.cost_preview_label.configure(
                 text=f"予想コスト: ${est['estimated_usd']:.4f} (約¥{est['estimated_jpy']:.1f}) | "
-                     f"Haiku: ~{est['haiku_tokens']:,}トークン, Sonnet: ~{est['sonnet_tokens']:,}トークン"
+                     f"Haiku: ~{est['haiku_tokens']:,}, Sonnet: ~{est['sonnet_tokens']:,}, Opus: ~{est['opus_tokens']:,}"
             )
         except ValueError:
             self.cost_preview_label.configure(
@@ -11847,6 +13461,7 @@ class App(ctk.CTk):
         """設定を保存"""
         theme_jp = self.theme_combo.get()
         self.config_data = {
+            "provider": self._provider_var.get(),
             "api_key": self.api_field.get(),
             "concept": self.concept_text.get("1.0", "end-1c"),
             "characters": self._get_characters_text(),
@@ -12070,7 +13685,19 @@ class App(ctk.CTk):
     def log(self, message: str):
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_text.insert("end", f"[{timestamp}] {message}\n")
-        self.log_text.see("end")
+        # see("end")スロットリング: 連続呼び出し時は200ms間隔でスクロール
+        _now = time.time()
+        if not hasattr(self, '_last_log_scroll') or (_now - self._last_log_scroll) > 0.2:
+            self.log_text.see("end")
+            self._last_log_scroll = _now
+        else:
+            # 遅延スクロール（最終行を見せるためにafter予約）
+            if not hasattr(self, '_log_scroll_pending') or not self._log_scroll_pending:
+                self._log_scroll_pending = True
+                def _deferred_scroll():
+                    self._log_scroll_pending = False
+                    self.log_text.see("end")
+                self.after(200, _deferred_scroll)
         log_message(message)
 
     def update_status(self, message: str):
@@ -12183,15 +13810,16 @@ class App(ctk.CTk):
         if self.is_generating:
             return
 
+        # APIキー取得
         api_key = self.api_field.get().strip()
+        if not api_key:
+                self.snackbar.show("Anthropic APIキーを入力してください", type="error")
+                return
 
         concept = self.concept_text.get("1.0", "end-1c").strip()
         characters = self._get_characters_text().strip()
         other_chars = self.other_chars_text.get("1.0", "end-1c").strip() if hasattr(self, "other_chars_text") else ""
 
-        if not api_key:
-            self.snackbar.show("Anthropic APIキーを入力してください", type="error")
-            return
         if not concept:
             self.snackbar.show("コンセプトを入力してください", type="error")
             return
@@ -12225,32 +13853,37 @@ class App(ctk.CTk):
         high_count = act3_count
         prep_calls = 2  # あらすじ生成 + シーン分割
         total_api = prep_calls + num_scenes
+
+        # コスト計算
         est_cost_prep = prep_calls * (2000 * 0.25 + 2000 * 1.25) / 1_000_000
-        est_cost_haiku = low_count * (3000 * 0.25 + 2500 * 1.25) / 1_000_000
-        est_cost_sonnet = high_count * (3000 * 3.00 + 2500 * 15.00) / 1_000_000
-        est_total = est_cost_prep + est_cost_haiku + est_cost_sonnet
+        est_cost_low = low_count * (3000 * 0.25 + 2500 * 1.25) / 1_000_000
+        est_cost_high = high_count * (3000 * 3.00 + 2500 * 15.00) / 1_000_000
+        backend_name = "Claude (Anthropic)"
+        low_model = "Haiku"
+        high_model = "Sonnet"
+        est_total = est_cost_prep + est_cost_low + est_cost_high
 
         # プレビュー表示
         self.log_text.delete("1.0", "end")
         self.log(f"{'='*50}")
         self.log(f"[INFO]生成プレビュー")
         self.log(f"{'='*50}")
-        self.log(f"バックエンド: Claude (Anthropic)")
+        self.log(f"バックエンド: {backend_name}")
         self.log(f"テーマ: {theme_name}")
         self.log(f"シーン数: {num_scenes}")
         self.log(f"ストーリー構成: プロローグ{story_structure['prologue']}% / 本編{story_structure['main']}% / エピローグ{story_structure['epilogue']}%")
         self.log(f"")
         self.log(f"[STAT]パイプライン:")
-        self.log(f"  Step 1: ストーリー原案作成（Haiku×1）")
-        self.log(f"  Step 2: シーン分割（Haiku×1）")
+        self.log(f"  Step 1: ストーリー原案作成（{low_model}×1）")
+        self.log(f"  Step 2: シーン分割（{low_model}×1）")
         self.log(f"  Step 3: シーン生成")
-        self.log(f"    Low (1-3): {low_count}シーン → Haiku")
-        self.log(f"    High (4-5): {high_count}シーン → Sonnet")
+        self.log(f"    Low (1-3): {low_count}シーン → {low_model}")
+        self.log(f"    High (4-5): {high_count}シーン → {high_model}")
         self.log(f"")
         self.log(f"[COST]推定コスト: ${est_total:.4f}")
         self.log(f"  準備: ${est_cost_prep:.4f} (あらすじ+分割)")
-        self.log(f"  Haiku: ${est_cost_haiku:.4f} ({low_count}回)")
-        self.log(f"  Sonnet: ${est_cost_sonnet:.4f} ({high_count}回)")
+        self.log(f"  {low_model}: ${est_cost_low:.4f} ({low_count}回)")
+        self.log(f"  {high_model}: ${est_cost_high:.4f} ({high_count}回)")
         self.log(f"  合計API呼び出し: {total_api}回")
         self.log(f"{'='*50}")
         self.log(f"")
@@ -12345,6 +13978,7 @@ class App(ctk.CTk):
                 sd_quality_tags=_sd_quality_custom,
                 sd_prefix_tags=_sd_prefix,
                 sd_suffix_tags=_sd_suffix,
+                provider=PROVIDER_CLAUDE,
             )
 
             if self.stop_requested:

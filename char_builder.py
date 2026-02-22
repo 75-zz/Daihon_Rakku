@@ -1011,7 +1011,7 @@ def build_custom_character_data(
     hair_style_tags = DANBOORU_HAIR_STYLE_MAP.get(hair_style, "long_hair")
     body_tag = DANBOORU_BODY_MAP.get(body_type, "medium_body")
     chest_tag = DANBOORU_CHEST_MAP.get(chest, "medium_breasts")
-    clothing_tags = DANBOORU_CLOTHING_MAP.get(clothing, "school_uniform")
+    clothing_tags = DANBOORU_CLOTHING_MAP.get(clothing, "clothes")
 
     physical = {
         "hair": f"{hair_color}、{hair_style}",
