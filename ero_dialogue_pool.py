@@ -287,7 +287,7 @@ MOAN_POOL = {
         "はぁっ♡",
         "ひやんっ♡",
         "あにゃ…♡",
-        "やっ…♡♡",
+        "やっ…♡",
         "くぅっ…♡",
         "ふあっ…♡",
         "んはぁ…♡",
@@ -318,7 +318,7 @@ MOAN_POOL = {
         "はやんっ♡",
         "あぅっ…♡",
         "ふあぁっ♡",
-        "んっ♡♡",
+        "んっ♡",
         "あっ…はぁ♡",
         "やぅっ♡",
         "ひにゃ…♡",
@@ -328,7 +328,7 @@ MOAN_POOL = {
         "ふやっ…♡",
         "んはっ…♡",
         "やはぁ…♡",
-        "ひあっ♡♡",
+        "ひあっ♡",
         "あやぁっ♡",
         "はんっ♡",
         "ふぁんっ…♡",
@@ -3950,15 +3950,35 @@ def get_onomatopoeia_pool(intensity: int, action: str = "") -> list:
 # ============================================================================
 
 def pick_replacement(pool_list: list, used_set: set, normalize_fn=None,
-                     max_len: int = 10) -> str:
+                     max_len: int = 10, avoid_suffix: str = "",
+                     intensity: int = 3) -> str:
     """プールからused_setに含まれない未使用エントリーをランダムに選択。
     normalize_fnがあれば正規化後の値でも重複判定する。
     max_len: 文字数上限（デフォルト10、CG集吹き出し制限）
+    avoid_suffix: 避けるべき語尾構造パターン（例: "し…"）。直近と同じ語尾を避ける
+    intensity: シーンintensity（♡数制限に使用。1-5）
     500シーン耐性: used_setがプールの70%超で自動スライディングウィンドウ"""
+    # v8.6: intensity別♡数上限
+    _MAX_HEARTS = {1: 0, 2: 0, 3: 1, 4: 2, 5: 99}
+    _heart_limit = _MAX_HEARTS.get(intensity, 1)
+    # v8.6: 語尾構造パターン判定用
+    import re as _re
+    _SUFFIX_PAT = _re.compile(r'(し…|る♡|の…|て…|く…|で…|に…|だし|よ…|か…|ない|った|って)$')
+
+    def _ok_suffix(t):
+        """avoid_suffixと同じ語尾パターンでないかチェック"""
+        if not avoid_suffix:
+            return True
+        m = _SUFFIX_PAT.search(t.rstrip())
+        return not m or m.group(1) != avoid_suffix
+
+    def _ok_hearts(t):
+        """♡数がintensity上限以内かチェック"""
+        return t.count("♡") <= _heart_limit
+
     pool_size = len(pool_list)
     # スライディングウィンドウ: used_setがプールの70%超えたら古い半分を忘れる
     if pool_size > 0 and len(used_set) > pool_size * 0.7:
-        # setは順序がないのでランダムに半分を残す
         keep = set(random.sample(list(used_set), len(used_set) // 2))
         used_set.clear()
         used_set.update(keep)
@@ -3967,29 +3987,48 @@ def pick_replacement(pool_list: list, used_set: set, normalize_fn=None,
         candidates = [t for t in pool_list
                       if t not in used_set
                       and normalize_fn(t) not in used_normalized
-                      and len(t) <= max_len]
+                      and len(t) <= max_len
+                      and _ok_suffix(t) and _ok_hearts(t)]
     else:
         candidates = [t for t in pool_list
                       if t not in used_set
-                      and len(t) <= max_len]
+                      and len(t) <= max_len
+                      and _ok_suffix(t) and _ok_hearts(t)]
     if candidates:
         return random.choice(candidates)
-    # max_len制限を緩和して再試行
+    # avoid_suffix制約を緩和して再試行（語尾制約のみ外す）
     if normalize_fn:
-        candidates = [t for t in pool_list if t not in used_set and normalize_fn(t) not in used_normalized]
+        candidates = [t for t in pool_list
+                      if t not in used_set
+                      and normalize_fn(t) not in used_normalized
+                      and len(t) <= max_len and _ok_hearts(t)]
     else:
-        candidates = [t for t in pool_list if t not in used_set]
+        candidates = [t for t in pool_list
+                      if t not in used_set
+                      and len(t) <= max_len and _ok_hearts(t)]
     if candidates:
         return random.choice(candidates)
-    # 全て使用済みなら、バリエーション生成で重複回避
+    # max_len制限も緩和して再試行
+    if normalize_fn:
+        candidates = [t for t in pool_list if t not in used_set and normalize_fn(t) not in used_normalized and _ok_hearts(t)]
+    else:
+        candidates = [t for t in pool_list if t not in used_set and _ok_hearts(t)]
+    if candidates:
+        return random.choice(candidates)
+    # 全て使用済みなら、バリエーション生成で重複回避（intensity考慮）
     if pool_list:
         base = random.choice(pool_list)
-        _VARIANTS = [
-            "♡", "…♡", "っ♡", "…", "♡♡",
-            "っ…", "…っ", "♡…", "っ♡♡", "…♡♡",
-            "ぅ…♡", "ん♡", "っ…♡", "ぁ♡", "…っ♡",
-        ]
-        for v in _VARIANTS:
+        # v8.6: intensity別バリアントリスト
+        _VARIANT_BY_INTENSITY = {
+            1: ["…", "っ…", "…っ", "ぅ…", "ぁ…"],
+            2: ["…", "っ…", "…っ", "ぅ…", "ぁ…"],
+            3: ["…", "♡", "…♡", "っ…", "…っ", "ぅ…", "ぁ…"],
+            4: ["…", "♡", "…♡", "♡♡", "…♡♡", "っ…", "…っ", "ぅ…", "ぁ…"],
+            5: ["♡", "…♡", "っ♡", "…", "♡♡", "っ…", "…っ", "♡…",
+                "っ♡♡", "…♡♡", "ぅ…♡", "ん♡", "っ…♡", "ぁ♡", "…っ♡"],
+        }
+        _variants = _VARIANT_BY_INTENSITY.get(intensity, _VARIANT_BY_INTENSITY[3])
+        for v in _variants:
             candidate = base.rstrip("♡…っ。") + v
             if candidate not in used_set and (not normalize_fn or normalize_fn(candidate) not in used_normalized):
                 return candidate

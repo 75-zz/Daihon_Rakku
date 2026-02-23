@@ -201,7 +201,7 @@ MAX_RETRIES = 3
 MAX_RETRIES_OVERLOADED = 6  # 529 Overloaded専用（長時間待機）
 RETRY_DELAY = 2
 RETRY_DELAY_OVERLOADED = 15  # 529 Overloaded初回待機秒数
-CONCURRENT_BATCH_SIZE = 5       # Wave内同時生成数
+CONCURRENT_BATCH_SIZE = 2       # Wave内同時生成数（v8.7: 5→2 ストーリー一貫性向上）
 CONCURRENT_MIN_SCENES = 13      # 並列化の最小シーン数
 CONCURRENT_WAVE_COOLDOWN = 2.0  # Wave間クールダウン(秒)
 
@@ -661,6 +661,13 @@ THEME_GUIDES = {
         "intensity_curve": "plateau",  # 停止中は一定intensity→解除で急変
         "foreplay_ratio": 0.15,
         "intro_ratio": 0.08,
+        "world_rules": [
+            "【時間停止の対象キャラ】意識はあるが身体は完全に動かない（操り人形状態）。表情も固定される",
+            "【セリフ制約】停止中の対象キャラのセリフはthought（心の声）のみ。speechは禁止（声が出せないため）。moanも禁止（声が出せないため、身体反応の描写で代替）",
+            "【男性の行動】時間停止の使い手は自由に動ける。セリフはspeechで出力してよい",
+            "【時間停止解除後】対象キャラは混乱・違和感・身体の痕跡に気づく。speechとthought両方使用可",
+            "【身体反応】停止中でも発汗・充血・濡れ等の生理現象は発生する（不随意反応）。ただし声は出ない",
+        ],
     },
     "harem": {
         "name": "ハーレム",
@@ -972,6 +979,75 @@ THEME_GUIDES = {
         "intro_ratio": 0.10,
     },
 }
+
+# v8.9: テーマ別時間軸スパン設定
+# "single_event": 一晩/単発の出来事（翌日すら不要）
+# "few_days": 数日間（2-3日、複数回の接触が物語の本質）
+# "flexible": テーマに応じて自由（ただし翌週の乱用禁止）
+_THEME_TIME_SPAN = {
+    # single_event: 単発テーマ（1回の出来事で完結）
+    "humiliation": "single_event",
+    "forced": "single_event",
+    "chikan": "single_event",
+    "time_stop": "single_event",
+    "gangbang": "single_event",
+    "sleep": "single_event",
+    "monster": "single_event",
+    "tentacle": "single_event",
+    "reverse_rape": "single_event",
+    # few_days: 複数日テーマ（心理変化・関係発展に時間が必要）
+    "netorare": "few_days",
+    "corruption": "few_days",
+    "office": "few_days",
+    "teacher_student": "few_days",
+    "neighbor": "few_days",
+    "prostitution": "few_days",
+    "idol": "few_days",
+    "incest": "few_days",
+    # flexible: 自由テーマ（シチュエーション次第）
+    "love": "flexible",
+    "vanilla": "flexible",
+    "maid": "flexible",
+    "hypnosis": "flexible",
+    "harem": "flexible",
+    "femdom": "flexible",
+    "isekai": "flexible",
+    "onsen": "flexible",
+    "medical": "flexible",
+    "swimsuit": "flexible",
+    "sports": "flexible",
+    "voyeur": "flexible",
+    "cosplay": "flexible",
+}
+
+def _get_time_axis_instruction(theme: str, act1: int) -> str:
+    """テーマ別の時間軸プロンプト指示を生成"""
+    span = _THEME_TIME_SPAN.get(theme, "flexible")
+    if span == "single_event":
+        return (
+            "\n## ⚠️⚠️ 時間軸ルール（厳守）\n"
+            "- **全シーンは「同一イベント内」の出来事**。「翌日」「翌週」「数日後」は全て禁止\n"
+            "- 導入から本番まで連続した1回の出来事として書くこと\n"
+            "- story_flowに時間経過表現を書くな。「直後」「その場で」のみ使用可\n"
+            "- CG集は「一瞬〜数時間の出来事」として構成すること\n"
+        )
+    elif span == "few_days":
+        return (
+            "\n## ⚠️⚠️ 時間軸ルール（厳守）\n"
+            f"- **全シーンは「最大3日間」に収まること**。「翌週」「数週間後」「翌月」は禁止\n"
+            f"- 導入{act1}シーンは「1日目」に収めよ。行為開始〜本番は「1-2日目」。余韻は「最終日」\n"
+            "- 許可する時間表現: 「翌日」「翌朝」「その夜」「数時間後」\n"
+            "- 禁止する時間表現: 「翌週」「数日後」「翌々週」「後日」「数週間後」\n"
+            "- 1シーンごとに日が変わるのは禁止。同じ日に最低3-5シーンを配置すること\n"
+        )
+    else:  # flexible
+        return (
+            "\n## ⚠️⚠️ 時間軸ルール（厳守）\n"
+            f"- 導入{act1}シーンは「同日中」に収めること。行為開始後は連続した出来事として書け\n"
+            "- 「翌週」「数週間後」「翌月」の大きな時間ジャンプは禁止\n"
+            "- 許可: 「翌日」「翌朝」「その夜」「数時間後」「少し休んで」\n"
+            "- story_flowで毎シーン日付が変わるパターンは禁止\n"
+        )
 
 # テーマ自動推定用キーワードマップ
 THEME_KEYWORD_MAP = {
@@ -2104,9 +2180,9 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             _max_consecutive_4 = max(_max_consecutive_4, _curr_run)
         else:
             _curr_run = 0
-    if _max_consecutive_4 > 5:
+    if _max_consecutive_4 > 6:
         scene_issues.setdefault("global", []).append(
-            f"i=4連続{_max_consecutive_4}シーン（上限5・i=3ブレイク不足）")
+            f"i=4連続{_max_consecutive_4}シーン（上限4-6・i=3ブレイク不足）")
 
     # --- クロスシーン: i≤2連続過多検出（テンポ停滞） ---
     _max_consecutive_low = 0
@@ -2117,9 +2193,9 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             _max_consecutive_low = max(_max_consecutive_low, _curr_low_run)
         else:
             _curr_low_run = 0
-    if _max_consecutive_low > 5:
+    if _max_consecutive_low > 6:
         scene_issues.setdefault("global", []).append(
-            f"i≤2連続{_max_consecutive_low}シーン（上限5・テンポ停滞）")
+            f"i≤2連続{_max_consecutive_low}シーン（上限6・テンポ停滞）")
 
     # --- THOUGHT↔SPEECH感情矛盾チェック ---
     _ct_positive_th = ["幸せ", "嬉しい", "好き", "大好き", "気持ちいい", "もっと", "欲しい", "♡"]
@@ -2157,6 +2233,84 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         _ngram_report = ", ".join(f"「{ng}」×{cnt}" for ng, cnt in _repeated_ngrams[:5])
         scene_issues.setdefault("global", []).append(
             f"N-gram反復: {_ngram_report}（計{len(_repeated_ngrams)}パターン）")
+
+    # v8.9: メタ参照description検出（「シーンXXの場面では」等のAPI生成アーティファクト）
+    import re as _re_val
+    _META_REF_PATTERN_V = _re_val.compile(r'シーン\d+')
+    _meta_ref_count = 0
+    for i, scene in enumerate(results):
+        desc = scene.get("description", "")
+        if desc and _META_REF_PATTERN_V.search(desc):
+            sid = scene.get("scene_id", i + 1)
+            scene_issues.setdefault(f"S{sid}", []).append(
+                f"メタ参照: descriptionに「シーンXX」パターン検出（API生成アーティファクト）")
+            _meta_ref_count += 1
+    if _meta_ref_count > 0:
+        scene_issues.setdefault("global", []).append(
+            f"メタ参照description: {_meta_ref_count}シーンで「シーンXX」パターン検出")
+
+    # v8.9: 時間軸バリデーション（「翌週」「数日後」等の時間ジャンプ検出）
+    # エピローグ（最終10%）は時間ジャンプ許可
+    # テーマ別: single_eventは「翌日」も検出 / few_days/flexibleは「翌週」以上のみ
+    _TIME_JUMP_KW = ["翌週", "翌々週", "数日後", "一週間後", "数週間後", "翌月", "数ヶ月後",
+                     "1週間後", "２週間後", "次の週", "来週", "後日"]
+    _time_span_v = _THEME_TIME_SPAN.get(theme, "flexible")
+    if _time_span_v == "single_event":
+        _TIME_JUMP_KW.extend(["翌日", "翌朝"])
+    _time_jump_count = 0
+    _n_results = len(results)
+    _epilogue_start_v = max(1, _n_results - max(1, _n_results // 10))
+    for i, scene in enumerate(results):
+        if i >= _epilogue_start_v:
+            continue  # エピローグは時間ジャンプ許可
+        sid = scene.get("scene_id", i + 1)
+        desc = scene.get("description", "")
+        sflow = scene.get("story_flow", "")
+        for kw in _TIME_JUMP_KW:
+            if kw in desc:
+                scene_issues.setdefault(f"S{sid}", []).append(
+                    f"時間軸ジャンプ禁止: descriptionに「{kw}」（同日内に圧縮すべき）")
+                _time_jump_count += 1
+                break
+            if kw in sflow:
+                scene_issues.setdefault(f"S{sid}", []).append(
+                    f"時間軸ジャンプ禁止: story_flowに「{kw}」（同日内に圧縮すべき）")
+                _time_jump_count += 1
+                break
+    if _time_jump_count > 0:
+        scene_issues.setdefault("global", []).append(
+            f"時間軸ジャンプ検出: {_time_jump_count}シーンで「翌週」等の大きな時間経過（CG集は基本同日の出来事）")
+
+    # v8.8: テーマ別バリデーション（time_stop: 停止中の女性speech/moan検出）
+    if theme == "time_stop":
+        _TS_ACTIVE_KW = ["時間停止", "身動き", "止まった", "停止した", "動けない"]
+        _TS_RELEASED_KW = ["時間再開", "再び動き", "解除", "現実に戻", "混乱して"]
+        for i, scene in enumerate(results):
+            desc = scene.get("description", "")
+            is_frozen = any(kw in desc for kw in _TS_ACTIVE_KW)
+            is_released = any(kw in desc for kw in _TS_RELEASED_KW)
+            if is_frozen and not is_released:
+                sid = scene.get("scene_id", i + 1)
+                for b in scene.get("bubbles", []):
+                    speaker = b.get("speaker", "")
+                    btype = b.get("type", "")
+                    if not _is_male_speaker(speaker):
+                        if btype == "speech":
+                            scene_issues.setdefault(f"S{sid}", []).append(
+                                f"時間停止中の女性speech禁止: 「{b.get('text', '')[:20]}」")
+                        elif btype == "moan":
+                            scene_issues.setdefault(f"S{sid}", []).append(
+                                f"時間停止中のmoan禁止（声が出せない）: 「{b.get('text', '')[:20]}」")
+    # v8.8: mood品質チェック（テーマkey_emotionsがそのままmoodに使われている）
+    _theme_guide_v = THEME_GUIDES.get(theme, {})
+    _theme_key_emotions_v = set(_theme_guide_v.get("key_emotions", []))
+    if _theme_key_emotions_v:
+        for i, scene in enumerate(results):
+            m = scene.get("mood", "")
+            if m and m in _theme_key_emotions_v:
+                sid = scene.get("scene_id", i + 1)
+                scene_issues.setdefault(f"S{sid}", []).append(
+                    f"moodがテーマ感情そのまま: 「{m}」→具体的なmoodにすべき")
 
     n_issues = sum(len(v) for v in scene_issues.values()) + len(repeated_moans) + len(repeated_onom)
     # スコア計算: シーン数で正規化（大規模シーンでもscore=0にならないように）
@@ -2318,18 +2472,20 @@ def _analyze_scene_context(scene: dict) -> str:
 
 def _deduplicate_across_scenes(results: list, theme: str = "",
                                 heroine_names: list = None,
-                                char_profiles: list = None) -> None:
+                                char_profiles: list = None,
+                                concept: str = "") -> None:
     """シーン間の同一・類似セリフを検出し、プールから代替セリフに置換。
     - 文脈判定: descriptionを解析し、非エロシーンにエロセリフを入れない
     - 重複保護: 同一セリフが検出された場合、プールから代替セリフに置換
     - ヒロイン名リスト以外のspeakerは全て男性と判定
     - テーマ/intensityに応じてプールカテゴリを絞り込み
-    - 性格タイプに応じてプール混合比率を調整"""
+    - 性格タイプに応じてプール混合比率を調整
+    - v8.7: concept引数追加でkey_linesをプールに統合"""
     try:
         from ero_dialogue_pool import (
             get_moan_pool, get_speech_pool, pick_replacement, SPEECH_MALE_POOL,
             SPEECH_FEMALE_POOL, THOUGHT_POOL, NEUTRAL_POOL, AFTERMATH_POOL,
-            get_male_speech_pool, get_female_speech_pool
+            get_male_speech_pool, get_female_speech_pool, get_pattern_key_lines
         )
         has_pool = True
     except ImportError:
@@ -2342,10 +2498,12 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
             has_pool = True
             NEUTRAL_POOL = None
             AFTERMATH_POOL = None
+            get_pattern_key_lines = None
         except ImportError:
             has_pool = False
             NEUTRAL_POOL = None
             AFTERMATH_POOL = None
+            get_pattern_key_lines = None
             log_message("ero_dialogue_pool.py未検出、重複は除去のみ（置換なし）")
 
     # ヒロイン名セット構築（これ以外のspeakerは全て男性扱い）
@@ -2430,6 +2588,12 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
             return pool
         elif btype == "thought":
             pool = []
+            # v8.7: key_lines統合（thought用、先頭配置で選択確率UP）
+            if concept and get_pattern_key_lines:
+                kl_phase = "early" if intensity <= 2 else ("late" if intensity >= 5 else "mid")
+                kl = get_pattern_key_lines(theme, concept, kl_phase)
+                if kl:
+                    pool.extend(kl)
             if _dedup_char_pool and "thought" in _dedup_char_pool:
                 # フェーズ推定で適切なthoughtを混合
                 try:
@@ -2443,8 +2607,14 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
         elif is_male:
             return _get_male_pool_for_theme(theme, intensity)
         else:
-            # 女性speech: キャラ固有プール優先 → 性格タイプ → intensity連動フォールバック
+            # 女性speech: v8.7 key_lines → キャラ固有プール → 性格タイプ → intensity連動フォールバック
             pool = []
+            # v8.7: key_lines統合（speech用、先頭配置で選択確率UP）
+            if concept and get_pattern_key_lines:
+                kl_phase = "early" if intensity <= 2 else ("late" if intensity >= 5 else "mid")
+                kl = get_pattern_key_lines(theme, concept, kl_phase)
+                if kl:
+                    pool.extend(kl)
             if _dedup_char_pool and "speech" in _dedup_char_pool:
                 try:
                     from ero_dialogue_pool import infer_phase as _inf_ph2
@@ -2484,91 +2654,21 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                     pool.extend(SPEECH_FEMALE_POOL.get("submissive", []))
             return pool if pool else [v for sp in SPEECH_FEMALE_POOL.values() for v in sp]
 
-    # 使用済みテキスト追跡（全シーン横断）
+    # v8.8: 使用済みテキスト追跡（speech/thoughtは完全一致のみ。moanのみprefix3類似チェック復活）
     used_moan_raw = set()
     used_moan_texts = set()
-    used_moan_prefixes = set()  # 正規化先頭4文字（O(1)類似検出用）
     used_thought_raw = set()
     used_thought_texts = set()
-    used_thought_prefixes = set()
     used_speech_raw = set()
     used_speech_texts = set()
-    used_speech_prefixes = set()
-    used_speech_suffixes = set()  # 末尾5文字（部分一致O(1)用）
-    moan_core_counter = {}  # 正規化先頭3文字 -> カウント（O(1)部分一致用）
-    # 表現パターン追跡（「初めて」「彼のこと」等の重複防止）
-    used_patterns = {}  # pattern_key -> count
-    # thought先頭パターン追跡（「だめ…」「やだ…」等の同一先頭3文字反復防止）
-    thought_prefix_counter = {}  # prefix3 -> count
-    _THOUGHT_PREFIX_LIMIT = 4  # 同一先頭パターンの上限
-    # thoughtテキスト内キーワード頻度追跡（「だめ」「声」等の過剰使用防止）
-    _thought_kw_counter = {}  # kw -> count
-    _THOUGHT_CONTENT_KW = [
-        "だめ", "声", "やめて", "おく", "なか", "廊下", "聞こえ",
-        # v8.2追加: 感情サイクリング検出
-        "こわい", "きもち", "いや", "すき", "もう", "ほしい",
-        "おかしく", "とまら", "しんじ", "たすけ", "はずか", "にげ",
-    ]
-    _THOUGHT_KW_LIMIT = 4  # 同一キーワードの上限
+    # v8.8: moan限定の軽量類似チェック（speech/thoughtは完全一致のみ維持）
+    _moan_prefix3_counter = {}  # 先頭3字カウンター
+    _MOAN_PREFIX_LIMIT = max(3, len(results) // 8)  # 20→3, 50→6, 100→12
+    # v8.6: 語尾構造パターン追跡（「~し…」「~る♡」等の3連続防止）— 有用なので維持
+    _SUFFIX_STRUCT_RE = re.compile(r'(し…|る♡|の…|て…|く…|で…|に…|だし|よ…|か…|ない|った|って)$')
+    _recent_suffix_structs = []  # 直近の語尾構造パターン（スライディングウィンドウ）
 
     replace_count = 0
-
-    REPETITION_PATTERNS = {
-        "初めて": ["初めて", "はじめて"],
-        "彼のこと": ["彼のこと", "彼氏のこと", "彼を忘れ"],
-        "感じ": ["こんなに感じ", "なぜ感じ", "なんで感じ"],
-        "おかしく": ["おかしく", "おかしい"],
-    }
-
-    def _get_thought_prefix(text: str) -> str:
-        """thought先頭パターンを抽出（最初の「…」より前、なければ先頭2文字）。
-        例: 「だめ…声が…」→「だめ」, 「やば…」→「やば」, 「変になる…」→「変に」
-        """
-        # 最初の「…」で分割して前半を取得
-        first_part = text.split("…")[0].replace("♡", "").replace("っ", "").strip()
-        if len(first_part) >= 2:
-            return first_part[:3]  # 最大3文字
-        # 「…」がない場合は先頭2文字
-        clean = text.replace("…", "").replace("♡", "").replace("っ", "").strip()
-        return clean[:2] if len(clean) >= 2 else ""
-
-    def _check_thought_prefix_limit(text: str) -> bool:
-        """thought先頭パターンが上限を超えていたらTrue"""
-        prefix = _get_thought_prefix(text)
-        if not prefix:
-            return False
-        return thought_prefix_counter.get(prefix, 0) >= _THOUGHT_PREFIX_LIMIT
-
-    def _register_thought_prefix(text: str):
-        prefix = _get_thought_prefix(text)
-        if prefix:
-            thought_prefix_counter[prefix] = thought_prefix_counter.get(prefix, 0) + 1
-
-    def _check_thought_kw_limit(text: str) -> bool:
-        """thoughtテキスト内のキーワードが上限を超えていたらTrue"""
-        for kw in _THOUGHT_CONTENT_KW:
-            if kw in text and _thought_kw_counter.get(kw, 0) >= _THOUGHT_KW_LIMIT:
-                return True
-        return False
-
-    def _register_thought_kw(text: str):
-        for kw in _THOUGHT_CONTENT_KW:
-            if kw in text:
-                _thought_kw_counter[kw] = _thought_kw_counter.get(kw, 0) + 1
-
-    def _check_pattern_limit(text: str) -> bool:
-        """表現パターンが上限（全体で2回）を超えていたらTrue"""
-        for key, phrases in REPETITION_PATTERNS.items():
-            if any(p in text for p in phrases):
-                cnt = used_patterns.get(key, 0)
-                if cnt >= 2:
-                    return True
-        return False
-
-    def _register_patterns(text: str):
-        for key, phrases in REPETITION_PATTERNS.items():
-            if any(p in text for p in phrases):
-                used_patterns[key] = used_patterns.get(key, 0) + 1
 
     for scene in results:
         # dialogue形式（旧フォーマット）からbubblesへの変換
@@ -2606,19 +2706,16 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
 
             if btype == "moan":
                 norm = _normalize_bubble_text(text)
+                # v8.8: 完全一致 + prefix3類似チェック（speech/thoughtは完全一致のみ維持）
                 if (text in used_moan_raw) or (norm in used_moan_texts):
                     need_replace = True
                     reason = "重複"
-                elif len(norm) >= 4 and norm[:4] in used_moan_prefixes:
-                    need_replace = True
-                    reason = "類似"
-                # 部分一致チェック: 正規化後先頭3文字が3回以上使用 → O(1)
-                elif not need_replace and len(norm) >= 3:
-                    core = norm[:3]
-                    _moan_core_hits = moan_core_counter.get(core, 0)
-                    if _moan_core_hits >= 2:
+                elif len(text) >= 3:
+                    prefix3 = text[:3]
+                    cnt = _moan_prefix3_counter.get(prefix3, 0)
+                    if cnt >= _MOAN_PREFIX_LIMIT:
                         need_replace = True
-                        reason = f"部分一致({core}系{_moan_core_hits+1}回)"
+                        reason = "喘ぎ類似"
                 # 非エロシーンで喘ぎは文脈不整合
                 if ctx == "non_sexual":
                     need_replace = True
@@ -2626,35 +2723,33 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
 
             elif btype == "thought":
                 norm = _normalize_bubble_text(text)
+                # v8.7: 完全一致のみ置換（先頭4字類似/キーワード上限/パターン上限を撤廃）
                 if (text in used_thought_raw) or (norm in used_thought_texts):
                     need_replace = True
                     reason = "重複"
-                elif len(norm) >= 4 and norm[:4] in used_thought_prefixes:
-                    need_replace = True
-                    reason = "類似"
-                elif _check_pattern_limit(text):
-                    need_replace = True
-                    reason = "パターン過多"
-                elif _check_thought_prefix_limit(text):
-                    need_replace = True
-                    reason = f"先頭反復({_get_thought_prefix(text)})"
-                elif _check_thought_kw_limit(text):
-                    need_replace = True
-                    reason = "キーワード過剰"
+                # v8.6: 語尾構造パターン3連続チェック（thought）— これは有用なので維持
+                if not need_replace and len(text) >= 3:
+                    _sm = _SUFFIX_STRUCT_RE.search(text.rstrip())
+                    if _sm:
+                        _cur_pat = _sm.group(1)
+                        if _recent_suffix_structs[-2:].count(_cur_pat) >= 2:
+                            need_replace = True
+                            reason = f"語尾構造反復({_cur_pat})"
 
             elif btype == "speech":
                 norm = _normalize_bubble_text(text)
+                # v8.7: 完全一致のみ置換（先頭4字類似/末尾5字部分一致を撤廃）
                 if (text in used_speech_raw) or (norm in used_speech_texts):
                     need_replace = True
                     reason = "重複"
-                elif len(norm) >= 4 and norm[:4] in used_speech_prefixes:
-                    need_replace = True
-                    reason = "類似"
-                # 部分一致チェック（末尾5文字 or 先頭5文字の一致）→ O(1)セットルックアップ
-                elif len(norm) >= 5 and not need_replace:
-                    if norm[-5:] in used_speech_suffixes or norm[:5] in used_speech_prefixes:
-                        need_replace = True
-                        reason = "部分一致"
+                # v8.6: 語尾構造パターン3連続チェック — 有用なので維持
+                if not need_replace and len(text) >= 3:
+                    _sm = _SUFFIX_STRUCT_RE.search(text.rstrip())
+                    if _sm:
+                        _cur_pat = _sm.group(1)
+                        if _recent_suffix_structs[-2:].count(_cur_pat) >= 2:
+                            need_replace = True
+                            reason = f"語尾構造反復({_cur_pat})"
                 # 非エロシーンで♡付きセリフは文脈不整合
                 if ctx == "non_sexual" and ("♡" in text or "♥" in text):
                     need_replace = True
@@ -2685,42 +2780,45 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
                             else used_thought_raw if btype == "thought"
                             else used_speech_raw)
                 norm_fn = _normalize_bubble_text
-                replacement = pick_replacement(pool, used_set, norm_fn)
+                # v8.6: 直近の語尾パターンを避ける + intensity考慮
+                _avoid = ""
+                if btype in ("speech", "thought") and _recent_suffix_structs:
+                    _avoid = _recent_suffix_structs[-1]
+                replacement = pick_replacement(pool, used_set, norm_fn,
+                                               avoid_suffix=_avoid, intensity=intensity)
                 if replacement:
                     log_message(f"  S{sid}: {reason}→置換「{text}」→「{replacement}」")
                     b["text"] = replacement
                     replace_count += 1
             elif need_replace and not has_pool:
                 # プールがない場合は重複除去のみ（バブルをスキップ）
-                if reason in ("重複", "類似"):
+                if reason == "重複":
                     continue
 
-            # 使用済み登録
+            # v8.8: 使用済み登録（moanはprefix3カウンターも更新）
             final_text = b.get("text", "")
             final_norm = _normalize_bubble_text(final_text)
             if btype == "moan":
                 used_moan_raw.add(final_text)
                 used_moan_texts.add(final_norm)
-                if len(final_norm) >= 4:
-                    used_moan_prefixes.add(final_norm[:4])
-                if len(final_norm) >= 3:
-                    _core = final_norm[:3]
-                    moan_core_counter[_core] = moan_core_counter.get(_core, 0) + 1
+                if len(final_text) >= 3:
+                    p3 = final_text[:3]
+                    _moan_prefix3_counter[p3] = _moan_prefix3_counter.get(p3, 0) + 1
             elif btype == "thought":
                 used_thought_raw.add(final_text)
                 used_thought_texts.add(final_norm)
-                if len(final_norm) >= 4:
-                    used_thought_prefixes.add(final_norm[:4])
-                _register_patterns(final_text)
-                _register_thought_prefix(final_text)
-                _register_thought_kw(final_text)
             elif btype == "speech":
                 used_speech_raw.add(final_text)
                 used_speech_texts.add(final_norm)
-                if len(final_norm) >= 4:
-                    used_speech_prefixes.add(final_norm[:4])
-                if len(final_norm) >= 5:
-                    used_speech_suffixes.add(final_norm[-5:])
+
+            # v8.6: 語尾構造パターンをスライディングウィンドウに記録
+            if btype in ("speech", "thought") and len(final_text) >= 3:
+                _sm_reg = _SUFFIX_STRUCT_RE.search(final_text.rstrip())
+                if _sm_reg:
+                    _recent_suffix_structs.append(_sm_reg.group(1))
+                    # ウィンドウサイズ6で制限（直近6件のみ追跡）
+                    if len(_recent_suffix_structs) > 6:
+                        _recent_suffix_structs.pop(0)
 
             cleaned_bubbles.append(b)
 
@@ -2814,7 +2912,7 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
         _prev_angles = _cur_angles
 
 def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
-                    callback: Optional[Callable] = None) -> list:
+                    callback: Optional[Callable] = None, concept: str = "") -> list:
     """生成結果の自動修正（APIコスト不要のローカル後処理）"""
     import re
 
@@ -3300,30 +3398,9 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         log_message(f"  括弧/らめ/一人称修正: {_46_fix_count}件")
 
     # 4.7. 不自然表現の自動修正（書き言葉→話し言葉、句点除去、ひらがな化）
-    _UNNATURAL_REPLACEMENTS = {
-        # --- 長文的表現→短縮 ---
-        "信じられない": "うそ…",
-        "現実じゃない": "え…うそ…",
-        "考えられない": "なんで…",
-        "受け入れてしまう": "あ…っ",
-        "感じてしまう": "あ…やば…",
-        "声が出てしまう": "あ…声…っ",
-        "何も考えられない": "まっしろ…",
-        "離れたくない": "いかないで…",
-        "体温が上がる": "あつい…",
-        "ずっと震えてる": "ふるえ…てる",
-        "抗えない": "やだ…のに…",
-        "嬉しい気持ちです": "うれしい…♡",
-        "気持ちいいです": "きもちぃ…♡",
-        "本当にいいの？": "いいの…？",
-        "お願いします": "おねがい…♡",
-        "もう我慢できない": "むり…♡",
-        "恥ずかしい": "はずかし…",
-        "やめてください": "やめ…",
-        "どうしよう": "どしよ…",
-        "怖いです": "こわい…",
-        "痛いです": "いた…",
-        "すごいです": "すご…",
+    # v8.7: 2層分離 + 部分置換化（LLM生成セリフの文脈を保持）
+    # 層1: 医学用語/敬語/設定用語（必ず部分置換、breakしない→複数適用可）
+    _HARD_REPLACEMENTS = {
         # --- 医学用語→俗語 ---
         "性器": "あそこ",
         "挿入して": "いれて",
@@ -3331,6 +3408,9 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "絶頂に達": "イっちゃ",
         "愛液が": "ぬるぬる…",
         "勃起": "おっき",
+        "口腔内に": "くちのなか…",
+        "嚥下する": "ごくん…♡",
+        "口内射精": "おくちに…♡",
         # --- 過剰敬語→くだけた表現 ---
         "してもよろしいですか": "して…",
         "感じてしまいます": "感じちゃ…",
@@ -3343,6 +3423,51 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "すみません": "ごめん…",
         "分かりました": "うん…",
         "大丈夫です": "だいじょぶ…",
+        "嬉しい気持ちです": "うれしい…♡",
+        "気持ちいいです": "きもちぃ…♡",
+        "お願いします": "おねがい…♡",
+        "やめてください": "やめ…",
+        "怖いです": "こわい…",
+        "痛いです": "いた…",
+        "すごいです": "すご…",
+        "もう限界です": "もう…むりぃ…♡",
+        "声が出てしまいます": "あぁん♡",
+        # --- お嬢様口調→CG集 ---
+        "でございますの": "…の…♡",
+        "いたしますわ": "ちゃう…♡",
+        "くださいませ": "…♡",
+        "よろしくてよ": "いい…♡",
+        # --- 硬い接続詞 ---
+        "しかしながら": "でも…",
+        "それにもかかわらず": "なのに…",
+        "したがって": "…",
+        "なぜならば": "…",
+        "とはいえ": "…けど…",
+        "あるいは": "…",
+        "一方で": "…",
+        "いわゆる": "…",
+        "つまるところ": "…",
+        "要するに": "…",
+        "察するに": "…",
+    }
+    # 層2: 文学/小説的表現（短文なら全置換、長文なら部分置換→文脈保持）
+    _SOFT_REPLACEMENTS = {
+        # --- 長文的表現→短縮 ---
+        "信じられない": "うそ…",
+        "現実じゃない": "え…うそ…",
+        "考えられない": "なんで…",
+        "受け入れてしまう": "あ…っ",
+        "感じてしまう": "あ…やば…",
+        "声が出てしまう": "あ…声…っ",
+        "何も考えられない": "まっしろ…",
+        "離れたくない": "いかないで…",
+        "体温が上がる": "あつい…",
+        "ずっと震えてる": "ふるえ…てる",
+        "抗えない": "やだ…のに…",
+        "本当にいいの？": "いいの…？",
+        "もう我慢できない": "むり…♡",
+        "恥ずかしい": "はずかし…",
+        "どうしよう": "どしよ…",
         # --- 小説的独白→CG集thought ---
         "心臓が高鳴る": "ドキドキ…",
         "体が熱くなってきた": "あつい…",
@@ -3354,10 +3479,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         # --- 説明的表現→感情的表現 ---
         "とても気持ちが良い": "きもちぃ♡",
         "快感が走る": "あっ♡",
-        "声が出てしまいます": "あぁん♡",
         "抵抗する力がなくなる": "ちから…はいんない…",
         "体が反応してしまう": "やだ…かってに…",
-        "もう限界です": "もう…むりぃ…♡",
         "壊れてしまいそう": "こわれ…ちゃう…♡",
         # 催眠テーマ
         "催眠をかけられ": "ぼーっと…♡",
@@ -3376,21 +3499,18 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         # 2回戦
         "再び挿入される": "また…♡♡",
         "感度が上がって": "さっきより…♡♡",
-        # --- v7.0追加: 拘束/SM系 ---
+        # --- 拘束/SM系 ---
         "拘束されている": "にげらんない…",
         "縛られたまま": "うごけない…",
         "目隠しをされ": "みえない…こわい…",
         "自由を奪われ": "からだ…うごかない…",
-        # --- v7.0追加: 義父/近親系 ---
+        # --- 義父/近親系 ---
         "お義父さんに": "パパに…",
         "義理の父に": "パパに…",
         "血のつながりはない": "かぞく…なのに…",
-        # --- v7.0追加: フェラ/口 ---
-        "口腔内に": "くちのなか…",
+        # --- フェラ/口 ---
         "咥えさせられ": "くわえて…",
-        "嚥下する": "ごくん…♡",
-        "口内射精": "おくちに…♡",
-        # --- v7.0追加: 小説的→CG集 ---
+        # --- 小説的→CG集 ---
         "彼に抱かれて": "だかれ…♡",
         "快感の波が": "きもち…やば…♡",
         "理性の糸が切れる": "きれ…ちゃう…♡",
@@ -3403,15 +3523,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "体が震えて": "ふるえてる…",
         "愛おしい気持ちが溢れ": "すき…すき…♡",
         "激しく腰を振られ": "はげし…♡♡",
-        # --- v7.0追加: 硬い接続詞 ---
-        "しかしながら": "でも…",
-        "それにもかかわらず": "なのに…",
-        # --- v7.1追加: お嬢様口調→CG集 ---
-        "でございますの": "…の…♡",
-        "いたしますわ": "ちゃう…♡",
-        "くださいませ": "…♡",
-        "よろしくてよ": "いい…♡",
-        # --- v7.1追加: さらなる書き言葉→話し言葉 ---
+        # --- 書き言葉→話し言葉 ---
         "胸が苦しい": "くるしい…",
         "涙が止まらない": "なみだ…",
         "全身が震える": "ふるえ…てる…",
@@ -3429,7 +3541,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "お腹の中が熱い": "おなか…あつい…♡",
         "頭の中が真っ白": "しろ…い…",
         "我を忘れて": "もう…なにも…",
-        # --- v7.4追加: 文語表現→CG集 ---
+        # --- 文語表現→CG集 ---
         "溢れ出す": "あふれて…",
         "身を委ねる": "まかせ…ちゃう…♡",
         "恍惚として": "とろとろ…♡",
@@ -3438,16 +3550,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "甘い吐息": "はぁ…♡",
         "悦びに": "きもちぃ…",
         "淫らな": "えっちな…",
-        "したがって": "…",
-        "なぜならば": "…",
-        # --- v8.2追加: 文学的表現→CG集口語 ---
-        "とはいえ": "…けど…",
-        "あるいは": "…",
-        "一方で": "…",
-        "いわゆる": "…",
-        "つまるところ": "…",
-        "要するに": "…",
-        "察するに": "…",
+        # --- 文学的表現→CG集口語 ---
         "心の奥底で": "…こころの…おく…",
         "快楽に支配され": "きもちよすぎ…て…",
         "陶酔に浸り": "とろとろ…\u2665",
@@ -3544,11 +3647,17 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             # 置換で生じた空の「…」連続を整理
             while "……" in txt:
                 txt = txt.replace("……", "…")
-            # 不自然表現を話し言葉に変換
-            for ng, ok in _UNNATURAL_REPLACEMENTS.items():
+            # v8.7: 層1(HARD) - 医学用語/敬語は常に部分置換（複数適用可）
+            for ng, ok in _HARD_REPLACEMENTS.items():
                 if ng in txt:
-                    txt = ok
-                    break
+                    txt = txt.replace(ng, ok)
+            # v8.7: 層2(SOFT) - 文学表現は短文→全置換、長文→部分置換（文脈保持）
+            for ng, ok in _SOFT_REPLACEMENTS.items():
+                if ng in txt:
+                    if len(txt) <= len(ng) + 5:
+                        txt = ok       # 短文→全置換（ほぼ全体がNG表現）
+                    else:
+                        txt = txt.replace(ng, ok)  # 長文→部分置換（文脈保持）
             # ひらがな化（エロシーン向け）
             for kanji, hira in _HIRAGANA_MAP.items():
                 if kanji in txt:
@@ -3570,7 +3679,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 heroine_names.append(n)
     try:
         _deduplicate_across_scenes(results, theme=theme, heroine_names=heroine_names,
-                                   char_profiles=char_profiles)
+                                   char_profiles=char_profiles, concept=concept)
     except Exception as _dedup_err:
         log_message(f"  [WARN]セリフ重複除去エラー（スキップ）: {_dedup_err}")
         import traceback
@@ -3786,7 +3895,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                     pool = [t for t in pool
                             if not any(kw in t for kw in _BODY_REPORT_KW)]
                     replacement = pick_replacement(pool, _used_speech_for_fix,
-                                                   _normalize_bubble_text)
+                                                   _normalize_bubble_text,
+                                                   intensity=intensity)
                     if replacement:
                         log_message(f"  身体状況報告修正({b['type']}): 「{txt}」→「{replacement}」")
                         b["text"] = replacement
@@ -3855,7 +3965,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 pool = _get_male_pool_for_theme(theme if theme else "", intensity)
                 # 観察型を除外
                 pool = [p for p in pool if not _MALE_OBS_RE.match(p.rstrip("…♡♥"))]
-                replacement = pick_replacement(pool, _used_male_obs_fix, _normalize_bubble_text)
+                replacement = pick_replacement(pool, _used_male_obs_fix, _normalize_bubble_text,
+                                               intensity=intensity)
                 if replacement:
                     log_message(f"  男性観察型修正(regex): 「{txt}」→「{replacement}」")
                     b["text"] = replacement
@@ -3890,7 +4001,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                                                       intensity, _si_tb, len(results))
                     # 部位ラベル冒頭を除外
                     pool = [t for t in pool if not _BODY_PART_RE.match(t)]
-                    replacement = pick_replacement(pool, _used_thought_fix, _normalize_bubble_text)
+                    replacement = pick_replacement(pool, _used_thought_fix, _normalize_bubble_text,
+                                                   intensity=intensity)
                     if replacement:
                         log_message(f"  thought部位ラベル修正: 「{txt}」→「{replacement}」")
                         b["text"] = replacement
@@ -3932,11 +4044,13 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                     if btype == "moan":
                         pool = _get_moan_pool_with_char(intensity)
                         repl = pick_replacement(pool, _used_moan_for_fix,
-                                                _normalize_bubble_text)
+                                                _normalize_bubble_text,
+                                                intensity=intensity)
                     else:
                         pool = _get_speech_pool_with_char(btype, theme, intensity, _si10, _total_s10)
                         repl = pick_replacement(pool, _used_speech_for_fix,
-                                                _normalize_bubble_text)
+                                                _normalize_bubble_text,
+                                                intensity=intensity)
                     if repl:
                         log_message(f"  シーン内重複修正: 「{txt}」→「{repl}」")
                         b["text"] = repl
@@ -3978,7 +4092,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                         pool = _get_speech_pool_with_char("thought", theme, intensity, _si_ct, len(results))
                         _resist_pool = [p for p in pool if any(kw in p for kw in ["でも", "なのに", "…けど", "嫌", "だめ"])]
                         if _resist_pool:
-                            repl = pick_replacement(_resist_pool, _used_speech_for_fix, _normalize_bubble_text)
+                            repl = pick_replacement(_resist_pool, _used_speech_for_fix, _normalize_bubble_text,
+                                                   intensity=intensity)
                             if repl:
                                 log_message(f"  感情矛盾修正: シーン{_si_ct+1} thought「{th_text[:12]}」→「{repl}」")
                                 th_b["text"] = repl
@@ -3990,7 +4105,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                         pool = _get_speech_pool_with_char("speech", theme, intensity, _si_ct, len(results))
                         _deny_pool = [p for p in pool if any(kw in p for kw in ["やめ", "だめ", "嫌", "…っ", "痛"])]
                         if _deny_pool:
-                            repl = pick_replacement(_deny_pool, _used_speech_for_fix, _normalize_bubble_text)
+                            repl = pick_replacement(_deny_pool, _used_speech_for_fix, _normalize_bubble_text,
+                                                   intensity=intensity)
                             if repl:
                                 log_message(f"  感情矛盾修正: シーン{_si_ct+1} speech「{sp_text[:12]}」→「{repl}」")
                                 sp_b["text"] = repl
@@ -4070,7 +4186,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                         stage_kw = _STAGE_SPEECH_PATTERNS.get(_stage, [])
                         _stage_pool = [p for p in pool if any(kw in p for kw in stage_kw)]
                         target_pool = _stage_pool if _stage_pool else pool
-                        repl = pick_replacement(target_pool, _used_speech_for_fix, _normalize_bubble_text)
+                        repl = pick_replacement(target_pool, _used_speech_for_fix, _normalize_bubble_text,
+                                               intensity=intensity)
                         if repl:
                             log_message(f"  心理遷移修正: シーン{_si_psy+1}({_stage}) speech「{txt[:12]}」→「{repl}」")
                             b["text"] = repl
@@ -4082,7 +4199,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                         stage_kw = _STAGE_THOUGHT_PATTERNS.get(_stage, [])
                         _stage_pool = [p for p in pool if any(kw in p for kw in stage_kw)]
                         target_pool = _stage_pool if _stage_pool else pool
-                        repl = pick_replacement(target_pool, _used_speech_for_fix, _normalize_bubble_text)
+                        repl = pick_replacement(target_pool, _used_speech_for_fix, _normalize_bubble_text,
+                                               intensity=intensity)
                         if repl:
                             log_message(f"  心理遷移修正: シーン{_si_psy+1}({_stage}) thought「{txt[:12]}」→「{repl}」")
                             b["text"] = repl
@@ -4121,10 +4239,12 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 _total_s_ng = len(results)
                 if btype == "moan":
                     pool = _get_moan_pool_with_char(intensity)
-                    repl = pick_replacement(pool, _used_moan_for_fix, _normalize_bubble_text)
+                    repl = pick_replacement(pool, _used_moan_for_fix, _normalize_bubble_text,
+                                           intensity=intensity)
                 else:
                     pool = _get_speech_pool_with_char(btype, theme, intensity, si, _total_s_ng)
-                    repl = pick_replacement(pool, _used_speech_for_fix, _normalize_bubble_text)
+                    repl = pick_replacement(pool, _used_speech_for_fix, _normalize_bubble_text,
+                                           intensity=intensity)
                 if repl:
                     log_message(f"  N-gram反復修正({ng}): シーン{si+1}「{b['text'][:15]}…」→「{repl}」")
                     b["text"] = repl
@@ -4363,11 +4483,11 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                             break
                     if chosen_insert:
                         break
-            # 3) 全intensity横断（最終手段）
+            # 3) v8.8修正: 全intensity横断は±2まで制限（i=1のプレフィックスがi=4に入る問題を防止）
             if chosen_insert is None:
-                for any_i in range(1, 6):
-                    if any_i == intensity:
-                        continue
+                for any_i in [max(1, intensity - 2), min(5, intensity + 2)]:
+                    if any_i == intensity or abs(any_i - intensity) <= 1:
+                        continue  # ±1は既に試行済み
                     for candidate in _INTENSITY_DESC_INSERTS.get(any_i, []):
                         new_desc = desc[:insert_pos] + candidate + desc[insert_pos:]
                         if new_desc[:_DESC_PREFIX_LEN] not in _seen_desc_prefixes:
@@ -4375,10 +4495,10 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                             break
                     if chosen_insert:
                         break
-            # 4) それでも見つからない → 挿入位置を先頭に変更して再試行
+            # 4) それでも見つからない → 挿入位置を先頭に変更して自intensity±1のみで再試行
             if chosen_insert is None:
                 insert_pos = 0
-                for any_i in range(1, 6):
+                for any_i in [intensity, max(1, intensity - 1), min(5, intensity + 1)]:
                     for candidate in _INTENSITY_DESC_INSERTS.get(any_i, []):
                         new_desc = candidate + desc
                         if new_desc[:_DESC_PREFIX_LEN] not in _seen_desc_prefixes:
@@ -4443,17 +4563,33 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         log_message(f"  description短prefix重複修正: {_desc_short_fix}件（10字prefix 3回以上）")
 
     # 12b. mood重複修正（同一moodの3回目以降をintensity別バリエーションで置換）
+    # v8.9: 6→15個に拡充（100シーンで枯渇防止）
     _MOOD_VARIANTS = {
         1: ["静かな緊張感", "不安と期待が入り混じる空気", "甘い予感が漂う空間",
-            "戸惑いと好奇心の狭間", "穏やかだが張りつめた沈黙", "秘めた欲望が滲む雰囲気"],
+            "戸惑いと好奇心の狭間", "穏やかだが張りつめた沈黙", "秘めた欲望が滲む雰囲気",
+            "微かな胸騒ぎ", "言葉にならない不安の気配", "日常が揺らぐ予兆",
+            "纏わりつくような沈黙", "探るような視線の応酬", "薄氷を踏むような空気感",
+            "静かに忍び寄る危険の匂い", "何かが始まる直前の静寂", "背筋を伝う冷たい予感"],
         2: ["高まる鼓動と熱気", "抗えない引力に満ちた空気", "肌が触れ合う甘い緊張",
-            "理性と欲望がせめぎ合う空間", "息遣いが重なる距離感", "抑えきれない衝動の予感"],
+            "理性と欲望がせめぎ合う空間", "息遣いが重なる距離感", "抑えきれない衝動の予感",
+            "じわりと滲む背徳の熱", "体温が上がる距離の近さ", "呼吸が乱れ始める瞬間",
+            "抗いたいのに逆らえない引力", "思考が鈍くなる甘い空気", "肌が粟立つ接近",
+            "逃げ場のない甘い緊張", "拒否と受容の狭間で揺れる心", "指先から伝わる危険な熱"],
         3: ["快楽に溺れる密室", "熱く絡み合う情欲の渦", "理性が崩れていく甘い地獄",
-            "汗ばむ肌と乱れる吐息", "止められない快感の連鎖", "貪り合う獣のような熱気"],
+            "汗ばむ肌と乱れる吐息", "止められない快感の連鎖", "貪り合う獣のような熱気",
+            "抵抗を忘れる甘美な痺れ", "溶けていく自制心", "肌を這う快楽の余韻",
+            "抗うことを諦めた解放感", "熱に浮かされた朦朧とした空気", "羞恥と快楽が混ざり合う瞬間",
+            "身体が正直に反応する恥じらい", "言葉にならない喘ぎが漏れる空間", "理性の最後の砦が揺らぐ"],
         4: ["絶頂へ駆け上がる狂熱", "壊れそうなほどの快楽の嵐", "獣じみた情欲が支配する空間",
-            "限界を超えた快感の波状攻撃", "理性が完全に溶けた淫靡な世界", "果てしない絶頂の連鎖"],
+            "限界を超えた快感の波状攻撃", "理性が完全に溶けた淫靡な世界", "果てしない絶頂の連鎖",
+            "思考を奪う圧倒的な快楽", "痙攣が止まらない限界の淵", "獣のように貪り合う激情",
+            "全身が快楽に染まった恍惚", "声を上げることしかできない支配", "何度も押し寄せる絶頂の波",
+            "自分が誰かも忘れるほどの快楽", "骨の髄まで響く激しい律動", "涙が滲むほどの快感と屈辱"],
         5: ["全てを焼き尽くす最高潮", "意識が飛ぶほどの究極の快楽", "魂ごと蕩ける至福の瞬間",
-            "壮絶な絶頂が全身を貫く", "白く染まる意識の果て", "限界を遥かに超えた恍惚"],
+            "壮絶な絶頂が全身を貫く", "白く染まる意識の果て", "限界を遥かに超えた恍惚",
+            "魂が抜けるような壮絶な絶頂", "視界が真っ白に染まる瞬間", "全身の感覚が一点に集約される",
+            "崩壊と再生を繰り返す果てしない快楽", "人格が書き換わるほどの衝撃", "もう戻れないと悟る至福",
+            "全細胞が悲鳴を上げる絶頂", "存在ごと溶かされる快楽の渦", "永遠に続くかのような恍惚"],
     }
     _mood_fix_count = 0
     _mood_seen_count = {}  # mood_text -> occurrence_count
@@ -4486,6 +4622,132 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 _mood_fix_count += 1
     if _mood_fix_count > 0:
         log_message(f"  mood重複修正: {_mood_fix_count}件")
+
+    # 12c. v8.8: mood品質チェック（テーマkey_emotionsがそのままmoodに使われている→置換）
+    _theme_guide = THEME_GUIDES.get(theme, {})
+    _theme_key_emotions = set(_theme_guide.get("key_emotions", []))
+    _mood_quality_fix = 0
+    if _theme_key_emotions:
+        for scene in results:
+            m = scene.get("mood", "")
+            if m and m in _theme_key_emotions:
+                intensity = scene.get("intensity", 3)
+                variants = _MOOD_VARIANTS.get(intensity, _MOOD_VARIANTS[3])
+                for v in variants:
+                    if v not in _mood_used_variants:
+                        scene["mood"] = v
+                        _mood_used_variants.add(v)
+                        _mood_quality_fix += 1
+                        break
+    if _mood_quality_fix > 0:
+        log_message(f"  mood品質修正（テーマ感情→具体mood）: {_mood_quality_fix}件")
+
+    # 12d. v8.8: テーマ別bubble制約（time_stop等、テーマ世界ルールに基づくセリフ型変換）
+    _bubble_theme_fix = 0
+    if theme == "time_stop":
+        # 時間停止中（intensity≥3かつ停止中シーン）: speech→thought変換、moan→thought変換
+        _TIME_STOP_ACTIVE_KW = ["時間停止", "身動き", "止まった", "停止した", "動けない", "frozen"]
+        _TIME_STOP_RELEASED_KW = ["時間再開", "再び動き", "解除", "現実に戻", "混乱して"]
+        for scene in results:
+            desc = scene.get("description", "")
+            is_frozen = any(kw in desc for kw in _TIME_STOP_ACTIVE_KW)
+            is_released = any(kw in desc for kw in _TIME_STOP_RELEASED_KW)
+            if not is_frozen or is_released:
+                continue
+            bubbles = scene.get("bubbles", [])
+            for b in bubbles:
+                speaker = b.get("speaker", "")
+                btype = b.get("type", "")
+                if _is_male_speaker(speaker):
+                    continue  # 男性（時間停止の使い手）はspeechのまま
+                if btype == "speech":
+                    b["type"] = "thought"
+                    _bubble_theme_fix += 1
+                elif btype == "moan":
+                    # moanをthoughtに変換（声が出せないため）
+                    text = b.get("text", "")
+                    clean = text.replace("♡", "").replace("♥", "").strip()
+                    if clean:
+                        b["type"] = "thought"
+                        # 喘ぎの長さで変換パターンを分岐
+                        if len(clean) <= 3:
+                            b["text"] = f"{clean}…身体が…反応して…"
+                        elif clean.endswith("っ") or clean.endswith("ぁ"):
+                            b["text"] = f"{clean}…この…感覚…"
+                        else:
+                            b["text"] = f"{clean}…身体が…どうなって…"
+                    _bubble_theme_fix += 1
+    if _bubble_theme_fix > 0:
+        log_message(f"  テーマ別bubble制約修正（time_stop）: {_bubble_theme_fix}件")
+
+    # 12e. v8.9: 時間軸ジャンプ修正（description/story_flowの「翌週」等を同日表現に置換）
+    # エピローグ（最終10%）は時間ジャンプを許可
+    # テーマ別: few_days/flexibleなら「翌日」「翌朝」は許可
+    _epilogue_start_12e = max(1, len(results) - max(1, len(results) // 10))
+    _time_span = _THEME_TIME_SPAN.get(theme, "flexible")
+    # single_event: 翌日含めて全禁止 / few_days/flexible: 翌週以上のみ禁止
+    _TIME_JUMP_REPLACEMENTS_STRICT = {
+        # 「の」付き → 「その直後の」に置換（空文字ではなく文法を保持）
+        "翌週の": "その直後の", "翌々週の": "その直後の", "翌月の": "その直後の",
+        "数日後の": "その直後の", "一週間後の": "その直後の", "数週間後の": "その直後の",
+        "1週間後の": "その直後の", "２週間後の": "その直後の", "次の週の": "その直後の",
+        "来週の": "その直後の", "数ヶ月後の": "その直後の",
+        # 「、」付き → 時間接続詞に置換
+        "翌週、": "その後、", "翌々週、": "その後、",
+        "数日後、": "しばらくして、", "一週間後、": "その後、",
+        "数週間後、": "その後、", "翌月、": "その後、",
+        "来週、": "その後、", "次の週、": "その後、",
+        "1週間後、": "その後、", "２週間後、": "その後、",
+        "数ヶ月後、": "その後、",
+        # 「に」付き
+        "翌週に": "その後", "数日後に": "しばらくして",
+        "翌々週に": "その後", "一週間後に": "その後",
+        "来週に": "その後", "次の週に": "その後",
+        "数ヶ月後に": "その後",
+        # 「後日」系
+        "後日の": "その直後の", "後日、": "その後、", "後日に": "その後",
+    }
+    # few_days/flexible用: 「翌日」「翌朝」は除外（許可）
+    _TIME_JUMP_REPLACEMENTS = dict(_TIME_JUMP_REPLACEMENTS_STRICT)
+    if _time_span == "single_event":
+        # single_eventでは「翌日」も禁止
+        _TIME_JUMP_REPLACEMENTS["翌日の"] = "その直後の"
+        _TIME_JUMP_REPLACEMENTS["翌日、"] = "その後、"
+        _TIME_JUMP_REPLACEMENTS["翌日に"] = "その後"
+        _TIME_JUMP_REPLACEMENTS["翌朝の"] = "その直後の"
+        _TIME_JUMP_REPLACEMENTS["翌朝、"] = "その後、"
+        _TIME_JUMP_REPLACEMENTS["翌朝に"] = "その後"
+    _time_fix_count = 0
+    for i, scene in enumerate(results):
+        if i >= _epilogue_start_12e:
+            continue  # エピローグは時間ジャンプ許可
+        for field in ("description", "story_flow"):
+            text = scene.get(field, "")
+            if not text:
+                continue
+            new_text = text
+            for old_kw, new_kw in _TIME_JUMP_REPLACEMENTS.items():
+                if old_kw in new_text:
+                    new_text = new_text.replace(old_kw, new_kw)
+            if new_text != text:
+                scene[field] = new_text
+                _time_fix_count += 1
+    if _time_fix_count > 0:
+        log_message(f"  時間軸ジャンプ修正: {_time_fix_count}件（「翌週」等→同日表現、エピローグ除外）")
+
+    # 12f. v8.9: メタ参照description修正（「シーンXXの場面では」等のAPI生成アーティファクト除去）
+    import re as _re_12f
+    _META_REF_PATTERN = _re_12f.compile(r'シーン\d+の?(?:場面では|では|のとき|において|シーンでは)[、。]?')
+    _meta_fix_count = 0
+    for scene in results:
+        desc = scene.get("description", "")
+        if desc and _META_REF_PATTERN.search(desc):
+            new_desc = _META_REF_PATTERN.sub("", desc).lstrip("、。 ")
+            if new_desc and len(new_desc) > 10:
+                scene["description"] = new_desc
+                _meta_fix_count += 1
+    if _meta_fix_count > 0:
+        log_message(f"  メタ参照description修正: {_meta_fix_count}件（「シーンXXの場面では」除去）")
 
     # 13. character_feelings重複修正（全既出シーンと比較、一致→intensity別テンプレートで差し替え）
     _FEELINGS_VARIANTS = {
@@ -4612,12 +4874,21 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     if _sf_fix_count > 0:
         log_message(f"  story_flow重複修正: {_sf_fix_count}件")
 
-    # 15. speech重複修正（異なるシーンで同一セリフ → 微小バリエーション付加）
+    # 15. speech重複修正（異なるシーンで同一セリフ → intensity考慮の微小バリエーション付加）
+    # v8.6: intensity別サフィックス辞書（♡数をintensityに応じて制限）
+    _INTENSITY_SUFFIXES = {
+        1: ["…", "っ", "ぅ…", "ぁ…"],
+        2: ["…", "っ", "…っ", "ぅ…", "ぁ…"],
+        3: ["…", "っ", "…♡", "…っ", "♡", "ぅ…", "ぁ…"],
+        4: ["…", "っ", "…♡", "…っ", "♡", "…♡♡", "ぅ…", "ぁ…"],
+        5: ["…", "っ", "…♡", "…っ", "♡", "…♡♡", "♡♡♡", "ぅ…", "ぁ…"],
+    }
     _sp_fix_count = 0
     _seen_speech = {}  # line_text -> (scene_idx, bubble_idx)
     for i, scene in enumerate(results):
         bubbles = scene.get("bubbles", [])
         sid = scene.get("scene_id", i + 1)
+        intensity = scene.get("intensity", 3)
         for bi, b in enumerate(bubbles):
             if b.get("type") != "speech":
                 continue
@@ -4625,10 +4896,10 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             if not line or len(line) < 4:
                 continue
             if line in _seen_speech:
-                # 微小変化を付加: 末尾に「…」「っ」「♡」などを追加/変更
-                _SPEECH_SUFFIXES = ["…", "っ", "…♡", "…っ", "♡", "…♡♡", "ぅ…", "ぁ…"]
+                # v8.6: intensity対応サフィックスを使用
+                _suffixes = _INTENSITY_SUFFIXES.get(intensity, _INTENSITY_SUFFIXES[3])
                 modified = False
-                for suffix in _SPEECH_SUFFIXES:
+                for suffix in _suffixes:
                     new_line = line.rstrip("…♡っ。、ぅぁ") + suffix
                     if new_line != line and new_line not in _seen_speech:
                         b["text"] = new_line
@@ -4684,6 +4955,13 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "掴み", "押さえ", "開かせ", "四つん這い", "うつ伏せ",
         "胸を", "腰を", "脚を", "太もも", "尻を",
     ]
+    # v8.8: 事後・準備・時間停止解除シーンはプレフィックス追加をスキップ
+    _POSTACT_SKIP_KW = [
+        "射精を終え", "出した後", "事後", "終わった後", "行為の後",
+        "証拠隠滅", "痕跡", "時間再開", "時間が再び", "再び動き",
+        "混乱して", "違和感", "帰宅", "元に戻", "偽装", "拭き取",
+        "余韻", "気づき始め", "調べて", "確認して",
+    ]
     _desc_fix_count = 0
     _seen_concrete_prefixes = set()  # 500シーン耐性: 具体化後のprefix30重複回避
     for i, scene in enumerate(results):
@@ -4694,6 +4972,9 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         if not desc or len(desc) < 10:
             continue
         if any(kw in desc for kw in _CONCRETE_KW_CHECK):
+            continue
+        # v8.8: 事後・準備シーンにはエロプレフィックスを追加しない
+        if any(kw in desc for kw in _POSTACT_SKIP_KW):
             continue
         # 具体表現を先頭に追加（prefix30重複回避付き）
         level = min(intensity, 5)
@@ -5030,6 +5311,13 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             orig = txt
             if intensity <= 2 and "♡" in txt:
                 txt = txt.replace("♡", "")
+            # v8.6: intensity別♡数上限（i=3: ♡1個, i=4: ♡♡まで, i=5: 制限なし）
+            elif intensity == 3:
+                while "♡♡" in txt:
+                    txt = txt.replace("♡♡", "♡")
+            elif intensity == 4:
+                while "♡♡♡" in txt:
+                    txt = txt.replace("♡♡♡", "♡♡")
             if intensity >= 4 and bubble.get("type") in ("speech", "thought"):
                 txt = txt.replace("です", "")
                 txt = txt.replace("ます", "")
@@ -5038,7 +5326,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             if intensity <= 3 and bubble.get("type") == "moan" and _has_pool:
                 if _HIGH_INTENSITY_MOAN_RE.search(txt):
                     pool = _get_moan_pool_with_char(intensity)
-                    repl = pick_replacement(pool, _used_moan_fix20, _normalize_bubble_text)
+                    repl = pick_replacement(pool, _used_moan_fix20, _normalize_bubble_text,
+                                           intensity=intensity)
                     if repl:
                         txt = repl
             # 空になった場合は元に戻す
@@ -5108,13 +5397,14 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         if _reset_count > 0:
             log_message(f"  エピローグリセット修正: {_reset_count}件（i≤2→i=3 + セリフ置換）")
 
-    # 22. i=4連続過多の自動修正（5シーン超→i=3ブレイク挿入、i=5ピーク保護付き）
+    # 22. i=4連続過多の自動修正（4-6シーン超→i=3ブレイク挿入、i=5ピーク保護付き）v8.9
     _consecutive_4 = 0
     _i4_break_count = 0
+    _i4_auto_limit = _rng.randint(4, 6)
     for idx_22, scene in enumerate(results):
         if scene.get("intensity", 3) == 4:
             _consecutive_4 += 1
-            if _consecutive_4 > 5:
+            if _consecutive_4 > _i4_auto_limit:
                 _next_is_peak = (idx_22 + 1 < len(results) and results[idx_22 + 1].get("intensity", 3) == 5)
                 if _next_is_peak:
                     # i=5ピーク直前ではブレイクしない。1つ前のi=4をブレイクに変更
@@ -5126,11 +5416,12 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                     scene["intensity"] = 3
                     _consecutive_4 = 0
                     _i4_break_count += 1
+                    _i4_auto_limit = _rng.randint(4, 6)  # 次の閾値をランダム再設定
         else:
             _consecutive_4 = 0
     if _i4_break_count > 0:
         _progress(f"Step 22 i=4連続ブレイク挿入: {_i4_break_count}箇所")
-        log_message(f"  i=4連続上限5: {_i4_break_count}箇所にi=3ブレイク挿入")
+        log_message(f"  i=4連続上限4-6: {_i4_break_count}箇所にi=3ブレイク挿入")
 
     return results
 
@@ -5195,7 +5486,7 @@ def _fix_consecutive_locations(results: list) -> None:
                 fix_micro = 0
                 for k, scene in enumerate(results):
                     loc = locations_list[k]
-                    if loc and loc[:_LOC_PREFIX_LEN] == most_common_prefix and k % 3 == 1:  # 3シーンに1つ変化
+                    if loc and loc[:_LOC_PREFIX_LEN] == most_common_prefix and k % 2 == 0:  # 2シーンに1つ変化（v8.9強化）
                         new_micro = micro_pool[micro_idx % len(micro_pool)]
                         orig_loc_detail = scene.get("location_detail", scene.get("location", ""))
                         scene["location_detail"] = f"{orig_loc_detail}（{new_micro}）"
@@ -5751,15 +6042,22 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 if not _added:
                     tags.append("indoors")
 
-        # 4.5. intensity≥3のシーンに男性タグ注入
+        # 4.5. intensity≥3のシーンに男性タグ注入（v8.6: テーマ考慮）
+        _MULTI_MALE_THEMES = {"gangbang"}
         intensity = scene.get("intensity", 0)
         if intensity >= 3:
             existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
-            # faceless_male は常に付与（どんな男性タイプでも顔なし）
-            for male_tag in ["1boy", "faceless_male"]:
-                if male_tag not in existing_lower:
-                    tags.append(male_tag)
-                    existing_lower.add(male_tag)
+            if theme not in _MULTI_MALE_THEMES:
+                # 通常テーマ: 1boy + faceless_male
+                for male_tag in ["1boy", "faceless_male"]:
+                    if male_tag not in existing_lower:
+                        tags.append(male_tag)
+                        existing_lower.add(male_tag)
+            else:
+                # gangbang: 1boyは付与しない（THEME_GUIDESからmultiple_boysが来る）
+                if "faceless_male" not in existing_lower:
+                    tags.append("faceless_male")
+                    existing_lower.add("faceless_male")
             if male_tags:
                 # ユーザー指定の男性体型タグを高重要度で注入
                 for mt in male_tags.split(","):
@@ -5939,6 +6237,8 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             ({"bondage", "tied_up", "restrained"}, {"hugging", "holding_hands", "hand_on_hip"}),
             ({"clothed_sex"}, {"completely_nude", "nude", "naked"}),
             ({"underwater"}, {"indoors", "bedroom", "classroom"}),
+            # v8.6: multiple_boys + 1boy矛盾（gangbangテーマで混入防止）
+            ({"multiple_boys"}, {"1boy"}),
         ]
         _tags_lower_set = {t.strip().lower().replace(" ", "_") for t in tags}
         for group_a, group_b in _CONTRADICTORY_PAIRS:
@@ -6279,6 +6579,14 @@ _THEME_SKILL_MAP = {
     "tentacle":      "ero_serihu_ohogoe",
     "reverse_rape":  "ero_serihu_tundere",
     "cosplay":       "ero_serihu_nomal",
+    # v8.9: 未登録テーマ補完
+    "maid":          "ero_serihu_jyunai",
+    "hypnosis":      "ero_serihu_ohogoe",
+    "harem":         "ero_serihu_nomal",
+    "femdom":        "ero_serihu_tundere",
+    "incest":        "ero_serihu_jyunai",
+    "time_stop":     "ero_serihu_ohogoe",
+    "monster":       "ero_serihu_ohogoe",
 }
 
 
@@ -7712,19 +8020,24 @@ def _generate_outline_chunk(
 2. 確定済みシーンの直後から自然に繋がること（ストーリーのリセット・巻き戻り禁止）
 3. situationは具体的に記述（抽象表現禁止）
 4. 各シーンのsituationは前シーンと異なる具体的展開にすること
-5. locationは3シーン連続で同じ場所にしてはならない
+5. locationは作品を通じて自然に変わればよい。同じ場所で5シーン以上続く場合は場所内の位置を変えよ（例: ベッド→壁際→床）
 6. emotional_arcのstartは前シーンのendと一致させること
-7. intensity 4が5シーン連続したら、必ずintensity 3のシーン（体位変更・心理描写・休憩）を1つ挟むこと
-8. story_flowは各シーン固有の内容を書け（重複禁止）
+7. intensity 4が4-5シーン連続したら、必ずintensity 3のシーン（体位変更・心理描写・休憩）を1つ挟むこと
+8. story_flowは各シーン固有の内容を書け（重複禁止）。必ず感情変化・心理変化を含めること。「体位変更した」だけのstory_flowは禁止。
 9. intensity 5は各mini-arc（15シーン程度）のクライマックスとして使え
 10. titleは4-12文字。行為/体位/感情を反映。location名（「トイレ」「教室」等）をtitleに含めるな
 11. 同じ場所が続く場合も場所内の位置を変えよ（例: 便座→壁際→洗面台→床）
 12. 男性セリフは5パターン（脅迫/挑発/命令/嘲笑/独白）を均等に使え。観察実況（「～だな」）禁止
 
-## ⚠️ 体位・行為バリエーション強制（違反即不合格）
-- 本番シーン（intensity 4-5）は全て異なる体位・行為を指定すること
-- 体位リスト: 正常位/後背位/騎乗位/立ちバック/側位/寝バック/座位/駅弁/対面座位/背面騎乗位/フェラ/パイズリ
-- 同じ体位の2連続禁止。同じsituation表現の繰り返し禁止
+## ⚠️ 性行為進行フロー（体位カタログ禁止）
+- 同じ体位で2-3シーン続いてよい。ただし各シーンで以下の少なくとも2つを変化させること:
+  (1) 構図・アングル（正面→横→上から等）
+  (2) テンポ・激しさ（ゆっくり→激しく→焦らし等）
+  (3) 感情・心理の変化（恥じらい→受容→快楽等）
+  (4) 性行為の進行段階（挿入→ビルドアップ→射精）
+- 3-5シーンで「挿入→ピストン→快感上昇→射精/絶頂」のミニアークを作ること
+- 体位変更は「射精後の次のラウンド」や「気分転換」として自然に行うこと
+- 毎シーン体位を変える「体位カタログ」は禁止
 - titleの重複禁止。同じキーワードを含むtitleは最大2回まで
 - 確定済みシーンのsituation/titleと被らないこと
 {f'''
@@ -7793,7 +8106,7 @@ def _get_intensity_curve_instruction(theme_guide: dict) -> str:
             "このテーマではintensity 4の状態を長く維持し、最後に一気にクライマックスへ。\n"
             "例: 1→2→3→4→4→4→4→4→5→4（じわじわ快感を蓄積し最後に爆発）\n"
             "高原部分では体位・アングルの変化で単調さを防ぐこと。\n"
-            "ただしi=4が5シーン連続したら必ずi=3を1つ挟むこと。"
+            "ただしi=4が4-5シーン連続したら必ずi=3を1つ挟むこと。"
         )
     # ascending（デフォルト）
     return (
@@ -7802,7 +8115,7 @@ def _get_intensity_curve_instruction(theme_guide: dict) -> str:
         "本番パートはmini-arc（小さな山）の連続で構成せよ:\n"
         "各mini-arc: i=3(転換/休憩)→i=4→i=4→i=4→i=5(小クライマックス)→i=3(次へ)\n"
         "例（30シーン）: 1→2→2→3→3→4→4→4→5→3→4→4→4→4→5→3→4→4→4→5→3→4→4→4→4→5→4→3→3→4\n"
-        "**i=4が5シーン連続したら必ずi=3を1つ挟むこと。これは絶対ルール。**"
+        "**i=4が4-5シーン連続したら必ずi=3を1つ挟むこと。これは絶対ルール。**"
     )
 
 
@@ -7834,6 +8147,18 @@ def generate_outline(
     # テーマ別ratioがある場合はそれを優先
     theme_intro = theme_guide.get("intro_ratio", 0.08)
     theme_foreplay = theme_guide.get("foreplay_ratio", 0.20)
+    # v8.9: 大規模スクリプト時のintro/foreplay上限（50+シーンで導入肥大化を防止）
+    if num_scenes >= 50:
+        _max_intro_scenes = 5  # 50シーン以上: 導入は最大5シーン
+        _max_foreplay_scenes = 15  # 前戯は最大15シーン
+        _capped_intro = min(theme_intro, _max_intro_scenes / num_scenes)
+        _capped_foreplay = min(theme_foreplay, _max_foreplay_scenes / (num_scenes * 0.8))
+        if _capped_intro < theme_intro:
+            log_message(f"v8.9: intro_ratio {theme_intro:.2f}→{_capped_intro:.2f}（{num_scenes}シーン: 導入{_max_intro_scenes}上限）")
+        if _capped_foreplay < theme_foreplay:
+            log_message(f"v8.9: foreplay_ratio {theme_foreplay:.2f}→{_capped_foreplay:.2f}（{num_scenes}シーン: 前戯{_max_foreplay_scenes}上限）")
+        theme_intro = _capped_intro
+        theme_foreplay = _capped_foreplay
     if story_structure is None:
         story_structure = {"prologue": round(theme_intro * 100), "main": 80, "epilogue": 10}
     prologue_pct = story_structure.get("prologue", round(theme_intro * 100)) / 100
@@ -7900,15 +8225,23 @@ def generate_outline(
         long_script_section = f"""
 ## ⚠️ 大量シーン（{num_scenes}シーン）追加ルール
 
-1. **本番パートにmini-arc**: {act3}シーンの本番パートは、{_mini_arc_count}個のmini-arc（各約{_mini_arc_size}シーン）に分割せよ。各mini-arcは「i=3(導入/転換)→i=4(エスカレート)→i=5(小クライマックス)→i=3(休憩/心理描写)」で構成
-2. **intensity 4の連続上限5**: intensity 4が5シーン以上連続する場合、必ず間にintensity 3のシーン（休憩/体位変更/心理描写）を1つ挟むこと。これは絶対ルール
+1. **本番パートにmini-arc**: {act3}シーンの本番パートは、{_mini_arc_count}個のmini-arc（各約{_mini_arc_size}シーン）に分割せよ。各mini-arcは「挿入→ビルドアップ→絶頂→射精」の性行為フローで構成し、intensity配分は「i=3(導入/転換)→i=4(エスカレート)→i=5(小クライマックス)→i=3(休憩/心理描写)」
+2. **intensity 4の連続上限4-5**: intensity 4が4-5シーン連続したら、必ず間にintensity 3のシーン（休憩/体位変更/心理描写）を1つ挟むこと。これは絶対ルール
 3. **intensity 5は{_i5_peaks}回**: 各mini-arcのクライマックスでintensity 5を使え（合計{_i5_peaks}回）。最後のmini-arcのi=5が全体のクライマックス
 4. **男性セリフ多様性**: 男性のセリフは5パターン（脅迫/挑発/命令/嘲笑/独白）を均等に使え。同じ意味のセリフの連続禁止。末尾フレーズの重複は最大2回まで。観察実況（「～だな」「～してるな」）禁止
-5. **locationの位置変化**: 同じ場所が続く場合も「場所内の位置」を変えよ（例: 便座→壁際→洗面台→床）
+5. **locationの変化**: 同じ場所で5シーン以上続く場合は場所内の位置を変えよ（例: 便座→壁際→洗面台→床）
 6. **titleルール**: titleは4-12文字、行為/体位/感情を反映。location名（「トイレ」「教室」等）をtitleに含めてはならない
 7. **第4幕（余韻）はリセット禁止**: 余韻シーンはintensity 3-4で、行為の事後・余韻・関係性の変化を描け。導入シーンの繰り返しは絶対禁止
 8. **mood多様性**: moodは毎シーン異なる表現にすること。同じmoodの連続使用禁止。intensityが同じでも表現を変えよ
 """
+
+    # v8.8: テーマ世界ルール注入
+    _world_rules = theme_guide.get("world_rules", [])
+    _world_rules_section = ""
+    if _world_rules:
+        _world_rules_section = "\n## ⚠️ テーマ世界設定ルール（厳守）\n"
+        for _wr in _world_rules:
+            _world_rules_section += f"- {_wr}\n"
 
     prompt = f"""以下のストーリーあらすじを{num_scenes}シーンに分割し、各シーンの詳細をJSON配列で出力してください。
 
@@ -7933,7 +8266,7 @@ def generate_outline(
 ※ FANZA CG集は読者がエロを求めて購入する。導入は短く、エロシーンを手厚く。
 {_get_intensity_curve_instruction(theme_guide)}
 {long_script_section}
-
+{_world_rules_section}
 {output_format_section}
 
 ## 絶対ルール
@@ -7944,29 +8277,35 @@ def generate_outline(
 5. 本番シーン（intensity 4-5）は段階的にエスカレートすること
 6. 最後から2番目のシーンがクライマックス（intensity 5）であること
 7. 各シーンのsituationは必ず前シーンと異なる具体的展開にすること（「近づく」「囲まれる」等の同パターン繰り返し禁止）
-8. **locationは3シーン連続で同じ場所にしてはならない**。場所を変えてストーリーを進めること。例: 部屋→廊下→浴室、教室→体育館倉庫→屋上
+8. locationは作品を通じて自然に変わればよい。同じ場所で5シーン以上続く場合は場所内の位置を変えよ（例: ベッド→壁際→床）
 9. intensity 5のシーン数: 20シーン以下は最大2シーン、それ以上は15シーンにつき1回（例: 30シーン→2回、60シーン→4回、100シーン→6回）
 10. intensity 1の次にintensity 3以上は禁止。必ずintensity 2を挟むこと（1→2→3→4→5の段階的上昇）
 11. **視点**: situationは女性キャラ視点で記述。男性の行動ではなく、女性の体験・反応・感情を中心に書く
 
-## ⚠️⚠️ 体位・行為バリエーション強制ルール（最重要・違反即不合格）
+{_get_time_axis_instruction(theme, act1)}
+## ⚠️⚠️ 性行為進行フロー（最重要・体位カタログ厳禁）
 
-**本番シーン（intensity 4-5）は全シーンで異なる体位・行為を指定すること。同じ行為の連続は絶対禁止。**
+**本番シーン（intensity 4-5）は「性行為の流れ」で構成すること。体位を毎シーン変える「体位カタログ」は厳禁。**
 
-### 使用可能な体位・行為リスト（2連続使用禁止。ローテーションせよ）
-正常位 / 後背位(バック) / 騎乗位 / 立ちバック / 側位 / 寝バック / 座位 / 駅弁 / 対面座位 / 背面騎乗位 / 正常位(脚持ち上げ) / うつ伏せ / マングリ返し / フェラチオ / パイズリ / 69 / 手マン / クンニ
+### 正しい進行フロー例（3-5シーンで1サイクル）
+1. 挿入・開始 → 2. テンポ上昇・快感蓄積 → 3. 激しさピーク → 4. 射精/絶頂 → 5. 余韻or体位変更
 
-### situation記述の多様性チェックリスト
-各シーンのsituationは以下の5要素のうち最低2つが前シーンと異なること:
-1. **体位**: 前シーンと違う体位名を明記
-2. **主導権**: 男主導/女主導/対等 - 3シーン連続で同じ主導権は禁止
-3. **テンポ**: 激しい/ゆっくり/焦らし/一気に - 交互に変化させる
-4. **焦点部位**: 胸/腰/脚/首筋/耳/背中 - 毎シーン異なる部位を描写
-5. **心理状態**: 前シーンの心理の「次の段階」を必ず記述
+### 同じ体位の連続シーンで変化させる要素（毎シーン最低2つ変化）
+1. **構図・アングル**: 正面/横/上から/下から/クローズアップ — 視覚的変化を出す
+2. **テンポ・激しさ**: ゆっくり→激しく→焦らし→一気に — 緩急をつける
+3. **感情・心理**: 前シーンの心理の「次の段階」を必ず記述（恥じらい→受容→快楽→陶酔）
+4. **性行為の段階**: 挿入→ピストン→快感上昇→限界→射精。段階的に進行すること
+5. **焦点部位**: 胸/腰/脚/首筋/耳/背中 — 毎シーン異なる部位を描写
 
-❌ 禁止パターン: 「膣奥を責められ」「膣奥への刺激」等の同じ表現が3シーン以上
-❌ 禁止パターン: 同じ体位名が2シーン連続
-❌ 禁止パターン: titleに同じ単語（「膣奥」「理性」等）が3回以上出現
+### 体位変更のタイミング
+- 射精/絶頂後の「次のラウンド」として体位変更するのが自然
+- mini-arc（3-5シーン）の区切りで変更
+- 同じ体位は最大4シーン連続まで
+
+❌ 禁止: 毎シーン体位が変わる「体位ショーケース」
+❌ 禁止: 同じsituation表現が3シーン以上
+❌ 禁止: titleに同じ単語が3回以上出現
+✅ 推奨: 正常位で3シーン（挿入→激しく→射精）→騎乗位で3シーン（回復→主導権移動→再絶頂）
 
 ### titleの多様性ルール
 - 全シーンのtitleは重複禁止（完全一致禁止）
@@ -8031,8 +8370,24 @@ JSON配列のみ出力。"""
             if long_script_section:
                 _chunk_extra_instructions += long_script_section
             _chunk_extra_instructions += _get_intensity_curve_instruction(theme_guide)
+            # v8.9: テーマ別時間軸ルール注入
+            _chunk_extra_instructions += _get_time_axis_instruction(theme, act1)
             if story_pattern_section:
                 _chunk_extra_instructions += story_pattern_section
+            # v8.8: テーマ世界ルール注入
+            _world_rules = theme_guide.get("world_rules", [])
+            if _world_rules:
+                _chunk_extra_instructions += "\n## ⚠️ テーマ世界設定ルール（厳守）\n"
+                for _wr in _world_rules:
+                    _chunk_extra_instructions += f"- {_wr}\n"
+            # v8.8: 同パターン繰り返し禁止（大量シーンで第2サイクルが第1サイクルのコピーになる問題を防止）
+            if num_scenes >= 25:
+                _chunk_extra_instructions += """
+## ⚠️ 同パターン繰り返し禁止
+- 確定済みシーンと同じsituation展開パターンを繰り返すな。場所が変わっても「観察→脱衣→愛撫→挿入→体位変更→射精」の同一アークの再利用は禁止
+- 第2ラウンドは第1ラウンドと異なるアプローチにせよ（例: 第1が受動的→第2は能動的/堕ち、第1が恐怖→第2は快楽依存）
+- 確定済みシーンのsituation/title一覧を確認し、同じ表現・キーワードの3回以上使用を避けよ
+"""
             for offset in range(0, num_scenes, chunk_size):
                 this_chunk = min(chunk_size, num_scenes - offset)
                 log_message(f"チャンクアウトライン: シーン{offset+1}〜{offset+this_chunk} ({this_chunk}シーン)")
@@ -8094,32 +8449,45 @@ JSON配列のみ出力。"""
             log_message(f"intensity 5を{intensity_5_count}→{len(keep_five)}シーンに自動修正（{_max_i5}上限）")
 
         # 2. intensity 5が不足時の自動挿入（50シーン以上で不足なら追加）
+        # v8.9: nearbyチェック改善（近接i=5がある場合は±5-8シーンずらして挿入）
         if _n_scenes >= 50:
             _current_i5 = sum(1 for s in outline if s.get("intensity", 3) == 5)
             if _current_i5 < _max_i5:
-                # Act 3内にmini-arcのクライマックスを挿入
                 _act3_start = act1 + act2
                 _act3_end = _act3_start + act3
                 _need_i5 = _max_i5 - _current_i5
                 _arc_size = act3 // _max_i5 if _max_i5 > 0 else act3
+                _existing_5_positions = {i for i, s in enumerate(outline) if s.get("intensity", 3) == 5}
                 for arc_idx in range(_max_i5):
                     if _need_i5 <= 0:
                         break
                     peak_pos = _act3_start + (arc_idx + 1) * _arc_size - 1
                     peak_pos = min(peak_pos, _act3_end - 1)
-                    if peak_pos < len(outline) and outline[peak_pos].get("intensity", 3) != 5:
-                        # 既にi=5のシーンが近くにあればスキップ
-                        _nearby_5 = any(
-                            outline[j].get("intensity", 3) == 5
-                            for j in range(max(0, peak_pos - 3), min(len(outline), peak_pos + 4))
-                        )
-                        if not _nearby_5:
-                            # ピーク前のシーンをi=4にランプアップ（3→5飛躍防止）
-                            if peak_pos > 0 and outline[peak_pos - 1].get("intensity", 3) < 4:
-                                outline[peak_pos - 1]["intensity"] = 4
-                            outline[peak_pos]["intensity"] = 5
-                            _need_i5 -= 1
-                            log_message(f"シーン{peak_pos+1}: mini-arcクライマックスとしてi=5挿入")
+                    if peak_pos >= len(outline) or outline[peak_pos].get("intensity", 3) == 5:
+                        continue
+                    # 近接チェック: ±5シーン以内にi=5があれば位置をずらす
+                    _nearby_5 = any(abs(peak_pos - p) <= 5 for p in _existing_5_positions)
+                    if _nearby_5:
+                        # ±6-10シーンの範囲で空きスロットを探す
+                        _found_alt = False
+                        for _offset in [6, -6, 7, -7, 8, -8, 9, -9, 10, -10]:
+                            alt_pos = peak_pos + _offset
+                            if (_act3_start <= alt_pos < _act3_end and
+                                alt_pos < len(outline) and
+                                outline[alt_pos].get("intensity", 3) != 5 and
+                                not any(abs(alt_pos - p) <= 5 for p in _existing_5_positions)):
+                                peak_pos = alt_pos
+                                _found_alt = True
+                                break
+                        if not _found_alt:
+                            continue  # どうしても挿入できない場合はスキップ
+                    # ピーク前のシーンをi=4にランプアップ（3→5飛躍防止）
+                    if peak_pos > 0 and outline[peak_pos - 1].get("intensity", 3) < 4:
+                        outline[peak_pos - 1]["intensity"] = 4
+                    outline[peak_pos]["intensity"] = 5
+                    _existing_5_positions.add(peak_pos)
+                    _need_i5 -= 1
+                    log_message(f"シーン{peak_pos+1}: mini-arcクライマックスとしてi=5挿入")
 
         # 3. intensity 1→3以上の飛躍を修正
         for i in range(1, len(outline)):
@@ -8153,47 +8521,66 @@ JSON配列のみ出力。"""
                 outline[i]["intensity"] = fixed
                 log_message(f"シーン{i+1}: intensity {curr_intensity}→{fixed}に修正（{prev_intensity}→{curr_intensity}の急降下防止）")
 
-        # 6. consecutive i=4上限: 5シーン連続でi=3ブレイクを強制挿入
+        # 6. consecutive i=4上限: 4-6シーン連続でi=3ブレイクを強制挿入
+        # v8.9: 固定5→ランダム4-6に変更（機械的6シーンパターン防止）
+        import random as _rng
         _consecutive_4 = 0
         _break_count = 0
+        _i4_break_limit = _rng.randint(4, 6)  # 初回のブレイク閾値
         for i, s in enumerate(outline):
             if s.get("intensity", 3) == 4:
                 _consecutive_4 += 1
-                if _consecutive_4 > 5:
+                if _consecutive_4 > _i4_break_limit:
                     # i=5ピーク直前にブレイクを入れると、Step8aでピークが潰されるため回避
                     _next_is_peak = (i + 1 < len(outline) and outline[i + 1].get("intensity", 3) == 5)
                     if _next_is_peak:
-                        # 1つ前のi=4をブレイクに変更（ピークへのランプアップを保護）
                         if i > 0 and outline[i - 1].get("intensity", 3) == 4:
                             outline[i - 1]["intensity"] = 3
-                            _consecutive_4 = 1  # 現在のi=4からカウント再開
+                            _consecutive_4 = 1
                             _break_count += 1
-                        # 前がi=4でなければブレイクなし（ピーク保護優先）
                     else:
                         s["intensity"] = 3
                         _consecutive_4 = 0
                         _break_count += 1
+                    _i4_break_limit = _rng.randint(4, 6)  # 次のブレイク閾値をランダム再設定
             else:
                 _consecutive_4 = 0
         if _break_count > 0:
-            log_message(f"i=4連続上限5: {_break_count}箇所にi=3ブレイク挿入")
+            log_message(f"i=4連続上限(4-6ランダム): {_break_count}箇所にi=3ブレイク挿入")
 
-        # 6b. consecutive i≤2上限: 5シーン連続で中間にi=3を挿入（テンポ停滞防止）
+        # 6b. consecutive i≤2上限: act1+1を超えたら強制i=3化（導入肥大化防止）
+        # v8.9: 上限をact1+1に動的設定（100シーンact1=5→上限6、20シーンact1=2→上限3）
+        _max_consecutive_low = min(act1 + 1, 6)  # 最大でも6シーン連続まで
         _consecutive_low = 0
         _low_break_count = 0
         for i, s in enumerate(outline):
             if s.get("intensity", 3) <= 2:
                 _consecutive_low += 1
-                if _consecutive_low > 5:
+                if _consecutive_low > _max_consecutive_low:
                     s["intensity"] = 3
                     _consecutive_low = 0
                     _low_break_count += 1
             else:
                 _consecutive_low = 0
         if _low_break_count > 0:
-            log_message(f"i≤2連続上限5: {_low_break_count}箇所にi=3挿入（テンポ停滞防止）")
+            log_message(f"i≤2連続上限{_max_consecutive_low}: {_low_break_count}箇所にi=3挿入（導入肥大化防止）")
 
-        # 6c. i=4の総数上限制御（40%超の場合、超過分を位置に応じて再割当）
+        # 6b2. i≤2の総数上限: act1+2を超えたらact1近辺のi≤2を順次i=3に昇格
+        _total_low = sum(1 for s in outline if s.get("intensity", 3) <= 2)
+        _max_total_low = act1 + 2  # act1=5なら最大7シーンまで
+        if _total_low > _max_total_low:
+            _low_indices = [i for i, s in enumerate(outline) if s.get("intensity", 3) <= 2]
+            _excess = _total_low - _max_total_low
+            # 後方（act1境界付近）のi≤2から昇格
+            for idx in reversed(_low_indices):
+                if _excess <= 0:
+                    break
+                outline[idx]["intensity"] = 3
+                _excess -= 1
+            log_message(f"i≤2総数上限{_max_total_low}: {_total_low}→{_max_total_low}に削減")
+
+        # 6c. i=4の総数上限制御（40%超の場合、超過分をact境界に基づいて再割当）
+        # v8.9: act境界ベースに改善（位置ratioの穴を解消）
         _i4_count = sum(1 for s in outline if s.get("intensity", 3) == 4)
         _i4_ratio = _i4_count / max(_n_scenes, 1)
         if _i4_ratio > 0.40:
@@ -8201,22 +8588,26 @@ JSON配列のみ出力。"""
             _i4_excess = _i4_count - _i4_target
             _i4_indices = [i for i, s in enumerate(outline) if s.get("intensity", 3) == 4]
             _current_i5_6c = sum(1 for s in outline if s.get("intensity", 3) == 5)
+            _act3_start_6c = act1 + act2
+            _act3_end_6c = _act3_start_6c + act3
             _rebalance_count = 0
             for idx_6c in _i4_indices:
                 if _rebalance_count >= _i4_excess:
                     break
-                ratio_6c = idx_6c / max(_n_scenes, 1)
-                if ratio_6c < 0.15:
-                    # イントロ区間 → i=2に降格
+                if idx_6c < act1:
+                    # Act1（導入） → i=2に降格
                     outline[idx_6c]["intensity"] = 2
                     _rebalance_count += 1
-                elif ratio_6c < 0.35:
-                    # 前半ビルドアップ → i=3に降格
+                elif idx_6c < _act3_start_6c:
+                    # Act2（前戯） → i=3に降格
                     outline[idx_6c]["intensity"] = 3
                     _rebalance_count += 1
-                elif _current_i5_6c < _max_i5 and 0.5 <= ratio_6c <= 0.85:
-                    # Act3内でi=5が不足なら昇格
-                    # 前後のi=5との距離をチェック（近接i=5回避）
+                elif idx_6c >= _act3_end_6c:
+                    # Act4（エピローグ） → i=3に降格
+                    outline[idx_6c]["intensity"] = 3
+                    _rebalance_count += 1
+                elif _current_i5_6c < _max_i5:
+                    # Act3内でi=5が不足なら昇格を試行
                     _near_5_6c = any(
                         outline[j].get("intensity", 3) == 5
                         for j in range(max(0, idx_6c - 5), min(len(outline), idx_6c + 6))
@@ -8225,9 +8616,14 @@ JSON配列のみ出力。"""
                         outline[idx_6c]["intensity"] = 5
                         _current_i5_6c += 1
                         _rebalance_count += 1
-                        # ピーク前をi=4にランプアップ
                         if idx_6c > 0 and outline[idx_6c - 1].get("intensity", 3) < 4:
                             outline[idx_6c - 1]["intensity"] = 4
+                    else:
+                        # i=5近接でも、Act3前半なら i=3に降格（ブレイク追加）
+                        _act3_progress = (idx_6c - _act3_start_6c) / max(act3, 1)
+                        if _act3_progress < 0.3:
+                            outline[idx_6c]["intensity"] = 3
+                            _rebalance_count += 1
             if _rebalance_count > 0:
                 log_message(f"i=4上限40%制御: {_i4_count}→{_i4_count - _rebalance_count}シーンに再割当（{_rebalance_count}件変更）")
 
@@ -8264,7 +8660,7 @@ JSON配列のみ出力。"""
             for i, s in enumerate(outline):
                 if s.get("intensity", 3) == 4:
                     _consecutive_4_8 += 1
-                    if _consecutive_4_8 > 5:
+                    if _consecutive_4_8 > _i4_break_limit:  # v8.9: Step 6bと同じランダム閾値
                         _next_is_peak = (i + 1 < len(outline) and outline[i + 1].get("intensity", 3) == 5)
                         if _next_is_peak:
                             if i > 0 and outline[i - 1].get("intensity", 3) == 4:
@@ -8277,12 +8673,12 @@ JSON配列のみ出力。"""
                             _smooth_count += 1
                 else:
                     _consecutive_4_8 = 0
-            # 8b2. consecutive i≤2上限の再適用
+            # 8b2. consecutive i≤2上限の再適用（v8.9: 動的上限）
             _consecutive_low_8 = 0
             for i, s in enumerate(outline):
                 if s.get("intensity", 3) <= 2:
                     _consecutive_low_8 += 1
-                    if _consecutive_low_8 > 5:
+                    if _consecutive_low_8 > _max_consecutive_low:
                         s["intensity"] = 3
                         _consecutive_low_8 = 0
                         _smooth_count += 1
@@ -8306,6 +8702,51 @@ JSON配列のみ出力。"""
                 log_message(f"最終スムージング: {_pass + 1}パスで収束")
             else:
                 log_message(f"最終スムージング: 3パスで未収束（残り{_smooth_count}箇所）")
+
+        # 9. v8.9: Act間エスカレーション検証（Act3がAct2以下ならブースト）
+        if _n_scenes >= 30:
+            _act_ranges = [
+                (0, act1),
+                (act1, act1 + act2),
+                (act1 + act2, act1 + act2 + act3),
+                (act1 + act2 + act3, len(outline)),
+            ]
+            _act_avgs = []
+            for _start, _end in _act_ranges:
+                _end = min(_end, len(outline))
+                _count = _end - _start
+                if _count > 0:
+                    _avg = sum(outline[i].get("intensity", 3) for i in range(_start, _end)) / _count
+                else:
+                    _avg = 3.0
+                _act_avgs.append(_avg)
+
+            # Act3 avg がAct2 avg以下ならAct3をブースト
+            if len(_act_avgs) >= 3 and _act_avgs[2] <= _act_avgs[1] + 0.2:
+                _boost_count = 0
+                _act3_s = act1 + act2
+                _act3_e = min(act1 + act2 + act3, len(outline))
+                for i in range(_act3_s, _act3_e):
+                    if outline[i].get("intensity", 3) == 3:
+                        outline[i]["intensity"] = 4
+                        _boost_count += 1
+                        if _boost_count >= max(2, act3 // 10):
+                            break
+                if _boost_count > 0:
+                    log_message(f"Act間エスカレーション: Act3 avg {_act_avgs[2]:.2f}≤Act2 avg {_act_avgs[1]:.2f} → {_boost_count}シーンをi=3→4にブースト")
+
+            # Act4 avg がAct3 avg以上ならAct4を抑制
+            if len(_act_avgs) >= 4 and _act_avgs[3] >= _act_avgs[2]:
+                _act4_s = act1 + act2 + act3
+                _depress_count = 0
+                for i in range(_act4_s, len(outline)):
+                    if outline[i].get("intensity", 3) == 4:
+                        outline[i]["intensity"] = 3
+                        _depress_count += 1
+                        if _depress_count >= max(1, act4 // 3):
+                            break
+                if _depress_count > 0:
+                    log_message(f"Act間エスカレーション: Act4 avg {_act_avgs[3]:.2f}≥Act3 → {_depress_count}シーンをi=4→3に抑制")
 
         # erotic_levelとintensityの整合性を修正
         erotic_map = {1: "none", 2: "light", 3: "medium", 4: "heavy", 5: "climax"}
@@ -8522,9 +8963,31 @@ def _oneliner_scene_summary(scene: dict) -> str:
     return f"[シーン{sid}] {title} (intensity={intensity}, {mood})"
 
 
+def _build_narrative_arc_summary(scene_results: list) -> str:
+    """v8.7: ナラティブアーク要約（~100tok）。序盤・転換点・intensity推移を永続化。
+    100シーン超でも中盤の流れが消失しない。"""
+    if not scene_results:
+        return ""
+    first = scene_results[0]
+    intensities = [s.get("intensity", 3) for s in scene_results]
+    turning = []
+    for i in range(1, len(intensities)):
+        if abs(intensities[i] - intensities[i - 1]) >= 2:
+            s = scene_results[i]
+            turning.append(f"S{s.get('scene_id', i + 1)}:{s.get('title', '')[:15]}")
+    tp = "/".join(turning[-3:]) or "なし"
+    return (
+        f"【全体の流れ】{first.get('location_detail', '')} "
+        f"{first.get('description', '')[:60]}...から開始 / "
+        f"intensity: {intensities[0]}→{intensities[-1]}(peak={max(intensities)}) / "
+        f"転換点: {tp}"
+    )
+
+
 def _build_story_so_far(story_summaries: list, scene_results: list) -> str:
     """story_so_farを構築（3層スライディングウィンドウ）。
 
+    - v8.7: ナラティブアーク要約（先頭に挿入、~100tok追加）
     - 直近3シーン: フルテキスト（extract_scene_summary）
     - 4-8シーン前: 圧縮要約（_compact_scene_summary）※セリフ/SE情報保持
     - 9シーン以上前: 直近20件の1行概要 + さらに古い分は件数のみ（トークン節約）
@@ -8537,6 +9000,13 @@ def _build_story_so_far(story_summaries: list, scene_results: list) -> str:
         return ""
 
     parts = []
+
+    # v8.7: ナラティブアーク要約（9シーン以上で挿入）
+    if n >= 9 and scene_results:
+        arc = _build_narrative_arc_summary(scene_results)
+        if arc:
+            parts.append(arc)
+            parts.append("")
 
     # 9シーン以上前: 1行概要（スライディングウィンドウ: 直近20件のみ、それ以前は省略）
     oneline_end = max(0, n - 8)
@@ -8745,6 +9215,14 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
             if sample_lines:
                 char_pool_section = "\n## キャラ固有セリフ例（このトーンで書け）\n" + "\n".join(f"・{l}" for l in sample_lines)
 
+    # v8.8: テーマ世界ルール（セリフ制約等）
+    world_rules = theme_guide.get("world_rules", [])
+    world_rules_instruction = ""
+    if world_rules:
+        world_rules_instruction = "\n## ⚠️ テーマ世界設定ルール（厳守）\n"
+        for wr in world_rules:
+            world_rules_instruction += f"- {wr}\n"
+
     # ♡使用のルール（テーマ別）
     heart_instruction = ""
     if use_heart:
@@ -8936,6 +9414,10 @@ story_so_farのセリフ・SEと同一・類似は絶対禁止。毎シーン辞
 ### story_flowの書き方
 各シーン固有の展開。前シーンのコピペ禁止。状況が必ず進展すること。
 
+### 語尾パターン多様性
+同じ語尾パターン（～し…、～る♡、～の…、～て…、～だし等）を3シーン連続で使うな。
+speech/thoughtの語尾は毎シーン構造を変えろ（体言止め/疑問/感嘆/中断/独白）。
+
 ### thought先頭パターン反復禁止
 同じ書き出し（先頭2文字）を3シーン以内で再使用するな。バリエーションが生命線。
 同一構文（X…Yが…Z…）の3連続も禁止。構文パターンを変えろ（疑問/自嘲/矛盾/驚き/諦め/感覚）。
@@ -8980,7 +9462,8 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
     # シーン固有部分（毎回変わる）
     scene_system = f"""{erotic_instruction}
 
-{theme_dialogue_instruction}"""
+{theme_dialogue_instruction}
+{world_rules_instruction}"""
 
     # Prompt Caching: systemをリスト形式でcache_control付与
     system_with_cache = [
@@ -8990,8 +9473,8 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 
     # シーン別SD推奨タグ（ポーズ・表情）+ テーマ別タグ - 大幅拡張
     intensity_sd_tags = {
-        5: f"ahegao, orgasm, cum, creampie, cum_overflow, cum_on_body, trembling, convulsing, full_body_spasm, tears, heavy_breathing, drooling, rolling_eyes, tongue_out, mind_break, fucked_silly, sweat, wet, multiple_boys, gangbang, {theme_sd_expressions}",
-        4: f"sex, vaginal, penetration, nude, spread_legs, missionary, doggy_style, cowgirl_position, moaning, sweat, blush, panting, pussy_juice, groping, breast_grab, multiple_boys, faceless_male, grabbing_hips, {theme_sd_expressions}",
+        5: f"ahegao, orgasm, cum, creampie, cum_overflow, cum_on_body, trembling, convulsing, full_body_spasm, tears, heavy_breathing, drooling, rolling_eyes, tongue_out, mind_break, fucked_silly, sweat, wet, {theme_sd_expressions}",
+        4: f"sex, vaginal, penetration, nude, spread_legs, missionary, doggy_style, cowgirl_position, moaning, sweat, blush, panting, pussy_juice, groping, breast_grab, faceless_male, grabbing_hips, {theme_sd_expressions}",
         3: f"kiss, french_kiss, undressing, groping, breast_grab, nipple_play, fingering, blush, nervous, anticipation, wet_panties, bra_pull, panties_aside, embarrassed, {theme_sd_expressions}",
         2: f"eye_contact, close-up, romantic, blushing, hand_holding, leaning_close, nervous, looking_away, {theme_sd_expressions}",
         1: f"portrait, smile, casual, standing, looking_at_viewer, {theme_sd_expressions}"
@@ -9092,12 +9575,11 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 - 前シーンで抵抗していたなら→このシーンは葛藤。いきなり完全堕落は禁止
 - **心情の変化は前シーンの「次への繋がり」を必ず引き継ぐこと**
 
-### ⚠️ 体位・描写バリエーション強制（違反即不合格）
-- **descriptionに書く体位・行為は前シーンと必ず変えること**
-- 使える体位: 正常位/後背位/騎乗位/立ちバック/側位/寝バック/座位/駅弁/対面座位/背面騎乗位/フェラ/パイズリ/手マン
-- 描写する身体部位・焦点も前シーンと変えること（胸→腰→脚→首筋→耳→背中をローテーション）
+### ⚠️ 描写バリエーション（体位カタログ禁止）
+- 同じ体位で2-3シーン続いてよい。ただし各シーンで構図・テンポ・感情の少なくとも2つを変化させること
+- 体位変更は射精/絶頂後の「次のラウンド」として自然に行うこと。毎シーン体位を変える「体位カタログ」は禁止
+- 描写する身体部位・焦点は前シーンと変えること（胸→腰→脚→首筋→耳→背中をローテーション）
 - **「膣奥」「膣内」等の同じ表現を3シーン以上繰り返し使用するのは禁止**
-- **descriptionは前シーンと異なる体位・行為・身体部位を描写すること**
 - **titleは全シーンで固有であること。前シーンと同じキーワードの繰り返し禁止**
 ---
 """
@@ -9576,11 +10058,13 @@ def _generate_scenes_wave(
     wave_scenes, client, context, jailbreak, cost_tracker, theme, char_profiles,
     callback, story_so_far, synopsis, roadmap_lines, male_description,
     total_scenes, timestamp, max_workers=CONCURRENT_BATCH_SIZE,
+    outline=None,
 ):
     """Wave内の全シーンをThreadPoolExecutorで同時生成し、scene_index順にソートして返す。
 
     戻り値: [(scene_index, result_dict, summary_string, error), ...]
     InterruptedError発生時はexecutorをシャットダウンして再送出。
+    v8.7: outline引数追加でWave内前シーンアウトライン情報を注入。
     """
     wave_results = []
 
@@ -9603,10 +10087,21 @@ def _generate_scenes_wave(
                 marked_lines.append(f"  ... (シーン{window_end+1}〜{len(roadmap_lines)}省略)")
             current_roadmap = "\n".join(marked_lines)
 
+            # v8.7: Wave内の前シーンアウトライン情報を注入（ストーリー一貫性向上）
+            story_so_far_augmented = story_so_far
+            if outline and scene_index > 0 and scene_index - 1 < len(outline):
+                prev = outline[scene_index - 1]
+                prev_anchor = (
+                    f"\n★直前シーン{scene_index}: {prev.get('title', '')[:20]} - "
+                    f"{prev.get('situation', '')[:80]}\n"
+                    f"このシーンは上記の直後から始まる。\n"
+                )
+                story_so_far_augmented = story_so_far + prev_anchor
+
             future = executor.submit(
                 _generate_single_scene_for_wave,
                 client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
-                callback, story_so_far, synopsis, current_roadmap, male_description,
+                callback, story_so_far_augmented, synopsis, current_roadmap, male_description,
                 scene_index, total_scenes, timestamp,
             )
             futures[future] = scene_index
@@ -9649,6 +10144,7 @@ def generate_pipeline(
     sd_prefix_tags: str = "",
     sd_suffix_tags: str = "",
     provider: str = "",
+    quality_priority: bool = False,
 ) -> tuple[list, CostTracker]:
     client = anthropic.Anthropic(api_key=api_key)
     log_message("Claude (Anthropic) バックエンドで生成開始")
@@ -9885,7 +10381,12 @@ def generate_pipeline(
         roadmap_lines.append(f"[{sid}] {title} (i={_rm_intensity}, {location}) {situation}{goal_part}")
     outline_roadmap = "\n".join(roadmap_lines)
 
-    use_wave_parallel = len(outline) >= CONCURRENT_MIN_SCENES
+    # v8.7: 品質優先モードではWave並列を無効化（全シーン直列生成）
+    use_wave_parallel = len(outline) >= CONCURRENT_MIN_SCENES and not quality_priority
+    if quality_priority and len(outline) >= CONCURRENT_MIN_SCENES:
+        log_message(f"品質優先モード: {len(outline)}シーンを直列生成（Wave並列無効）")
+        if callback:
+            callback("[INFO]品質優先モード: 直列生成（ストーリー一貫性最大化）")
 
     if use_wave_parallel:
         # === Wave並列モード: 5シーン同時生成 ===
@@ -9912,6 +10413,7 @@ def generate_pipeline(
                 wave_scenes, client, context, jailbreak, cost_tracker, theme,
                 char_profiles, callback, story_so_far, synopsis, roadmap_lines,
                 male_description, len(outline), timestamp,
+                outline=outline,
             )
 
             # 結果をscene_index順に蓄積
@@ -10221,7 +10723,7 @@ def generate_pipeline(
     if callback:
         callback("🔧 自動修正開始...")
     try:
-        results = auto_fix_script(results, char_profiles, theme=theme, callback=callback)
+        results = auto_fix_script(results, char_profiles, theme=theme, callback=callback, concept=concept)
         log_message("自動修正完了")
     except Exception as _autofix_err:
         log_message(f"[WARN]自動修正中にエラー発生（結果はそのまま使用）: {_autofix_err}")
@@ -12706,7 +13208,22 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=12), text_color=MaterialColors.ON_SURFACE_VARIANT
         )
         self._cost_preview_label = self.cost_preview_label  # プレゼンモード用参照
-        self.cost_preview_label.pack(anchor="w", padx=20, pady=(4, 12))
+        self.cost_preview_label.pack(anchor="w", padx=20, pady=(4, 4))
+
+        # v8.7: 品質優先モード（Wave並列を無効化→全シーン直列生成）
+        self.quality_priority_var = ctk.BooleanVar(value=False)
+        self.quality_priority_cb = ctk.CTkCheckBox(
+            settings_card, text="品質優先モード（直列生成・低速）",
+            variable=self.quality_priority_var,
+            font=ctk.CTkFont(family=FONT_JP, size=13),
+            text_color=MaterialColors.ON_SURFACE_VARIANT,
+            fg_color=MaterialColors.PRIMARY,
+            hover_color=MaterialColors.PRIMARY_CONTAINER,
+            border_color=MaterialColors.OUTLINE,
+            checkmark_color=MaterialColors.ON_PRIMARY,
+            corner_radius=4
+        )
+        self.quality_priority_cb.pack(anchor="w", padx=20, pady=(0, 12))
 
         # ══════════════════════════════════════════════════════════════
         # 6. 生成セクション
@@ -13092,6 +13609,10 @@ class App(ctk.CTk):
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", self.config_data["sd_suffix_tags"])
             self._auto_resize_textbox(self.sd_suffix_text, 100, 1200)
+
+        # v8.7: 品質優先モードの復元
+        if self.config_data.get("quality_priority") and hasattr(self, 'quality_priority_var'):
+            self.quality_priority_var.set(True)
 
         # 初期コスト予測を表示
         self.after(100, self.update_cost_preview)
@@ -13489,6 +14010,7 @@ class App(ctk.CTk):
             "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
+            "quality_priority": self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False,
         }
         save_config(self.config_data)
         self.snackbar.show("設定を保存しました", type="success")
@@ -13970,6 +14492,7 @@ class App(ctk.CTk):
             _sd_prefix = self.sd_prefix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_prefix_text') else ""
             _sd_suffix = self.sd_suffix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_suffix_text') else ""
 
+            _quality_priority = self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False
             results, cost_tracker, pipeline_metadata = generate_pipeline(
                 api_key, concept, full_characters, num_scenes, theme, callback,
                 story_structure=story_structure,
@@ -13979,6 +14502,7 @@ class App(ctk.CTk):
                 sd_prefix_tags=_sd_prefix,
                 sd_suffix_tags=_sd_suffix,
                 provider=PROVIDER_CLAUDE,
+                quality_priority=_quality_priority,
             )
 
             if self.stop_requested:

@@ -1,5 +1,88 @@
 # Changelog
 
+## [8.9.0] - 2026-02-23
+
+### Fixed (100シーン品質7残存問題根絶 + 時間軸制御 + テーマ整合)
+
+#### 時間軸制御システム新設
+- `_THEME_TIME_SPAN`: 30テーマを3カテゴリに分類（single_event/few_days/flexible）
+  - single_event（同一イベント内）: humiliation/forced/chikan/time_stop/gangbang/sleep/monster/tentacle/reverse_rape
+  - few_days（最大3日間）: netorare/corruption/office/teacher_student/neighbor/prostitution/idol/incest
+  - flexible（制限緩め）: love/vanilla/maid/hypnosis/harem/femdom/isekai/onsen/medical/swimsuit/sports/voyeur/cosplay
+- `_get_time_axis_instruction()`: テーマ別に時間軸ルールを動的生成し、メイン・チャンク両アウトラインに注入
+- auto_fix Step 12e: `_TIME_JUMP_REPLACEMENTS_STRICT` 34パターン（翌週/数ヶ月後/後日等→その直後の）
+  - single_eventテーマは「翌日」「翌朝」も禁止。エピローグ（末尾10%）は免除
+- validate_script: 12時間ジャンプキーワード検出 + テーマ別拡張
+
+#### 50+シーン導入冗長化防止
+- intro/foreplay ratio cap: 50+シーンで `act1≤5`, `act2≤15` にキャップ
+  - NTR 100シーン: act1=8→5, act2=22→16
+- 動的i≤2連続上限: `min(act1 + 1, 6)` + i≤2総数上限 `act1 + 2`
+
+#### i=5ピーク挿入改善（Fix A）
+- 近接i=5による挿入ブロック時、±6-10シーンの範囲で空きスロットを探索
+- 従来: nearby_5で断念 → 改善: 位置シフトで確実にi=5を配置
+
+#### i=4ブレイク閾値ランダム化（Fix B）
+- 固定「5シーン超」→ `randint(4, 6)` にランダム化（ブレイク毎に再設定）
+- プロンプト4箇所を全て「4-5シーン連続したら」に統一
+- Step 6b / Step 8b / auto_fix Step 22 全て同一ロジックに整合
+- validate_script閾値: `>5`→`>6`（ランダム最大値と一致）
+
+#### location多様性強化（Fix C）
+- micro-location分散: `k%3==1`→`k%2==0`（3シーンに1回→2シーンに1回変化）
+
+#### メタ参照description除去（Fix D）
+- `シーン\d+` パターンをvalidate_script検出 + auto_fix Step 12f除去
+
+#### mood変種プール拡張（Fix E）
+- `_MOOD_VARIANTS`: 6→15/intensity（計30→75バリアント）
+
+#### Step 6c act境界ベース改善（Fix F）
+- 固定比率（0.15/0.35/0.5/0.85）→ act1/2/3/4境界で判定。カバレッジギャップ解消
+
+#### Act間エスカレーション検証 Step 9新設（Fix G）
+- Act3平均 ≤ Act2平均+0.2 → Act3の i=3を最大10% i=4に昇格
+- Act4平均 ≥ Act3平均 → Act4の i=4を最大33% i=3に降格
+
+#### `_THEME_SKILL_MAP` 7テーマ補完
+- maid/hypnosis/harem/femdom/incest/time_stop/monster 追加（適切なスキル割当）
+
+#### シーン生成プロンプト整合
+- 旧「体位・描写バリエーション強制（違反即不合格）」→ v8.8準拠「体位カタログ禁止・進行フロー」に書換
+
+---
+
+## [8.8.0] - 2026-02-23
+
+### Changed (体位カタログ化根絶 + 性行為進行フロー導入)
+
+#### 修正1: チャンクアウトライン体位強制→進行フロー化
+- 旧「体位・行為バリエーション強制（違反即不合格）」を廃止
+- 新「性行為進行フロー（体位カタログ禁止）」: 同体位2-3シーン連続OK、構図/テンポ/感情/段階の2つ以上変化必須
+- 3-5シーンで「挿入→ピストン→快感上昇→射精/絶頂」のミニアーク構成
+
+#### 修正2: メインアウトライン体位強制→進行フロー化
+- 旧「体位・行為バリエーション強制ルール（最重要・違反即不合格）」を廃止
+- 新「性行為進行フロー（最重要・体位カタログ厳禁）」: 5要素変化+タイミング指示+禁止/推奨例
+
+#### 修正3: location制約緩和
+- 旧「3シーン連続で同じ場所にしてはならない」→「5シーン以上続く場合は場所内の位置を変えよ」
+- チャンク・メイン・long_script_section全箇所統一
+
+#### 修正4: story_flow感情変化必須化
+- 「必ず感情変化・心理変化を含めること。体位変更しただけのstory_flowは禁止」追加
+
+#### 修正5: long_script_section整合
+- mini-arc説明に「挿入→ビルドアップ→絶頂→射精」の性行為フロー統合
+- location制約を5シーン基準に統一
+
+#### 修正6: 喘ぎ声の軽量類似チェック復活
+- moan限定: 先頭3文字prefixカウンター + 動的上限 `max(3, len(results)//8)`
+- speech/thoughtは完全一致のみ維持（v8.7方針を尊重）
+
+---
+
 ## [8.5.0] - 2026-02-22
 
 ### Added (100シーン品質根本修正 8施策)
