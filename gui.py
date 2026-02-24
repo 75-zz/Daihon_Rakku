@@ -1174,7 +1174,16 @@ def _build_dynamic_theme_guide(concept: str) -> dict:
         }
 
 
-DEFAULT_NEGATIVE_PROMPT = "worst_quality, low_quality, lowres, bad_anatomy, bad_hands, missing_fingers, extra_fingers, mutated_hands, poorly_drawn_face, ugly, deformed, blurry, text, watermark, signature, censored, mosaic_censoring, loli, shota, child"
+DEFAULT_NEGATIVE_PROMPT = (
+    "worst_quality, low_quality, lowres, bad_anatomy, bad_hands, "
+    "missing_fingers, extra_fingers, mutated_hands, poorly_drawn_face, "
+    "ugly, deformed, blurry, text, watermark, signature, username, "
+    "censored, mosaic_censoring, bar_censor, "
+    "loli, shota, child, flat_chest, "
+    "3d, realistic, photo, "
+    "extra_limbs, missing_limbs, fused_fingers, too_many_fingers, "
+    "anatomical_nonsense, bad_proportions, wrong_anatomy"
+)
 
 QUALITY_POSITIVE_TAGS = "(masterpiece, best_quality:1.2)"
 QUALITY_TAGS_DISABLED = "__DISABLED__"  # カスタムモードで空欄→quality tags無し
@@ -1250,6 +1259,57 @@ ANGLE_FALLBACKS = {
     "dutch_angle": ["from_side", "from_above", "pov"],
 }
 
+# アングルタグ管理（v9.0: アングル多様性）
+_ANGLE_TAGS = {
+    "close-up", "full_body", "upper_body", "from_behind",
+    "from_above", "from_below", "pov", "dutch_angle", "side_view",
+    "cowboy_shot", "portrait", "wide_shot", "from_side", "straight-on",
+    "between_legs",
+}
+
+# intensity別 推奨アングルプール
+_INTENSITY_ANGLE_MAP = {
+    1: ["portrait", "full_body", "upper_body", "cowboy_shot"],
+    2: ["upper_body", "close-up", "cowboy_shot", "side_view"],
+    3: ["close-up", "from_above", "upper_body", "pov", "side_view"],
+    4: ["pov", "from_behind", "from_above", "from_below", "close-up", "dutch_angle"],
+    5: ["close-up", "pov", "from_below", "dutch_angle", "from_above"],
+}
+
+# SDプロンプトから除去すべき品質/スタイルタグ（v9.0: シーン固有タグのみ出力）
+_QUALITY_TAGS_TO_REMOVE = {
+    "masterpiece", "best_quality", "highest_quality", "absurdres",
+    "highres", "very_detailed", "intricate_details", "detailed",
+    "score_9", "score_8_up", "score_7_up", "score_6_up",
+    "source_anime", "source_pony", "rating_explicit", "rating_questionable",
+    "best quality", "high quality", "ultra detailed",
+    "amazing_quality", "very_aesthetic", "newest",
+}
+
+# ── 物理状態トラッキング用タグリスト (v9.0) ──────────────────────────
+_CLOTHING_STATE_TAGS = {
+    "nude", "topless", "bottomless", "panties_aside", "skirt_lift",
+    "shirt_lift", "bra_pull", "torn_clothes", "undressing",
+    "clothes_removed", "dress_lift", "swimsuit_aside",
+    "open_shirt", "unbuttoned", "no_bra", "no_panties",
+    "partially_undressed", "naked_shirt", "panties_only",
+    "stockings_only", "completely_nude", "naked",
+}
+
+_FLUID_STATE_TAGS = {
+    "cum", "cum_on_body", "cum_on_face", "cum_in_pussy", "cum_overflow",
+    "cum_string", "cum_pool", "pussy_juice", "sweat", "drooling",
+    "tears", "wet", "saliva", "body_fluids", "cum_drip",
+    "love_juice", "saliva_trail", "mixed_fluids", "excessive_cum",
+}
+
+_EXPRESSION_STATE_TAGS = {
+    "ahegao", "blush", "crying", "tears", "panting", "drooling",
+    "tongue_out", "rolling_eyes", "trembling", "heart_pupils",
+    "torogao", "half-closed_eyes", "clenched_teeth", "open_mouth",
+}
+
+
 def deduplicate_sd_tags(prompt: str) -> str:
     """SDプロンプトのタグを重複排除（順序保持）"""
     import re as _re
@@ -1291,6 +1351,7 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
     all_onom_sets = []    # [(scene_id, frozenset)]
     prev_angle_tags = set()
     prev_position_tags = set()
+    _val_angle_history = []  # v9.0: 3連続同一アングル検出用
 
     for i, scene in enumerate(results):
         scene_id = scene.get("scene_id", i + 1)
@@ -1502,10 +1563,20 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
 
         # --- sd_prompt: 連続同一アングル ---
         angle_kw = {"from_above", "from_below", "from_behind", "from_side",
-                    "pov", "straight-on", "dutch_angle"}
+                    "pov", "straight-on", "dutch_angle", "close-up",
+                    "full_body", "upper_body", "cowboy_shot", "portrait",
+                    "wide_shot", "side_view", "between_legs"}
         cur_angles = {kw for kw in angle_kw if kw in sd.lower()}
         if cur_angles and cur_angles == prev_angle_tags:
             problems.append(f"前シーンと同一アングル: {', '.join(cur_angles)}")
+        # v9.0: 3連続同一アングル検出
+        _cur_angle_key = frozenset(cur_angles) if cur_angles else None
+        _val_angle_history.append(_cur_angle_key)
+        if (len(_val_angle_history) >= 3
+                and _cur_angle_key is not None
+                and _val_angle_history[-2] == _cur_angle_key
+                and _val_angle_history[-3] == _cur_angle_key):
+            problems.append(f"3連続同一アングル: {', '.join(cur_angles)}")
         prev_angle_tags = cur_angles
 
         # --- sd_prompt: 連続同一体位 ---
@@ -1595,6 +1666,14 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         }
         if sd and not (sd_tags_set & bg_tags):
             problems.append("sd_promptに背景/場所タグが無い")
+
+        # --- sd_prompt: v9.0 品質/スタイルタグ混入検出 ---
+        if sd:
+            _found_quality = sd_tags_set & _QUALITY_TAGS_TO_REMOVE
+            if _found_quality:
+                problems.append(f"sd_promptに品質タグ混入: {', '.join(list(_found_quality)[:3])}")
+            if "<lora:" in sd.lower():
+                problems.append("sd_promptにLoRAタグ混入")
 
         if problems:
             scene_issues[scene_id] = problems
@@ -2311,6 +2390,39 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                 sid = scene.get("scene_id", i + 1)
                 scene_issues.setdefault(f"S{sid}", []).append(
                     f"moodがテーマ感情そのまま: 「{m}」→具体的なmoodにすべき")
+
+    # v9.0: 物理状態一貫性チェック（服装復活・体液消失検出）
+    _val_max_undress = 0
+    _val_had_cum = False
+    for i, scene in enumerate(results):
+        sid = scene.get("scene_id", i + 1)
+        sd = scene.get("sd_prompt", "")
+        _sd_tags_v = {t.strip().lower().replace(" ", "_") for t in sd.split(",") if t.strip()}
+
+        # 脱衣レベル検出
+        _cur_lv = 0
+        for _tag_v in _sd_tags_v:
+            if _tag_v in ("nude", "naked", "completely_nude"):
+                _cur_lv = max(_cur_lv, 5)
+            elif _tag_v in ("topless", "bottomless", "panties_only", "naked_shirt", "stockings_only"):
+                _cur_lv = max(_cur_lv, 4)
+            elif _tag_v in ("panties_aside", "open_shirt", "bra_removed", "torn_clothes", "no_bra", "no_panties"):
+                _cur_lv = max(_cur_lv, 3)
+
+        # 服装復活検出（脱衣レベルが2段階以上逆行）
+        if _val_max_undress >= 4 and _cur_lv <= 1 and i > 0:
+            scene_issues.setdefault(f"S{sid}", []).append(
+                f"服装復活検出: 前シーンで脱衣レベル{_val_max_undress}→現シーン{_cur_lv}（sd_promptに脱衣タグ不足）")
+        _val_max_undress = max(_val_max_undress, _cur_lv)
+
+        # 体液消失検出（射精後なのにcum系タグなし）
+        _has_cum_tags = bool(_sd_tags_v & {"cum", "cum_on_body", "cum_on_face", "cum_in_pussy",
+                                            "cum_overflow", "cum_string", "cum_pool", "cum_drip"})
+        if _val_had_cum and not _has_cum_tags and scene.get("intensity", 3) >= 3:
+            scene_issues.setdefault(f"S{sid}", []).append(
+                "体液消失検出: 前シーンで射精があったがsd_promptにcum系タグなし")
+        if _has_cum_tags:
+            _val_had_cum = True
 
     n_issues = sum(len(v) for v in scene_issues.values()) + len(repeated_moans) + len(repeated_onom)
     # スコア計算: シーン数で正規化（大規模シーンでもscore=0にならないように）
@@ -5423,6 +5535,51 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         _progress(f"Step 22 i=4連続ブレイク挿入: {_i4_break_count}箇所")
         log_message(f"  i=4連続上限4-6: {_i4_break_count}箇所にi=3ブレイク挿入")
 
+    # ── Step 23: 物理状態累積修正（服装復活防止 + 射精後の体液持続）──
+    _phys_max_undress = 0
+    _phys_had_cum = False
+    _phys_fix_count = 0
+    for i, scene in enumerate(results):
+        sd = scene.get("sd_prompt", "")
+        if not sd:
+            continue
+        _sd_tags_set = {t.strip().lower().replace(" ", "_") for t in sd.split(",") if t.strip()}
+
+        # 脱衣レベル検出
+        _cur_lv = 0
+        if _sd_tags_set & {"nude", "naked", "completely_nude"}:
+            _cur_lv = 5
+        elif _sd_tags_set & {"topless", "bottomless", "panties_only", "naked_shirt", "stockings_only"}:
+            _cur_lv = 4
+        elif _sd_tags_set & {"panties_aside", "open_shirt", "bra_removed", "torn_clothes", "no_bra", "no_panties"}:
+            _cur_lv = 3
+        elif _sd_tags_set & {"partially_undressed", "shirt_lift", "bra_visible", "unbuttoned_shirt"}:
+            _cur_lv = 2
+
+        # 服装復活修正: 前シーンでnude(5)→現シーンで脱衣タグなし→nude追加
+        if _phys_max_undress >= 5 and _cur_lv < 3 and i > 0:
+            if "nude" not in sd.lower():
+                scene["sd_prompt"] = sd.rstrip() + ", nude"
+                _phys_fix_count += 1
+        elif _phys_max_undress >= 4 and _cur_lv <= 1 and i > 0:
+            if not (_sd_tags_set & {"topless", "bottomless", "panties_only", "nude", "naked"}):
+                scene["sd_prompt"] = sd.rstrip() + ", partially_undressed"
+                _phys_fix_count += 1
+
+        _phys_max_undress = max(_phys_max_undress, _cur_lv)
+
+        # 射精後の体液持続修正: 前シーンで射精→現シーンにcum系なし→追加
+        _has_cum = bool(_sd_tags_set & {"cum", "cum_on_body", "cum_on_face", "cum_in_pussy",
+                                         "cum_overflow", "cum_string", "cum_pool", "cum_drip"})
+        if _phys_had_cum and not _has_cum and scene.get("intensity", 3) >= 3:
+            scene["sd_prompt"] = scene["sd_prompt"].rstrip() + ", cum_on_body"
+            _phys_fix_count += 1
+        if _has_cum:
+            _phys_had_cum = True
+
+    if _phys_fix_count > 0:
+        _progress(f"Step 23 物理状態累積修正: {_phys_fix_count}箇所")
+
     return results
 
 
@@ -5729,7 +5886,8 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                        sd_quality_tags: str = "",
                        sd_prefix_tags: str = "",
                        sd_suffix_tags: str = "",
-                       theme: str = "") -> list:
+                       theme: str = "",
+                       faceless_male: bool = True) -> list:
     """全シーンのSDプロンプトを後処理で最適化（APIコスト不要）。
 
     - 日本語タグ除去
@@ -5831,6 +5989,31 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
     _prev_scene_positions = set()  # 前シーンの体位タグ（重複防止用）
     _prev_camera_angle = ""  # 前シーンのカメラアングル（連続重複防止用）
     _camera_scene_idx = 0  # カメラアングルローテーション用カウンタ
+    _angle_history = []  # 直近アングル履歴（3連続同一防止用）
+
+    # v9.0: 物理状態累積トラッキング（シーン間の服装・体液引き継ぎ）
+    _accumulated_clothing = set()  # 累積脱衣状態（一度nudeなら以降もnude）
+    _accumulated_fluids = set()    # 累積体液状態（射精後は体液タグ持続）
+    # 脱衣レベル: 高いほど脱いでいる（逆行禁止）
+    _CLOTHING_UNDRESS_LEVEL = {
+        "clothes_pull": 1, "skirt_lift": 1, "loosened_tie": 1,
+        "partially_undressed": 2, "shirt_lift": 2, "bra_visible": 2,
+        "one_shoulder_exposed": 2, "disheveled_clothes": 2,
+        "unbuttoned_shirt": 2, "skirt_around_waist": 2, "unbuttoned": 2,
+        "open_shirt": 3, "dress_lift": 2, "swimsuit_aside": 3,
+        "topless": 4, "panties_only": 4, "torn_clothes": 3,
+        "clothes_around_ankles": 4, "naked_shirt": 4, "panties_aside": 3,
+        "bra_removed": 3, "bra_pull": 2, "stockings_only": 4,
+        "no_bra": 3, "no_panties": 3, "shirt_lift": 2,
+        "bottomless": 4, "undressing": 2, "clothes_removed": 5,
+        "completely_nude": 5, "nude": 5, "naked": 5,
+    }
+    _max_undress_level = 0  # これまでの最大脱衣レベル
+    # 体液持続タグ（射精系は以降のシーンにも残る）
+    _PERSISTENT_FLUID_TAGS = {
+        "cum", "cum_on_body", "cum_on_face", "cum_in_pussy", "cum_overflow",
+        "cum_string", "cum_pool", "cum_drip", "excessive_cum",
+    }
 
     for scene in results:
         sd = scene.get("sd_prompt", "")
@@ -5885,6 +6068,24 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 tags = [t for t in tags if t.strip().lower() not in {"indoors"}]
                 if "outdoors" not in _existing_lower_17:
                     tags.insert(min(2, len(tags)), "outdoors")
+
+        # 1.8. 品質/スタイル/LoRAタグ除去（v9.0: シーン固有タグのみ残す）
+        _pre_clean_tags = []
+        for t in tags:
+            _t_norm = t.strip().lower().replace(" ", "_")
+            # ウェイト付きタグからタグ名を抽出
+            _t_inner = _re.sub(r'[()]', '', _t_norm).split(":")[0].strip()
+            # 品質/スタイルタグ除去
+            if _t_inner in _QUALITY_TAGS_TO_REMOVE:
+                continue
+            # LoRAタグ除去 (<lora:...>)
+            if "<lora:" in t.lower():
+                continue
+            # score_N / score_N_up パターン除去
+            if _re.match(r'^score_\d', _t_inner):
+                continue
+            _pre_clean_tags.append(t)
+        tags = _pre_clean_tags
 
         # 2. quality tags先頭確保（QUALITY_TAGS_DISABLED時は完全除去）
         if sd_quality_tags == QUALITY_TAGS_DISABLED:
@@ -6042,35 +6243,37 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 if not _added:
                     tags.append("indoors")
 
-        # 4.5. intensity≥3のシーンに男性タグ注入（v8.6: テーマ考慮）
+        # 4.5. 男性タグ注入（v9.0: faceless_male デフォルトON / intensity制限撤廃）
         _MULTI_MALE_THEMES = {"gangbang"}
         intensity = scene.get("intensity", 0)
-        if intensity >= 3:
-            existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
-            if theme not in _MULTI_MALE_THEMES:
-                # 通常テーマ: 1boy + faceless_male
-                for male_tag in ["1boy", "faceless_male"]:
-                    if male_tag not in existing_lower:
-                        tags.append(male_tag)
-                        existing_lower.add(male_tag)
-            else:
-                # gangbang: 1boyは付与しない（THEME_GUIDESからmultiple_boysが来る）
-                if "faceless_male" not in existing_lower:
-                    tags.append("faceless_male")
-                    existing_lower.add("faceless_male")
-            if male_tags:
-                # ユーザー指定の男性体型タグを高重要度で注入
-                for mt in male_tags.split(","):
-                    mt = mt.strip()
-                    if mt and mt.lower().replace(" ", "_") not in existing_lower:
-                        if mt.lower() in ("1boy", "faceless_male"):
-                            continue  # 既に付与済み
-                        weighted_mt = f"({mt}:1.3)"
-                        tags.append(weighted_mt)
-                        existing_lower.add(mt.lower().replace(" ", "_"))
+        existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
+        if theme not in _MULTI_MALE_THEMES:
+            # 通常テーマ: 1boy 常時付与
+            if "1boy" not in existing_lower:
+                tags.append("1boy")
+                existing_lower.add("1boy")
+            # faceless_male: フラグに応じて付与
+            if faceless_male and "faceless_male" not in existing_lower:
+                tags.append("faceless_male")
+                existing_lower.add("faceless_male")
+        else:
+            # gangbang: 1boyは付与しない（THEME_GUIDESからmultiple_boysが来る）
+            if faceless_male and "faceless_male" not in existing_lower:
+                tags.append("faceless_male")
+                existing_lower.add("faceless_male")
+        if male_tags:
+            # ユーザー指定の男性体型タグを高重要度で注入
+            for mt in male_tags.split(","):
+                mt = mt.strip()
+                if mt and mt.lower().replace(" ", "_") not in existing_lower:
+                    if mt.lower() in ("1boy", "faceless_male"):
+                        continue  # 既に付与済み
+                    weighted_mt = f"({mt}:1.3)"
+                    tags.append(weighted_mt)
+                    existing_lower.add(mt.lower().replace(" ", "_"))
 
-        # 4.55. 男性体型タグ（ユーザー指定がある場合はスキップ）
-        if not male_tags and intensity >= 3 and "1boy" in existing_lower:
+        # 4.55. 男性体型タグ（ユーザー指定がない場合のデフォルト）
+        if not male_tags and "1boy" in existing_lower:
             _male_body_defaults = ["muscular_male", "veiny_arms"]
             for mt in _male_body_defaults:
                 if mt not in existing_lower:
@@ -6091,24 +6294,107 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                 tags.append(et)
                 existing_lower.add(et)
 
-        # 4.7. intensity別 衣装状態タグ自動注入
+        # 4.65. セリフ→SDプロンプト連動（v9.0: bubblesの内容からSDタグ自動注入）
+        _BUBBLE_MOAN_SD = {
+            "open_mouth": ["あぁ", "はぁ", "んぁ", "ああ", "あっあっ", "んほ"],
+            "tongue_out": ["んほ", "あへ", "れろ", "舌"],
+            "drooling": ["じゅる", "れろ", "んほ", "あへ"],
+            "tears": ["いや", "痛", "泣", "うっ"],
+            "rolling_eyes": ["んほ", "あへ", "いぐ", "壊れ"],
+            "ahegao": ["壊れ", "いぐ", "んほぉ", "あへ"],
+        }
+        _BUBBLE_THOUGHT_SD = {
+            "trembling": ["怖", "震", "ビクビク", "ゾクゾク"],
+            "blush": ["恥ず", "は、恥", "見ないで", "やだ"],
+            "crying": ["泣き", "涙", "うっ…"],
+            "heart_pupils": ["好き", "もっと", "気持ちい", "離さないで"],
+            "dazed": ["頭", "ぼんやり", "真っ白", "何も考え"],
+        }
+        _BUBBLE_SPEECH_SD = {
+            "covering_face": ["見ないで", "恥ずかし", "やめて"],
+            "looking_away": ["あっち", "見ないで", "は、恥"],
+            "clenched_teeth": ["くっ", "ぐっ", "耐え"],
+        }
+        bubbles = scene.get("bubbles", [])
+        _bubble_inject = set()
+        for _bub in bubbles:
+            _btext = _bub.get("text", "")
+            _btype = _bub.get("type", "")
+            if _btype == "moan":
+                for _sd_tag, _kws in _BUBBLE_MOAN_SD.items():
+                    if any(kw in _btext for kw in _kws):
+                        _bubble_inject.add(_sd_tag)
+            elif _btype == "thought":
+                for _sd_tag, _kws in _BUBBLE_THOUGHT_SD.items():
+                    if any(kw in _btext for kw in _kws):
+                        _bubble_inject.add(_sd_tag)
+            elif _btype == "speech":
+                for _sd_tag, _kws in _BUBBLE_SPEECH_SD.items():
+                    if any(kw in _btext for kw in _kws):
+                        _bubble_inject.add(_sd_tag)
+        if _bubble_inject:
+            existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
+            for _bt in _bubble_inject:
+                if _bt not in existing_lower:
+                    tags.append(_bt)
+                    existing_lower.add(_bt)
+
+        # 4.7. intensity別 衣装状態タグ自動注入 + 累積脱衣トラッキング（v9.0）
+        existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
+
+        # 現在のシーンの脱衣レベルを検出
+        _cur_undress = 0
+        for _ct_tag in existing_lower:
+            _lv = _CLOTHING_UNDRESS_LEVEL.get(_ct_tag, 0)
+            if _lv > _cur_undress:
+                _cur_undress = _lv
+
         _clothing_tags = CLOTHING_ESCALATION.get(min(intensity, 5), [])
         if _clothing_tags:
-            existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
-            # intensity 5で既にnudeタグがあれば衣装タグ不要
             _has_nude = existing_lower & {"nude", "naked", "completely_nude"}
             if not (intensity >= 5 and _has_nude):
-                # 1タグだけ注入（過剰にならないよう）
                 for ct in _clothing_tags:
                     if ct not in existing_lower:
                         tags.append(ct)
                         existing_lower.add(ct)
+                        _lv = _CLOTHING_UNDRESS_LEVEL.get(ct, 0)
+                        if _lv > _cur_undress:
+                            _cur_undress = _lv
                         break
 
-        # 4.8. intensity別 体液進行タグ自動注入
+        # v9.0: 累積脱衣状態の引き継ぎ（脱衣逆行防止）
+        # 前シーンで脱衣レベルが高かった場合、現シーンでも最低その状態を維持
+        if _max_undress_level >= 5 and _cur_undress < 5:
+            # 前シーンでnudeだった → 現シーンもnude（服復活禁止）
+            if "nude" not in existing_lower and "naked" not in existing_lower and "completely_nude" not in existing_lower:
+                tags.append("nude")
+                existing_lower.add("nude")
+        elif _max_undress_level >= 4 and _cur_undress < 3:
+            # 前シーンでtopless/panties_only等 → 最低でもpartially_undressed
+            if not (existing_lower & {"topless", "bottomless", "panties_only", "naked_shirt", "stockings_only", "nude", "naked"}):
+                tags.append("partially_undressed")
+                existing_lower.add("partially_undressed")
+
+        # 脱衣レベルを更新（単調増加）
+        _max_undress_level = max(_max_undress_level, _cur_undress)
+
+        # 累積脱衣タグ更新
+        _accumulated_clothing.update(existing_lower & set(_CLOTHING_UNDRESS_LEVEL.keys()))
+
+        # 4.8. intensity別 体液進行タグ自動注入 + 累積体液トラッキング（v9.0）
         _fluid_tags = FLUID_PROGRESSION.get(min(intensity, 5), [])
+        existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
+
+        # v9.0: 前シーンの持続性体液タグを引き継ぎ（射精後は体液残留）
+        if _accumulated_fluids:
+            _injected_persistent = 0
+            for pf in _accumulated_fluids:
+                if pf not in existing_lower and _injected_persistent < 2:
+                    tags.append(pf)
+                    existing_lower.add(pf)
+                    _injected_persistent += 1
+
         if _fluid_tags:
-            existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
             _injected_fluid = 0
             for ft in _fluid_tags:
                 if ft not in existing_lower and _injected_fluid < 2:
@@ -6116,23 +6402,48 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     existing_lower.add(ft)
                     _injected_fluid += 1
 
-        # 4.9. カメラアングル/構図タグ自動注入（intensity≥2、ローテーション）
-        if intensity >= 2:
-            _angle_pool = _CAMERA_ANGLE_POOL.get(min(intensity, 5), [])
-            _exist_angles = {t.strip().lower().replace(" ", "_") for t in tags}
-            # 既にアングル系タグがあればスキップ
-            _angle_kw_check = {"pov", "from_above", "from_below", "from_behind",
-                               "from_side", "straight-on", "dutch_angle",
-                               "between_legs", "wide_shot", "full_body"}
-            if not (_exist_angles & _angle_kw_check):
-                # ローテーションで前シーンと異なるアングルを選択
-                _candidates = [a for a in _angle_pool if a != _prev_camera_angle]
-                if _candidates:
-                    _pick_idx = _camera_scene_idx % len(_candidates)
-                    _chosen_angle = _candidates[_pick_idx]
-                    tags.append(_chosen_angle)
-                    _prev_camera_angle = _chosen_angle
-                    _camera_scene_idx += 1
+        # 累積体液タグ更新（持続性タグのみ蓄積）
+        _cur_persistent = existing_lower & _PERSISTENT_FLUID_TAGS
+        _accumulated_fluids.update(_cur_persistent)
+
+        # 4.9. カメラアングル/構図タグ自動注入 + 3連続同一アングル防止（v9.0強化）
+        import random as _rnd_angle
+        _exist_angles = {t.strip().lower().replace(" ", "_") for t in tags}
+        # 既存のアングルタグを検出
+        _cur_angle = None
+        for t in tags:
+            _t_norm = t.strip().lower().replace(" ", "_")
+            if _t_norm in _ANGLE_TAGS:
+                _cur_angle = _t_norm
+                break
+
+        if _cur_angle is None and intensity >= 2:
+            # アングルタグがない → intensityに応じたプールから注入
+            _angle_pool = _INTENSITY_ANGLE_MAP.get(min(intensity, 5),
+                          _CAMERA_ANGLE_POOL.get(min(intensity, 5), []))
+            _candidates = [a for a in _angle_pool if a != _prev_camera_angle]
+            if not _candidates:
+                _candidates = list(_angle_pool)
+            if _candidates:
+                _pick_idx = _camera_scene_idx % len(_candidates)
+                _cur_angle = _candidates[_pick_idx]
+                tags.append(_cur_angle)
+                _camera_scene_idx += 1
+
+        # 3連続同一アングル検出 → 3番目以降を代替に差し替え
+        if _cur_angle and len(_angle_history) >= 2 and _angle_history[-1] == _cur_angle and _angle_history[-2] == _cur_angle:
+            _alt_pool = _INTENSITY_ANGLE_MAP.get(min(intensity, 5),
+                        _CAMERA_ANGLE_POOL.get(min(intensity, 5), []))
+            _alt_candidates = [a for a in _alt_pool if a != _cur_angle]
+            if not _alt_candidates:
+                _alt_candidates = [a for a in _ANGLE_TAGS if a != _cur_angle]
+            if _alt_candidates:
+                _replacement = _rnd_angle.choice(_alt_candidates)
+                tags = [(_replacement if t.strip().lower().replace(" ", "_") == _cur_angle else t) for t in tags]
+                _cur_angle = _replacement
+
+        _prev_camera_angle = _cur_angle or _prev_camera_angle
+        _angle_history.append(_cur_angle or "")
 
         # 5. 設定スタイル適用（タグ置換・禁止・追加）
         if setting_style:
@@ -7510,6 +7821,7 @@ def generate_synopsis(
     cost_tracker: CostTracker,
     callback: Optional[Callable] = None,
     male_description: str = "",
+    faceless_male: bool = True,
 ) -> str:
     """コンセプトから短い一本のストーリーあらすじを生成（Haiku API 1回）"""
     theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
@@ -7539,7 +7851,7 @@ def generate_synopsis(
 
 ## 登場キャラクター
 {char_info}
-{f"## 男性キャラクター外見{chr(10)}{male_description}{chr(10)}※ あらすじにおける男性の描写はこの外見設定を反映すること{chr(10)}" if male_description else ""}## テーマ: {theme_name}
+{f"## 男性キャラクター外見{chr(10)}{male_description}{chr(10)}※ あらすじにおける男性の描写はこの外見設定を反映すること{chr(10)}{'※ 男性はfaceless male（顔なし）。顔の特徴は描写しない' + chr(10) if faceless_male else ''}" if male_description else ""}## テーマ: {theme_name}
 - ストーリーの流れ: {story_arc}
 - 重要な感情: {emotions_str}
 - ストーリー要素:
@@ -7813,7 +8125,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 1. 必ず{len(scenes)}シーン分のJSON配列を出力
 2. 各シーンのscene_idは指定通りに
 3. **bubblesは1-3個**（ヒロイン1-2個 + 男性0-1個。セリフの長さは自由）
-4. sd_promptは「{QUALITY_POSITIVE_TAGS} + キャラ外見 + ポーズ + 表情 + 場所・背景」の順
+4. sd_promptはシーン固有の描写タグのみ出力: キャラ外見+ポーズ+表情+エロ描写+アングル+場所・背景。**品質タグ(masterpiece, best_quality, score_9等)やLoRAタグ(<lora:...>)は絶対に含めるな**
 5. **sd_promptにオノマトペ・日本語テキストを含めない**（英語のDanbooruタグのみ）
 6. タグは重複なくカンマ区切り
 7. **シーン1→シーン2は自然に繋がるストーリーにすること**
@@ -8129,6 +8441,7 @@ def generate_outline(
     synopsis: str = "",
     story_structure: dict = None,
     male_description: str = "",
+    faceless_male: bool = True,
 ) -> list:
     """あらすじをシーン分割してアウトライン生成（Haiku API 1回）"""
     theme_guide = THEME_GUIDES.get(theme, THEME_GUIDES.get("vanilla", {}))
@@ -8250,7 +8563,7 @@ def generate_outline(
 
 ## 登場キャラクター
 {', '.join(char_names)}
-{f"{chr(10)}## 男性キャラクター外見: {male_description}{chr(10)}※ situationやbeatsに男性が登場する場合、この外見設定を反映すること{chr(10)}※ 男性はfaceless male（顔なし）。顔の特徴は描写しない{chr(10)}" if male_description else ""}
+{f"{chr(10)}## 男性キャラクター外見: {male_description}{chr(10)}※ situationやbeatsに男性が登場する場合、この外見設定を反映すること{chr(10)}{'※ 男性はfaceless male（顔なし）。顔の特徴は描写しない' if faceless_male else '※ 男性の外見を一貫して描写すること'}{chr(10)}" if male_description else (f"{chr(10)}## 男性キャラクター{chr(10)}{'※ 男性はfaceless male（顔なし）。顔の特徴は描写しない' if faceless_male else '※ 男性の外見を一貫して描写すること'}{chr(10)}" if True else "")}
 ## テーマ: {theme_name}
 - ストーリーアーク: {story_arc}
 - 重要な感情: {', '.join(key_emotions)}
@@ -8895,38 +9208,62 @@ JSON配列のみ出力。"""
 
 
 def extract_scene_summary(scene: dict) -> str:
-    """シーンの要約を抽出（次シーンのstory_so_farに使用）"""
+    """シーンの要約を抽出（次シーンのstory_so_farに使用）。
+    v9.0: 物理状態（服装・体液・表情）を抽出してサマリに含める。"""
     sid = scene.get("scene_id", "?")
     title = scene.get("title", "")
     desc = scene.get("description", "")[:200]
     location = scene.get("location_detail", "")
     mood = scene.get("mood", "")
     intensity = scene.get("intensity", 3)
-    
+
     # 吹き出しの要約
     bubbles = scene.get("bubbles", [])
     bubble_texts = []
+    has_moan = False
     for b in bubbles:
         speaker = b.get("speaker", "")
         btype = b.get("type", "")
         text = b.get("text", "")
         bubble_texts.append(f"{speaker}({btype}):「{text}」")
+        if btype == "moan":
+            has_moan = True
     bubbles_str = ", ".join(bubble_texts) if bubble_texts else "なし"
-    
+
     # オノマトペの要約
     onomatopoeia = scene.get("onomatopoeia", [])
     se_str = ", ".join(onomatopoeia) if onomatopoeia else "なし"
-    
+
     # 心情の要約
     feelings = scene.get("character_feelings", {})
     feelings_str = ", ".join(f"{k}: {v}" for k, v in feelings.items()) if isinstance(feelings, dict) and feelings else ""
-    
+
     # ストーリーフロー（次への繋がり）
     story_flow = scene.get("story_flow", "")
-    
+
+    # v9.0: sd_promptから物理状態を抽出
+    sd_prompt = scene.get("sd_prompt", "")
+    sd_tags_lower = {t.strip().lower().replace(" ", "_") for t in sd_prompt.split(",") if t.strip()}
+    clothing_state = sorted(_CLOTHING_STATE_TAGS & sd_tags_lower)
+    fluid_state = sorted(_FLUID_STATE_TAGS & sd_tags_lower)
+    expression_state = sorted(_EXPRESSION_STATE_TAGS & sd_tags_lower)
+
+    clothing_str = ",".join(clothing_state) if clothing_state else "着衣"
+    fluid_str = ",".join(fluid_state) if fluid_state else "なし"
+    expression_str = ",".join(expression_state) if expression_state else ""
+
+    # 物理状態行（簡潔に1行で）
+    phys_parts = [f"服装:{clothing_str}", f"体液:{fluid_str}"]
+    if expression_str:
+        phys_parts.append(f"表情:{expression_str}")
+    if has_moan:
+        phys_parts.append("喘ぎあり")
+    physical_line = " | ".join(phys_parts)
+
     return (
         f"[シーン{sid}] {title} (intensity={intensity}, {mood}) "
         f"場所:{location} / {desc}\n"
+        f"  物理状態: {physical_line}\n"
         f"  心情: {feelings_str}\n"
         f"  吹き出し: {bubbles_str}\n"
         f"  SE: {se_str}\n"
@@ -9046,6 +9383,23 @@ def _build_story_so_far(story_summaries: list, scene_results: list) -> str:
         for j in range(recent_start, n):
             parts.append(story_summaries[j])
 
+    # v9.0: 直前シーンの物理状態を明示抽出（generate_scene_draftのプロンプト注入用）
+    if scene_results:
+        last = scene_results[-1]
+        sd_prompt = last.get("sd_prompt", "")
+        sd_tags_lower = {t.strip().lower().replace(" ", "_") for t in sd_prompt.split(",") if t.strip()}
+        _cl = sorted(_CLOTHING_STATE_TAGS & sd_tags_lower)
+        _fl = sorted(_FLUID_STATE_TAGS & sd_tags_lower)
+        _ex = sorted(_EXPRESSION_STATE_TAGS & sd_tags_lower)
+        last_intensity = last.get("intensity", 3)
+        parts.append("")
+        parts.append("--- 前シーン最終物理状態（次シーンで引き継ぐこと） ---")
+        parts.append(f"服装: {', '.join(_cl) if _cl else '着衣'}")
+        parts.append(f"体液: {', '.join(_fl) if _fl else 'なし'}")
+        if _ex:
+            parts.append(f"表情: {', '.join(_ex)}")
+        parts.append(f"興奮レベル: intensity={last_intensity}")
+
     return "\n".join(parts)
 
 
@@ -9065,6 +9419,7 @@ def generate_scene_draft(
     scene_index: int = -1,
     total_scenes: int = 0,
     _return_prompt_only: bool = False,
+    faceless_male: bool = True,
 ) -> dict:
     skill = load_skill("low_cost_pipeline")
 
@@ -9367,7 +9722,35 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
     theme_tags_combined = f"{theme_sd_tags}, {theme_sd_expressions}".strip(", ")
     
     # === Prompt Caching: 共通部分（全シーンで同一）とシーン固有部分を分離 ===
-    
+
+    # v9.0: faceless_male 対応の男性描写セクション構築
+    if male_description and faceless_male:
+        _male_section = f"""
+## 男性キャラクター外見設定
+**外見: {male_description}**
+- descriptionに男性が登場する場合、必ずこの外見設定を反映した描写にすること
+- 男性はfaceless male（顔なし）として扱う。男性の顔の特徴（目・鼻・口・表情）は一切描写しない
+- 描写例: 「{male_description}の男に押し倒され…」「背後から{male_description}に覆いかぶさられ…」
+"""
+    elif male_description and not faceless_male:
+        _male_section = f"""
+## 男性キャラクター外見設定
+**外見: {male_description}**
+- descriptionに男性が登場する場合、必ずこの外見設定を反映した描写にすること
+- 男性の外見（体型・髪型・服装・表情）を一貫して描写すること
+- 描写例: 「{male_description}の男に押し倒され…」「背後から{male_description}に覆いかぶさられ…」
+"""
+    elif faceless_male:
+        _male_section = """
+## 男性キャラクター
+- 男性はfaceless male（顔なし）として扱う。男性の顔の特徴（目・鼻・口・表情）は一切描写しない
+"""
+    else:
+        _male_section = """
+## 男性キャラクター
+- 男性の外見（体型・髪型・服装・表情）を一貫して描写すること
+"""
+
     # 共通部分（キャッシュ対象）- CG集フォーマット完全対応
     common_system = f"""{jailbreak}
 
@@ -9382,16 +9765,7 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 {char_guide if char_guide else "（キャラ設定なし）"}
 
 {char_pool_section}
-{f"""
-## 男性キャラクター外見設定
-**外見: {male_description}**
-- descriptionに男性が登場する場合、必ずこの外見設定を反映した描写にすること
-- 男性はfaceless male（顔なし）として扱う。男性の顔の特徴（目・鼻・口・表情）は一切描写しない
-- 描写例: 「{male_description}の男に押し倒され…」「背後から{male_description}に覆いかぶさられ…」
-""" if male_description else """
-## 男性キャラクター
-- 男性はfaceless male（顔なし）として扱う。男性の顔の特徴（目・鼻・口・表情）は一切描写しない
-"""}
+{_male_section}
 ## FANZA同人CG集フォーマット
 「セリフ付きCG集」＝1枚絵に吹き出し+オノマトペ。**画像がメイン、テキストはサブ**。
 各ページ: CG画像1枚 + 吹き出し1-3個（ヒロイン1-2+男0-1） + SE 0-4個
@@ -9474,7 +9848,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
     # シーン別SD推奨タグ（ポーズ・表情）+ テーマ別タグ - 大幅拡張
     intensity_sd_tags = {
         5: f"ahegao, orgasm, cum, creampie, cum_overflow, cum_on_body, trembling, convulsing, full_body_spasm, tears, heavy_breathing, drooling, rolling_eyes, tongue_out, mind_break, fucked_silly, sweat, wet, {theme_sd_expressions}",
-        4: f"sex, vaginal, penetration, nude, spread_legs, missionary, doggy_style, cowgirl_position, moaning, sweat, blush, panting, pussy_juice, groping, breast_grab, faceless_male, grabbing_hips, {theme_sd_expressions}",
+        4: f"sex, vaginal, penetration, nude, spread_legs, missionary, doggy_style, cowgirl_position, moaning, sweat, blush, panting, pussy_juice, groping, breast_grab, grabbing_hips, {theme_sd_expressions}",
         3: f"kiss, french_kiss, undressing, groping, breast_grab, nipple_play, fingering, blush, nervous, anticipation, wet_panties, bra_pull, panties_aside, embarrassed, {theme_sd_expressions}",
         2: f"eye_contact, close-up, romantic, blushing, hand_holding, leaning_close, nervous, looking_away, {theme_sd_expressions}",
         1: f"portrait, smile, casual, standing, looking_at_viewer, {theme_sd_expressions}"
@@ -9584,6 +9958,34 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 ---
 """
 
+    # v9.0: 物理状態引き継ぎ指示を抽出・注入
+    physical_state_section = ""
+    if story_so_far and "前シーン最終物理状態" in story_so_far:
+        _phys_lines = []
+        _in_phys = False
+        for _line in story_so_far.split("\n"):
+            if "前シーン最終物理状態" in _line:
+                _in_phys = True
+                continue
+            if _in_phys:
+                _sl = _line.strip()
+                if _sl.startswith("服装:") or _sl.startswith("体液:") or _sl.startswith("表情:") or _sl.startswith("興奮レベル:"):
+                    _phys_lines.append(_sl)
+                elif _sl == "" or _sl.startswith("---"):
+                    break
+        if _phys_lines:
+            physical_state_section = "\n### ⚠️ 前シーンの物理状態（必ず引き継ぐこと）\n"
+            for _pl in _phys_lines:
+                physical_state_section += f"- {_pl}\n"
+            physical_state_section += (
+                "※ 射精後のシーンでは体液が残っている描写をdescriptionとsd_promptに必ず含めること\n"
+                "※ 脱衣後のシーンで服が復活してはならない（前シーンでnudeなら今シーンもnude）\n"
+                "※ 表情の段階的変化: 前シーンの表情をベースに、intensityに応じて自然にエスカレートさせること\n"
+            )
+
+    if physical_state_section and story_context_section:
+        story_context_section = story_context_section.rstrip() + "\n" + physical_state_section + "---\n"
+
     # ロードマップセクション構築
     roadmap_section = ""
     if outline_roadmap:
@@ -9678,8 +10080,8 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 3. **bubblesは1-3個**（ヒロイン1-2個 + 男性0-1個。セリフの長さは自由）。男性セリフは全体の25-35%のシーンにのみ入れること（20シーンなら5-7シーンのみ）
 4. typeはspeech/moan/thoughtの3種。intensity 4-5はmoanメイン。**moanには喘ぎ声のみ（説明文禁止）**
 5. **onomatopoeiaは場面に合った効果音**（intensity 1-2はなし〜1個、3は1-2個、4-5は2-4個）
-6. sd_promptは「{QUALITY_POSITIVE_TAGS}」の後にカンマで区切り「キャラ外見 + ポーズ + 表情 + 場所・背景 + 照明」を続ける。quality括弧の中にはmasterpiece, best_qualityのみ入れる。キャラ名やheadphones等の外見タグは括弧外に書くこと
-7. **sd_promptはこのシーンの実際の内容のみを反映**すること
+6. sd_promptはこのシーン固有の描写タグのみ出力: 「キャラ外見 + ポーズ・行為 + 表情 + エロ描写 + アングル + 場所・背景 + 照明」。**品質タグ(masterpiece, best_quality, score_9等)は絶対に含めるな**（後処理で自動付与される）
+7. **sd_promptにLoRAタグ(<lora:...>)を絶対に含めるな**。出力はDanbooruタグのみ
 8. **sd_promptにオノマトペ・日本語テキストを含めない**（英語のDanbooruタグのみ使用）
 9. **前シーンの流れを必ず引き継ぐこと**
 10. **キャラの一人称・語尾はキャラガイドを絶対厳守**
@@ -9924,7 +10326,7 @@ def apply_fix(
 def _generate_single_scene_for_wave(
     client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
     callback, story_so_far, synopsis, current_roadmap, male_description,
-    scene_index, total_scenes, timestamp,
+    scene_index, total_scenes, timestamp, faceless_male=True,
 ):
     """Wave並列生成用: 1シーン分の生成+エラーハンドリング。
 
@@ -9944,6 +10346,7 @@ def _generate_single_scene_for_wave(
             male_description=male_description,
             scene_index=scene_index,
             total_scenes=total_scenes,
+            faceless_male=faceless_male,
         )
         draft["intensity"] = intensity
         scene_val = validate_scene(draft, scene_index)
@@ -10058,7 +10461,7 @@ def _generate_scenes_wave(
     wave_scenes, client, context, jailbreak, cost_tracker, theme, char_profiles,
     callback, story_so_far, synopsis, roadmap_lines, male_description,
     total_scenes, timestamp, max_workers=CONCURRENT_BATCH_SIZE,
-    outline=None,
+    outline=None, faceless_male=True,
 ):
     """Wave内の全シーンをThreadPoolExecutorで同時生成し、scene_index順にソートして返す。
 
@@ -10102,7 +10505,7 @@ def _generate_scenes_wave(
                 _generate_single_scene_for_wave,
                 client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
                 callback, story_so_far_augmented, synopsis, current_roadmap, male_description,
-                scene_index, total_scenes, timestamp,
+                scene_index, total_scenes, timestamp, faceless_male,
             )
             futures[future] = scene_index
 
@@ -10145,6 +10548,7 @@ def generate_pipeline(
     sd_suffix_tags: str = "",
     provider: str = "",
     quality_priority: bool = False,
+    faceless_male: bool = True,
 ) -> tuple[list, CostTracker]:
     client = anthropic.Anthropic(api_key=api_key)
     log_message("Claude (Anthropic) バックエンドで生成開始")
@@ -10260,7 +10664,7 @@ def generate_pipeline(
         callback("🔧 Phase 2: ストーリー原案作成")
 
     try:
-        synopsis = generate_synopsis(client, concept, context, num_scenes, theme, cost_tracker, callback, male_description=male_description)
+        synopsis = generate_synopsis(client, concept, context, num_scenes, theme, cost_tracker, callback, male_description=male_description, faceless_male=faceless_male)
         log_message(f"あらすじ生成完了: {len(synopsis)}文字")
 
         # あらすじをファイルに保存
@@ -10285,7 +10689,7 @@ def generate_pipeline(
         callback("🔧 Phase 3: シーン分割")
 
     try:
-        outline = generate_outline(client, context, num_scenes, theme, cost_tracker, callback, synopsis=synopsis, story_structure=story_structure, male_description=male_description)
+        outline = generate_outline(client, context, num_scenes, theme, cost_tracker, callback, synopsis=synopsis, story_structure=story_structure, male_description=male_description, faceless_male=faceless_male)
         log_message(f"アウトライン生成完了: {len(outline)}シーン")
         
         intensity_counts = {}
@@ -10413,7 +10817,7 @@ def generate_pipeline(
                 wave_scenes, client, context, jailbreak, cost_tracker, theme,
                 char_profiles, callback, story_so_far, synopsis, roadmap_lines,
                 male_description, len(outline), timestamp,
-                outline=outline,
+                outline=outline, faceless_male=faceless_male,
             )
 
             # 結果をscene_index順に蓄積
@@ -10477,6 +10881,7 @@ def generate_pipeline(
                     male_description=male_description,
                     scene_index=i,
                     total_scenes=len(outline),
+                    faceless_male=faceless_male,
                 )
 
                 draft["intensity"] = intensity
@@ -10528,6 +10933,7 @@ def generate_pipeline(
                             male_description=male_description,
                             scene_index=i,
                             total_scenes=len(outline),
+                            faceless_male=faceless_male,
                         )
                         draft["intensity"] = intensity
                         results.append(draft)
@@ -10564,6 +10970,7 @@ def generate_pipeline(
                                 male_description=male_description,
                                 scene_index=i,
                                 total_scenes=len(outline),
+                                faceless_male=faceless_male,
                             )
                             draft["intensity"] = intensity
                             results.append(draft)
@@ -10665,7 +11072,8 @@ def generate_pipeline(
                                         sd_quality_tags=sd_quality_tags,
                                         sd_prefix_tags=sd_prefix_tags,
                                         sd_suffix_tags=sd_suffix_tags,
-                                        theme=theme)
+                                        theme=theme,
+                                        faceless_male=faceless_male)
         log_message("SDプロンプト最適化完了")
         if callback:
             callback("[OK]SDプロンプト最適化完了")
@@ -10962,15 +11370,20 @@ def export_json(results: list, output_path: Path, metadata: dict = None):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def export_sd_prompts(results: list, output_path: Path):
+def export_sd_prompts(results: list, output_path: Path,
+                      negative_prompt: str = ""):
     """SDプロンプト一括エクスポート（1行1プロンプト、シーンID付き）"""
+    neg = negative_prompt.strip() if negative_prompt else DEFAULT_NEGATIVE_PROMPT
     lines = []
+    lines.append(f"# Negative prompt (common): {neg}")
+    lines.append("")
     for scene in results:
         sd = scene.get("sd_prompt", "").strip()
         if sd:
             sid = scene.get("scene_id", "?")
             lines.append(f"# Scene {sid}: {scene.get('title', '')}")
             lines.append(sd)
+            lines.append(f"Negative prompt: {neg}")
             lines.append("")
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
@@ -12474,7 +12887,8 @@ class ExportDialog(ctk.CTkToplevel):
                         exported.append(f"Excel: {p.name}")
                 elif fmt == "sd_prompts":
                     p = EXPORTS_DIR / f"sd_prompts_{timestamp}.txt"
-                    export_sd_prompts(self.results, p)
+                    _neg = self.sd_negative_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_negative_text') else ""
+                    export_sd_prompts(self.results, p, negative_prompt=_neg)
                     exported.append(f"SDプロンプト: {p.name}")
                 elif fmt == "wildcard":
                     p = EXPORTS_DIR / f"wildcard_{timestamp}.txt"
@@ -12960,6 +13374,23 @@ class App(ctk.CTk):
         self.male_skin_color_combo.pack(side="left", padx=(0, 0))
         self.male_skin_color_combo.set("おまかせ")
 
+        # faceless_male チェックボックス（デフォルトON）
+        male_faceless_row = ctk.CTkFrame(male_char_frame, fg_color="transparent")
+        male_faceless_row.pack(fill="x", padx=4, pady=(4, 0))
+        self.male_faceless_var = ctk.BooleanVar(value=True)
+        self.male_faceless_check = ctk.CTkCheckBox(
+            male_faceless_row, text="faceless_male（顔なし）",
+            variable=self.male_faceless_var,
+            font=ctk.CTkFont(family=FONT_JP, size=12),
+            height=28,
+        )
+        self.male_faceless_check.pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(
+            male_faceless_row, text="※ OFFにすると男性の顔も描写されます",
+            font=ctk.CTkFont(family=FONT_JP, size=11),
+            text_color="#888888",
+        ).pack(side="left")
+
         # ── シーン環境 ──
         env_frame = ctk.CTkFrame(concept_card, fg_color="transparent")
         env_frame.pack(fill="x", padx=16, pady=(0, 8))
@@ -13086,6 +13517,30 @@ class App(ctk.CTk):
         )
         self.sd_suffix_text.pack(fill="x", pady=(0, 8))
         self.sd_suffix_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_suffix_text, 100, 1200))
+
+        # --- ネガティブプロンプト（v9.0） ---
+        _neg_header = ctk.CTkFrame(sd_content, fg_color="transparent")
+        _neg_header.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(
+            _neg_header, text="ネガティブプロンプト（エクスポート時に付与）",
+            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(side="left")
+        MaterialButton(
+            _neg_header, text="リセット", variant="text", size="small",
+            command=lambda: (self.sd_negative_text.delete("1.0", "end"),
+                             self.sd_negative_text.insert("1.0", DEFAULT_NEGATIVE_PROMPT))
+        ).pack(side="right")
+        self.sd_negative_text = ctk.CTkTextbox(
+            sd_content, height=80,
+            font=ctk.CTkFont(size=13),
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+        )
+        self.sd_negative_text.pack(fill="x", pady=(0, 8))
+        self.sd_negative_text.insert("1.0", DEFAULT_NEGATIVE_PROMPT)
+        self.sd_negative_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_negative_text, 80, 600))
 
         # 区切り線
         ctk.CTkFrame(sd_content, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", pady=8)
@@ -13580,6 +14035,8 @@ class App(ctk.CTk):
             if _mc:  # 値がある時だけ操作（空の場合はプレースホルダー維持）
                 self.male_custom_field.delete(0, "end")
                 self.male_custom_field.insert(0, _mc)
+        if "male_faceless" in self.config_data and hasattr(self, 'male_faceless_var'):
+            self.male_faceless_var.set(self.config_data["male_faceless"])
         if "male_hair_style" in self.config_data and hasattr(self, 'male_hair_style_combo'):
             self.male_hair_style_combo.set(self.config_data["male_hair_style"])
         if "male_hair_color" in self.config_data and hasattr(self, 'male_hair_color_combo'):
@@ -13609,6 +14066,10 @@ class App(ctk.CTk):
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", self.config_data["sd_suffix_tags"])
             self._auto_resize_textbox(self.sd_suffix_text, 100, 1200)
+        if self.config_data.get("sd_negative_prompt"):
+            self.sd_negative_text.delete("1.0", "end")
+            self.sd_negative_text.insert("1.0", self.config_data["sd_negative_prompt"])
+            self._auto_resize_textbox(self.sd_negative_text, 80, 600)
 
         # v8.7: 品質優先モードの復元
         if self.config_data.get("quality_priority") and hasattr(self, 'quality_priority_var'):
@@ -14001,6 +14462,7 @@ class App(ctk.CTk):
             "concept_preset_name": self.concept_name_menu.get(),
             "male_preset": self.male_preset_combo.get() if hasattr(self, 'male_preset_combo') else "おまかせ",
             "male_custom": self.male_custom_field.get() if hasattr(self, 'male_custom_field') else "",
+            "male_faceless": self.male_faceless_var.get() if hasattr(self, 'male_faceless_var') else True,
             "male_hair_style": self.male_hair_style_combo.get() if hasattr(self, 'male_hair_style_combo') else "おまかせ",
             "male_hair_color": self.male_hair_color_combo.get() if hasattr(self, 'male_hair_color_combo') else "おまかせ",
             "male_skin_color": self.male_skin_color_combo.get() if hasattr(self, 'male_skin_color_combo') else "おまかせ",
@@ -14010,6 +14472,7 @@ class App(ctk.CTk):
             "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
+            "sd_negative_prompt": self.sd_negative_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_negative_text') else DEFAULT_NEGATIVE_PROMPT,
             "quality_priority": self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False,
         }
         save_config(self.config_data)
@@ -14033,6 +14496,7 @@ class App(ctk.CTk):
             "work_type": "二次創作",
             "male_preset": self.male_preset_combo.get() if hasattr(self, 'male_preset_combo') else "おまかせ",
             "male_custom": self.male_custom_field.get() if hasattr(self, 'male_custom_field') else "",
+            "male_faceless": self.male_faceless_var.get() if hasattr(self, 'male_faceless_var') else True,
             "male_hair_style": self.male_hair_style_combo.get() if hasattr(self, 'male_hair_style_combo') else "おまかせ",
             "male_hair_color": self.male_hair_color_combo.get() if hasattr(self, 'male_hair_color_combo') else "おまかせ",
             "male_skin_color": self.male_skin_color_combo.get() if hasattr(self, 'male_skin_color_combo') else "おまかせ",
@@ -14042,6 +14506,7 @@ class App(ctk.CTk):
             "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
+            "sd_negative_prompt": self.sd_negative_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_negative_text') else DEFAULT_NEGATIVE_PROMPT,
         }
 
     def apply_config(self, config: dict):
@@ -14090,6 +14555,8 @@ class App(ctk.CTk):
             if _mc:  # 値がある時だけ操作（空の場合はプレースホルダー維持）
                 self.male_custom_field.delete(0, "end")
                 self.male_custom_field.insert(0, _mc)
+        if "male_faceless" in config and hasattr(self, 'male_faceless_var'):
+            self.male_faceless_var.set(config["male_faceless"])
         if "male_hair_style" in config and hasattr(self, 'male_hair_style_combo'):
             self.male_hair_style_combo.set(config["male_hair_style"])
         if "male_hair_color" in config and hasattr(self, 'male_hair_color_combo'):
@@ -14118,6 +14585,10 @@ class App(ctk.CTk):
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", config["sd_suffix_tags"])
             self._auto_resize_textbox(self.sd_suffix_text, 100, 1200)
+        if config.get("sd_negative_prompt") and hasattr(self, 'sd_negative_text'):
+            self.sd_negative_text.delete("1.0", "end")
+            self.sd_negative_text.insert("1.0", config["sd_negative_prompt"])
+            self._auto_resize_textbox(self.sd_negative_text, 80, 600)
         self.update_cost_preview()
 
     def refresh_profile_list(self):
@@ -14493,6 +14964,7 @@ class App(ctk.CTk):
             _sd_suffix = self.sd_suffix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_suffix_text') else ""
 
             _quality_priority = self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False
+            _faceless_male = self.male_faceless_var.get() if hasattr(self, 'male_faceless_var') else True
             results, cost_tracker, pipeline_metadata = generate_pipeline(
                 api_key, concept, full_characters, num_scenes, theme, callback,
                 story_structure=story_structure,
@@ -14503,6 +14975,7 @@ class App(ctk.CTk):
                 sd_suffix_tags=_sd_suffix,
                 provider=PROVIDER_CLAUDE,
                 quality_priority=_quality_priority,
+                faceless_male=_faceless_male,
             )
 
             if self.stop_requested:
@@ -14519,7 +14992,8 @@ class App(ctk.CTk):
 
             export_csv(results, csv_path)
             export_json(results, json_path, metadata=pipeline_metadata)
-            export_sd_prompts(results, sd_path)
+            _neg_prompt = self.sd_negative_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_negative_text') else ""
+            export_sd_prompts(results, sd_path, negative_prompt=_neg_prompt)
             export_wildcard(results, wc_path,
                            male_tags=_male_tags, time_tags=_time_tags,
                            location_type=_location_type)

@@ -1,5 +1,54 @@
 # Changelog
 
+## [9.0.0] - 2026-02-24
+
+### Added (faceless_male制御 + 物理状態トラッキング + SD品質大幅強化)
+
+#### faceless_male デフォルトON + UI切替
+- UI: `faceless_male（顔なし）` チェックボックス追加（デフォルトON）
+- SDタグ: intensity≥3制限を撤廃 → 全シーンで `1boy` + `faceless_male` 自動付与
+- OFF時: `faceless_male` タグ除外 + 物語プロンプトを「外見を一貫して描写」に切替
+- パイプライン全経路伝播: `generate_synopsis` → `generate_outline` → `generate_scene_draft` → `_generate_single_scene_for_wave` → `_generate_scenes_wave` → `enhance_sd_prompts`
+- 設定保存/復元: `male_faceless` を config.json に永続化
+- intensity 4テンプレートのハードコード `faceless_male` を除去（動的注入に統一）
+
+#### 物理状態トラッキング（シーン間の服装・体液・表情引き継ぎ）
+- `_CLOTHING_STATE_TAGS` (22個): nude/topless/panties_aside/skirt_lift 等
+- `_FLUID_STATE_TAGS` (19個): cum/cum_on_body/pussy_juice/sweat/drooling 等
+- `_EXPRESSION_STATE_TAGS` (14個): ahegao/blush/tears/heart_pupils/torogao 等
+- `extract_scene_summary()` 強化: SDプロンプトから物理状態を自動抽出してサマリに含める
+  - 出力例: `物理状態: 服装:nude | 体液:cum_on_body,sweat | 表情:ahegao,drooling | 喘ぎあり`
+- `_build_story_so_far()` 強化: 直前シーンの物理状態を明示セクションとして追加
+- `generate_scene_draft()` 強化: story_so_farから物理状態を抽出し、プロンプトに自動注入
+  - 「射精後は体液残留」「脱衣後に服復活禁止」「表情の段階的エスカレート」指示
+
+#### セリフ→SDプロンプト連動
+- `_BUBBLE_MOAN_SD`: 喘ぎ系キーワード → `open_mouth`/`tongue_out`/`drooling`/`tears`/`rolling_eyes`/`ahegao`
+- `_BUBBLE_THOUGHT_SD`: 心情キーワード → `trembling`/`blush`/`crying`/`heart_pupils`/`dazed`
+- `_BUBBLE_SPEECH_SD`: 発話キーワード → `covering_face`/`looking_away`/`clenched_teeth`
+- enhance_sd_prompts内で全シーンのbubblesを走査し、該当SDタグを自動注入
+
+#### アングル多様性管理
+- `_ANGLE_TAGS` (15種): close-up/full_body/upper_body/from_behind/pov/dutch_angle/cowboy_shot 等
+- `_INTENSITY_ANGLE_MAP` (5段階): intensity別の推奨アングルプール
+  - i=1: portrait/full_body / i=3: close-up/from_above/pov / i=5: close-up/pov/dutch_angle
+- 3連続同一アングル自動差替え: enhance_sd_prompts内で検出→代替アングルに置換
+- アングルタグ未指定シーン (intensity≥2): 前シーンと被らないアングルを自動注入
+
+#### SDプロンプト品質タグ除去強化
+- `_QUALITY_TAGS_TO_REMOVE` (17種): masterpiece/best_quality/score_9/highres/absurdres 等
+- enhance_sd_prompts内で3段除去: 品質タグ + LoRA (`<lora:...>`) + score_Nパターン
+- validate_script: 品質タグ混入検出 + LoRAタグ混入検出（警告出力）
+
+#### 体液・服装の段階的蓄積トラッキング
+- `_CLOTHING_UNDRESS_LEVEL` (30+段階): clothes_pull(1) → partially_undressed(2) → topless(4) → nude(5)
+  - 脱衣逆行防止: 前シーンnude→現シーンにnude自動維持 / topless→最低partially_undressed
+- `_PERSISTENT_FLUID_TAGS` (9種): cum/cum_on_body/cum_on_face/cum_in_pussy/cum_overflow 等
+  - 射精後の体液持続: 以降のシーンに最大2個/シーンで自動引き継ぎ
+- auto_fix Step 23: 服装復活防止 + 射精後体液持続の自動修正（後処理）
+
+---
+
 ## [8.9.0] - 2026-02-23
 
 ### Fixed (100シーン品質7残存問題根絶 + 時間軸制御 + テーマ整合)
