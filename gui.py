@@ -6,9 +6,38 @@ Skills: prompt_compactor → low_cost_pipeline → script_quality_supervisor
 UI: Material Design 3 inspired
 """
 
+import sys
+import types as _types
+
+# v9.0-hotfix: platform.system()がこの環境でハングするため静的値に差し替え
+# （anthropic SDKの_build_headers()が毎回呼ぶ）
+import platform as _platform
+_platform.system = lambda: "Windows"
+_platform.platform = lambda: "Windows-11"
+_platform.machine = lambda: "AMD64"
+_platform.release = lambda: "11"
+_platform.python_version = lambda: ".".join(str(x) for x in sys.version_info[:3])
+
+# v9.0-hotfix: darkdetectがこの環境でハングするためwinregで代替
+_dd = _types.ModuleType("darkdetect")
+try:
+    import winreg as _winreg
+    _key = _winreg.OpenKey(
+        _winreg.HKEY_CURRENT_USER,
+        r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+    _val, _ = _winreg.QueryValueEx(_key, "AppsUseLightTheme")
+    _winreg.CloseKey(_key)
+    _dd_theme = "Light" if _val else "Dark"
+except Exception:
+    _dd_theme = "Dark"
+_dd.theme = lambda: _dd_theme
+_dd.isDark = lambda: _dd_theme == "Dark"
+_dd.isLight = lambda: _dd_theme == "Light"
+_dd.listener = lambda callback: None
+sys.modules["darkdetect"] = _dd
+
 import json
 import csv
-import sys
 import time
 import random
 import threading

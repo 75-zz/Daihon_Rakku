@@ -1,5 +1,34 @@
 # Changelog
 
+## [9.0.1] - 2026-02-24
+
+### Fixed (環境依存ハング修正 + v9.4リバート)
+
+#### 起動ハング修正（環境依存）
+- `darkdetect` がctypes advapi32経由でハングする環境向けに `winreg` ベースの代替を追加
+  - customtkinter import前に `sys.modules["darkdetect"]` をモックモジュールで差し替え
+  - `winreg` でAppsUseLightThemeを読み取り、実際のOSテーマを反映
+- `platform.system()` がハングする環境向けに静的値で差し替え
+  - anthropic SDK 0.77.1の `_build_headers()` が毎回API呼び出し時に `platform.system()` を呼ぶため全API通信が停止する問題を回避
+
+#### v9.4「品質極限向上」全面リバート
+- マルチサンプリング（1シーン3回API呼び出し）を撤去
+- refine_scene_draft()（追加Sonnet呼び出し）を撤去
+- polish_scene() Opus/Sonnet清書パス（追加呼び出し）を撤去
+- API矛盾修正バッチ呼び出しを撤去
+- temperature制御・Wave i≥4直列化・thought near-dedup強化・Phase Grouping Windowを撤去
+- **理由**: 1シーンあたりAPI呼び出しが1回→5回に増加し、コスト3倍以上。ユーザー同意なく実装されたため全面撤去
+
+### Added
+- `CLAUDE.md` にAPIコスト安全ルールを追加
+  - コスト増加変更は事前同意必須
+  - 段階実装の厳守（Phase飛ばし禁止）
+  - 変更後の起動+API疎通確認必須
+  - リトライ上限・タイムアウト設定必須
+  - 迷ったら安全側に倒す原則
+
+---
+
 ## [9.0.0] - 2026-02-24
 
 ### Added (faceless_male制御 + 物理状態トラッキング + SD品質大幅強化)

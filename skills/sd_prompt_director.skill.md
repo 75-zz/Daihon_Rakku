@@ -357,11 +357,37 @@ SETTING_STYLES適用時、3スタイル別の検証ルール。
 
 ---
 
-## 男性キャラ基本ルール
-- intensity≥3のheteroシーン → **必ず** `1boy, faceless_male` を含める
+## 男性キャラ基本ルール（v9.0更新）
+- **全intensityレベル**で `1boy, faceless_male` をデフォルト付与（UIで無効化可能）
 - 複数男性 → `multiple_boys, faceless_males`
 - 男の身体が見える場合 → `hetero, muscular_male` 等を適宜追加
-- 男の顔は出さない（faceless_male必須）
+- 男の顔は出さない（faceless_male必須、ユーザーが明示的にOFFにした場合のみ除外）
+
+---
+
+## ポジティブプロンプト品質基準（v9.1新設）
+
+### タグ密度目安
+| intensity | 最低タグ数 | 必須カテゴリ |
+|---|---|---|
+| 1-2 | 10-12 | キャラ外見, 衣装, 表情, アングル, 背景, 照明 |
+| 3 | 15-16 | 上記 + 身体反応, 体液(微量) |
+| 4 | 20-22 | 上記 + 体位, 行為, 肌質感, 髪状態 |
+| 5 | 25+ | 上記 + 絶頂表現, 大量体液, 痙攣 |
+
+### 必須7カテゴリ（intensity 3以上）
+1. **キャラ外見**: 髪色, 髪型, 目色, 体型（1girl, long_hair, blue_eyes等）
+2. **衣装/裸体**: 現在の服装状態（nude, panties_aside等）
+3. **体位・行為**: 具体的な体位（missionary, doggy_style等）+ 行為（sex, vaginal等）
+4. **表情・身体反応**: 具体的な表情（ahegao等）+ 身体反応（sweaty_body, flushed_skin等）
+5. **体液**: pussy_juice, cum, saliva_trail等
+6. **カメラアングル**: pov, from_below, close-up等（1つ）
+7. **背景+照明**: bedroom, dim_lighting等
+
+### 品質タグは後処理で付与
+- sd_promptに `masterpiece`, `best_quality`, `score_9` 等の品質タグは含めない
+- LoRAタグ (`<lora:...>`) も含めない
+- ユーザーのprefix/suffixで自動付与される
 
 ---
 
