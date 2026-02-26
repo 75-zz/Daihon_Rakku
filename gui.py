@@ -462,7 +462,11 @@ THEME_GUIDES = {
             "「彼氏には言えない」「こんなの初めて」",
             "最終的に寝取り男を求める"
         ],
-        "dialogue_tone": "罪悪感と快感の葛藤、比較表現、堕ちていく過程",
+        "dialogue_tone": """罪悪感と快感の葛藤、比較表現、堕ちていく過程。
+■核心: 「彼氏より感じる自分」への罪悪感→快楽で塗り潰される過程を丁寧に描け
+■比較表現の書き方: thought内で「○○くんとは…違う…」「こんなの…初めて…」のように彼氏を想起させる
+■speech変化: 序盤「やめて…彼氏がいるの」→中盤「ごめんなさい…ごめん…」→終盤「もっと…♡」
+■NG: 彼氏の存在を忘れた普通のエロ。NTRは「裏切っている意識」が常にあってこそ成立する""",
         "use_heart": False,  # ♡は使わない
         "sd_tags": "netorare, cheating, corruption, guilt, unfaithful, stolen",
         "sd_expressions": "conflicted, guilty_pleasure, ahegao, mindbreak",
@@ -481,7 +485,11 @@ THEME_GUIDES = {
             "「やめて」「嫌」から変化",
             "屈辱的な状況設定"
         ],
-        "dialogue_tone": "抵抗、懇願、屈辱感、やがて快感を認める",
+        "dialogue_tone": """抵抗、懇願、屈辱感、やがて快感を認める。
+■核心: プライドが砕かれる過程。抵抗→身体の裏切り→屈辱の中の快楽→完全屈服
+■speech変化: 「ふざけないで」→「…っ…見るな…」→「嫌…なのに…♡」→「…はい…♡」
+■男性speech: 嘲笑・蔑み・命令で屈辱を増幅。「ほら、もう濡れてるぞ」「認めろよ」
+■NG: いきなりの快楽堕ち。屈辱される過程の「心が折れる瞬間」を丁寧に描け""",
         "use_heart": False,
         "sd_tags": "humiliation, forced, reluctant, crying, tears",
         "sd_expressions": "crying, fearful, reluctant, trembling, broken",
@@ -499,7 +507,11 @@ THEME_GUIDES = {
             "力で押さえつけられる",
             "「やめて」「助けて」"
         ],
-        "dialogue_tone": "懇願、抵抗、絶望、諦め",
+        "dialogue_tone": """懇願、抵抗、絶望、諦め。
+■核心: 恐怖→抵抗→身体の裏切り→心が壊れる。暴力ではなく「快楽で壊される」恐怖を描け
+■speech変化: 「助けて！」→「やめ…て…」→（言葉にならない）→「…もう…いい…」
+■thought活用: speechで拒否しつつ、thoughtで「なんで…感じてる…」の矛盾を描け
+■NG: 終始同じトーンの悲鳴。段階的に「壊れていく」グラデーションが命""",
         "use_heart": False,
         "sd_tags": "forced, rape, struggling, restrained, pinned_down",
         "sd_expressions": "crying, screaming, fearful, defeated",
@@ -517,7 +529,12 @@ THEME_GUIDES = {
             "愛情表現",
             "「好き」「愛してる」"
         ],
-        "dialogue_tone": "甘い、恥ずかしがり、愛情たっぷり",
+        "dialogue_tone": """甘い、恥ずかしがり、愛情たっぷり。
+■核心: 好きだからこそ恥ずかしい。信頼と恥じらいの共存。二人の感情が呼応する描写
+■speech特徴: 「好き」を直接言えない段階→言える段階の変化。「…見ないで…」「…嬉しい…♡」
+■男性speech: 命令ではなく確認と愛情。「怖くない？」「綺麗だよ」「もっと近くに来て」
+■thought: 「嬉しい…でも恥ずかしい…」の二律背反。幸福感を軸に描け
+■NG: 強制系と同じspeechパターン。純愛は「相互の愛情」が前提""",
         "use_heart": True,  # ♡OK
         "sd_tags": "romantic, loving, gentle, passionate, consensual",
         "sd_expressions": "blushing, happy, loving, content, peaceful",
@@ -552,7 +569,11 @@ THEME_GUIDES = {
             "「こんなの知らなかった」",
             "最終的に求めるように"
         ],
-        "dialogue_tone": "戸惑いから快楽への変化、堕ちていく過程",
+        "dialogue_tone": """戸惑いから快楽への変化、堕ちていく過程。
+■核心: 無垢な状態から快楽を教え込まれ、自ら求めるようになる変化。「教育」の過程を描け
+■speech変化: 「なにこれ…」→「もう少し…だけ…」→「もっと教えて♡」→「壊して♡」
+■thought: 「知らなかった…こんなの」→「だめ…でも止められない」→「もっと…♡」
+■NG: 最初から積極的。堕ちの「段階」が命。知らない→知る→求めるの3段階を丁寧に""",
         "use_heart": False,
         "sd_tags": "corruption, training, breaking, mindbreak",
         "sd_expressions": "confused, awakening, addicted, broken, ahegao",
@@ -571,7 +592,11 @@ THEME_GUIDES = {
             "声を出せない状況",
             "体が勝手に反応"
         ],
-        "dialogue_tone": "小声、我慢、羞恥",
+        "dialogue_tone": """小声、我慢、羞恥。
+■核心: 公共の場で声を出せない→それが逆に感覚を鋭敏にする。「バレたら終わり」の緊張感
+■speech: 全て小声・途切れがち。「やめ…ここ…電車…」「声…出ちゃ…」「人が…いるのに…」
+■thought: 「バレたら…」「こんなとこで…感じちゃだめ…」「…また来るの…待ってる…♡」
+■NG: 大声の喘ぎ。痴漢は「声を押し殺す」のが基本。moanも小声表現にすること""",
         "use_heart": False,
         "sd_tags": "chikan, groping, public, train, crowded, molested",
         "sd_expressions": "embarrassed, trying_not_to_moan, biting_lip, conflicted",
@@ -607,7 +632,12 @@ THEME_GUIDES = {
             "教室/保健室などの場所",
             "バレたら終わり"
         ],
-        "dialogue_tone": "敬語と砕けた表現の混在、禁断感",
+        "dialogue_tone": """敬語と砕けた表現の混在、禁断感。
+■核心: 敬語の崩壊=関係性の崩壊。「先生」という呼称がそのままエロさを増幅する
+■speech変化: 「先生…だめです…」→「先生…もう…」→「せんせ…♡」（敬語が崩壊していく）
+■thought: 「先生と生徒なのに…」「バレたら…退学…」「でも…止められない…」
+■場所効果: 学校の教室・準備室・体育倉庫=日常空間でのエロが背徳感を増幅
+■NG: 最初から恋人同士のような口調。「先生と生徒」の立場差が常にあること""",
         "use_heart": False,
         "sd_tags": "teacher, student, classroom, forbidden, taboo",
         "sd_expressions": "nervous, forbidden_pleasure, secretive",
@@ -644,7 +674,12 @@ THEME_GUIDES = {
             "「なぜ体が勝手に...」という混乱",
             "覚醒後も体が反応してしまう"
         ],
-        "dialogue_tone": "ぼんやりした口調、命令への無抵抗、覚醒時の混乱と羞恥",
+        "dialogue_tone": """ぼんやりした口調、命令への無抵抗、覚醒時の混乱と羞恥。
+■核心: 「自分の意思で感じている」と思わせるのが催眠の本質。無理やりではなく「自発的に見える」
+■speech変化: 「あれ…なんか…」→「気持ちいい…から…いいかな…」→「もっとして…♡」
+■thought: 「おかしい…でも…自然なこと…」「催眠じゃない…好きだから…」
+■覚醒時: 「え…なんで…裸…？」「嘘…私…何を…」の混乱が重要
+■NG: ロボットのような無感情応答。催眠中も「自然に見える」感情表現を入れること""",
         "use_heart": False,
         "sd_tags": "hypnosis, mind_control, blank_eyes, spiral_eyes, trance",
         "sd_expressions": "empty_eyes, dazed, vacant, drooling, mindless, confused",
@@ -1203,17 +1238,6 @@ def _build_dynamic_theme_guide(concept: str) -> dict:
         }
 
 
-DEFAULT_NEGATIVE_PROMPT = (
-    "worst_quality, low_quality, lowres, bad_anatomy, bad_hands, "
-    "missing_fingers, extra_fingers, mutated_hands, poorly_drawn_face, "
-    "ugly, deformed, blurry, text, watermark, signature, username, "
-    "censored, mosaic_censoring, bar_censor, "
-    "loli, shota, child, flat_chest, "
-    "3d, realistic, photo, "
-    "extra_limbs, missing_limbs, fused_fingers, too_many_fingers, "
-    "anatomical_nonsense, bad_proportions, wrong_anatomy"
-)
-
 QUALITY_POSITIVE_TAGS = "(masterpiece, best_quality:1.2)"
 QUALITY_TAGS_DISABLED = "__DISABLED__"  # カスタムモードで空欄→quality tags無し
 
@@ -1337,6 +1361,538 @@ _EXPRESSION_STATE_TAGS = {
     "tongue_out", "rolling_eyes", "trembling", "heart_pupils",
     "torogao", "half-closed_eyes", "clenched_teeth", "open_mouth",
 }
+
+# ── ナラティブ→SDタグ意味連携マップ (Phase1) ──────────────────────────
+# description/mood/direction/character_feelings の日本語キーワード → Danbooruタグ
+_NARRATIVE_SD_MAP = {
+    "position": {
+        "正常位": ["missionary", "on_back"],
+        "バック": ["doggy_style", "from_behind"],
+        "後ろから": ["doggy_style", "from_behind"],
+        "背面": ["from_behind"],
+        "騎乗位": ["cowgirl_position", "girl_on_top"],
+        "跨": ["cowgirl_position", "straddling"],
+        "四つん這い": ["all_fours"],
+        "仰向け": ["on_back", "lying"],
+        "うつ伏せ": ["on_stomach", "prone"],
+        "寝バック": ["prone_bone", "on_stomach"],
+        "立ちバック": ["standing_sex", "from_behind"],
+        "立位": ["standing_sex", "standing"],
+        "座位": ["sitting", "sitting_on_lap"],
+        "膝立ち": ["kneeling"],
+        "開脚": ["spread_legs"],
+        "足を持ち上げ": ["legs_up"],
+        "抱え上げ": ["carrying", "suspended"],
+        "側臥位": ["spooning", "on_side"],
+        "横向き": ["on_side"],
+        "駅弁": ["carrying", "legs_around_waist"],
+        "対面座位": ["sitting_on_lap", "face_to_face"],
+        "寝そべ": ["lying", "on_back"],
+        "馬乗り": ["straddling", "girl_on_top"],
+        "押し倒": ["pinned_down"],
+        "圧迫": ["mating_press", "pinned_down"],
+    },
+    "action": {
+        "挿入": ["vaginal", "penetration"],
+        "突い": ["thrusting", "sex"],
+        "突か": ["thrusting", "sex"],
+        "腰を振": ["hip_thrust", "sex"],
+        "ピストン": ["thrusting", "sex"],
+        "愛撫": ["caressing"],
+        "胸を揉": ["breast_grab", "groping"],
+        "乳首": ["nipple_tweak"],
+        "フェラ": ["fellatio", "oral"],
+        "咥え": ["fellatio", "oral"],
+        "舐め": ["licking"],
+        "クンニ": ["cunnilingus", "oral"],
+        "手マン": ["fingering"],
+        "指を入": ["fingering", "insertion"],
+        "パイズリ": ["paizuri"],
+        "足コキ": ["footjob"],
+        "素股": ["grinding", "intercrural"],
+        "中出し": ["cum_in_pussy", "creampie"],
+        "射精": ["ejaculation", "cum"],
+        "イク": ["orgasm"],
+        "絶頂": ["orgasm"],
+        "アナル": ["anal"],
+    },
+    "expression": {
+        "恥ずかし": ["embarrassed", "blush", "looking_away"],
+        "照れ": ["blush", "embarrassed"],
+        "涙": ["tears", "crying"],
+        "泣い": ["tears", "crying"],
+        "泣き": ["tears", "crying"],
+        "嗚咽": ["crying", "sobbing"],
+        "絶頂": ["orgasm", "ahegao"],
+        "イッ": ["orgasm", "ahegao"],
+        "アヘ": ["ahegao", "rolling_eyes"],
+        "白目": ["rolling_eyes"],
+        "トロ": ["torogao", "half-closed_eyes"],
+        "恍惚": ["dazed", "half-closed_eyes"],
+        "虚ろ": ["empty_eyes", "dazed"],
+        "放心": ["dazed", "empty_eyes"],
+        "怯え": ["scared", "trembling"],
+        "怖": ["fearful", "trembling"],
+        "微笑": ["smile"],
+        "笑顔": ["smile", "happy"],
+        "喘い": ["panting", "open_mouth"],
+        "喘ぎ": ["panting", "open_mouth"],
+        "息を荒": ["heavy_breathing", "panting"],
+        "苦悶": ["pained_expression", "clenched_teeth"],
+        "歯を食いしば": ["clenched_teeth"],
+        "唇を噛": ["lip_biting"],
+        "舌を出": ["tongue_out"],
+        "目を見開": ["wide-eyed"],
+        "目を閉じ": ["closed_eyes"],
+        "目を逸ら": ["looking_away"],
+        "赤面": ["blush", "embarrassed"],
+        "快楽": ["pleasure", "blush"],
+    },
+    "body_state": {
+        "汗だく": ["sweaty_body", "sweat_drops"],
+        "汗": ["sweat"],
+        "震え": ["trembling"],
+        "ビクビク": ["trembling"],
+        "痙攣": ["trembling", "convulsion"],
+        "髪が乱れ": ["messy_hair"],
+        "髪を振り乱": ["messy_hair"],
+        "体を反ら": ["arched_back"],
+        "仰け反": ["arched_back", "head_back"],
+        "力が抜け": ["limp", "exhausted"],
+        "ぐったり": ["exhausted", "limp"],
+        "脱力": ["exhausted", "limp"],
+        "肌が紅潮": ["blush", "flushed"],
+        "全身が熱": ["flushed", "sweat"],
+        "よだれ": ["drooling"],
+    },
+    "hand_action": {
+        "シーツを掴": ["gripping_sheets"],
+        "シーツを握": ["gripping_sheets"],
+        "腰を掴": ["grabbing_hips"],
+        "腰に手": ["hand_on_hip"],
+        "髪を掴": ["hair_pulling"],
+        "髪を引": ["hair_pulling"],
+        "首に手": ["hand_on_neck"],
+        "手を繋": ["holding_hands"],
+        "抱き締": ["hugging"],
+        "しがみつ": ["clinging"],
+        "胸を掴": ["breast_grab"],
+        "壁に手": ["hand_on_wall"],
+    },
+    "mood": {
+        "背徳": ["dark_atmosphere"],
+        "甘い": ["romantic"],
+        "甘美": ["romantic"],
+        "激しい": ["intense"],
+        "激情": ["intense"],
+        "切ない": ["melancholy"],
+        "優しい": ["gentle"],
+        "緊張": ["nervous"],
+        "恐怖": ["dark_atmosphere"],
+        "興奮": ["excited"],
+        "羞恥": ["embarrassed"],
+        "屈辱": ["humiliation"],
+        "陶酔": ["dazed"],
+        "官能": ["sensual"],
+        "退廃": ["dark_atmosphere"],
+    },
+}
+
+# mood↔表情矛盾検出・修正マップ
+_MOOD_EXPRESSION_CONFLICTS = {
+    # (mood keywords, conflicting SD tag, replacement SD tag)
+    "negative_smile": {
+        "mood_kw": ["恐怖", "屈辱", "苦痛", "嫌悪", "絶望", "怯え", "恐れ", "怖い"],
+        "conflict_tag": "smile",
+        "replace_with": ["fearful"],
+    },
+    "positive_crying": {
+        "mood_kw": ["幸福", "愛情", "甘い", "喜び", "幸せ", "嬉し", "ラブラブ"],
+        "conflict_tag": "crying",
+        "replace_with": ["happy"],
+    },
+    "shame_confident": {
+        "mood_kw": ["羞恥", "恥ずかし", "恥辱", "照れ"],
+        "conflict_tag": "confident",
+        "replace_with": ["blush", "looking_away"],
+    },
+}
+
+# description↔SDタグ不整合チェック (validate_script用)
+_CRITICAL_NARRATIVE_CHECKS = [
+    # (日本語キーワード, 必須SDタグ候補(いずれか1つあればOK), チェック名)
+    ("仰向け", {"on_back", "lying", "missionary"}, "仰向け→on_back系タグ不足"),
+    ("四つん這い", {"all_fours", "doggy_style"}, "四つん這い→all_fours系タグ不足"),
+    ("涙", {"tears", "crying"}, "涙→tears/cryingタグ不足"),
+    ("震え", {"trembling"}, "震え→tremblingタグ不足"),
+    ("フェラ", {"fellatio", "oral"}, "フェラ→fellatio/oralタグ不足"),
+    ("騎乗位", {"cowgirl_position", "girl_on_top"}, "騎乗位→cowgirl系タグ不足"),
+    ("正常位", {"missionary", "on_back"}, "正常位→missionary系タグ不足"),
+    ("バック", {"doggy_style", "from_behind"}, "バック→doggy_style系タグ不足"),
+]
+
+# ── Danbooruタグ正規化マップ (Phase5) ──────────────────────────
+# 非Danbooruタグ/誤タグ → 正規Danbooruタグ or None(除去)
+_TAG_ALIAS_MAP = {
+    # 非視覚的タグ → 除去
+    "passionate": None,
+    "intense_sex": "rough_sex",
+    "gentle_sex": "sex",
+    "emotional": None,
+    "loving": None,
+    "aggressive": None,
+    "desperate": None,
+    "tender": None,
+    "intimate": None,
+    "sensual": None,
+    "erotic": None,
+    # 誤タグ → 正規タグ
+    "cowgirl": "cowgirl_position",
+    "reverse_cowgirl": "reverse_cowgirl",
+    "heart_pupils": "heart-shaped_pupils",
+    "cum_overflow": "overflow",
+    "gentle_smile": "smile",
+    "crying_face": "crying",
+    "scared_expression": "scared",
+    "laying_down": "lying",
+    "laying": "lying",
+    "cum_inside": "cum_in_pussy",
+    "vaginal_sex": "vaginal",
+    "anal_sex": "anal",
+    "breast_squeeze": "breast_grab",
+    "breast_press": "breast_grab",
+    "eye_contact": "looking_at_viewer",
+    "teary_eyes": "watery_eyes",
+    "blushing": "blush",
+    "shaking": "trembling",
+    "clothed_female_nude_male": "cfnm",
+    "nude_male_clothed_female": "cfnm",
+    "doggy": "doggy_style",
+    "missionary_position": "missionary",
+}
+
+# 非Danbooruタグ検出用セット（validate_script用）
+_NON_DANBOORU_TAGS = {
+    "passionate", "intense_sex", "gentle_sex", "emotional", "loving",
+    "aggressive", "desperate", "tender", "intimate", "sensual", "erotic",
+    "cowgirl", "heart_pupils", "cum_overflow", "gentle_smile",
+    "crying_face", "scared_expression", "laying_down", "laying",
+    "cum_inside", "vaginal_sex", "anal_sex", "breast_squeeze",
+    "breast_press", "eye_contact", "teary_eyes", "blushing",
+    "shaking", "doggy", "missionary_position",
+}
+
+# ── キャラ特性永続化 (Phase6) ──────────────────────────
+# 性格別表情バイアス（表情タグ注入時に性格に合わせた補正）
+_PERSONALITY_EXPRESSION_BIAS = {
+    "tsundere": {"boost": ["blush", "looking_away", "furrowed_brow"], "suppress": {"smile"}},
+    "kuudere": {"boost": ["expressionless", "half-closed_eyes"], "suppress": {"smile", "blush"}},
+    "dandere": {"boost": ["looking_down", "shy", "fidgeting"], "suppress": {"embarrassed"}},
+    "yandere": {"boost": ["crazy_eyes", "smile", "dark_expression"], "suppress": {"embarrassed", "looking_away"}},
+    "submissive": {"boost": ["downcast_eyes", "obedient"], "suppress": {"confident", "angry"}},
+    "cheerful": {"boost": ["smile", "happy"], "suppress": {"expressionless"}},
+    "serious": {"boost": ["determined", "furrowed_brow"], "suppress": set()},
+    "shy": {"boost": ["blush", "looking_away", "covering_face"], "suppress": {"confident"}},
+    "bold": {"boost": ["confident", "smirk"], "suppress": {"shy", "looking_away"}},
+}
+
+# アクセサリ永続化対象タグ
+_ACCESSORY_PERSISTENT_TAGS = {
+    "glasses", "hair_ribbon", "hair_ornament", "hairclip", "hairband",
+    "hat", "beret", "headband", "choker", "necklace", "earrings",
+    "hair_flower", "bow", "hair_bow", "scrunchie", "twintails",
+    "ponytail", "braid", "twin_braids", "side_ponytail",
+}
+
+
+# ── 場所タグ動的解決 (v9.3再実装) ──────────────────────────
+# 場所タググループ: 排他的な場所カテゴリ（同時に2つの場所にはいられない）
+_LOCATION_TAG_GROUPS = {
+    "train":     {"train_interior", "train", "subway", "crowded_train", "packed_train"},
+    "toilet":    {"toilet", "restroom", "public_restroom", "bathroom_stall", "toilet_stall"},
+    "classroom": {"classroom", "school", "chalkboard", "school_desk"},
+    "office":    {"office", "desk", "cubicle", "meeting_room", "conference_room"},
+    "bedroom":   {"bedroom", "bed", "on_bed", "pillow", "blanket", "futon"},
+    "bathroom":  {"bathroom", "shower", "bathtub", "shower_room", "changing_room"},
+    "outdoor":   {"park", "alley", "street", "rooftop", "beach", "forest"},
+    "car":       {"car_interior", "car", "back_seat", "backseat"},
+    "gym":       {"gym", "gym_storeroom", "locker_room", "pool", "swimming_pool"},
+}
+
+# シーンのlocation文字列→場所グループのキーワードマッピング
+_LOC_GROUP_KEYWORD_MAP = {
+    # train
+    "電車": "train", "車内": "train", "通勤": "train", "train": "train",
+    "地下鉄": "train", "subway": "train", "満員": "train",
+    # toilet
+    "トイレ": "toilet", "toilet": "toilet", "restroom": "toilet",
+    "お手洗い": "toilet", "化粧室": "toilet",
+    # classroom
+    "教室": "classroom", "classroom": "classroom", "学校": "classroom",
+    "school": "classroom", "放課後": "classroom",
+    # office
+    "オフィス": "office", "office": "office", "事務所": "office",
+    "会議室": "office", "meeting": "office", "職場": "office",
+    # bedroom
+    "寝室": "bedroom", "bedroom": "bedroom", "ベッド": "bedroom",
+    "布団": "bedroom", "自室": "bedroom", "部屋": "bedroom",
+    # bathroom
+    "風呂": "bathroom", "浴室": "bathroom", "bath": "bathroom",
+    "shower": "bathroom", "シャワー": "bathroom", "脱衣": "bathroom",
+    # outdoor
+    "公園": "outdoor", "路地": "outdoor", "屋上": "outdoor",
+    "rooftop": "outdoor", "alley": "outdoor", "outside": "outdoor",
+    # car
+    "車": "car", "car": "car", "後部座席": "car", "backseat": "car",
+    # gym
+    "体育": "gym", "gym": "gym", "プール": "gym", "pool": "gym",
+    "更衣室": "gym", "locker": "gym",
+}
+
+# テーマ別: 場所ごとの追加タグ
+_THEME_LOCATION_DETAIL_TAGS = {
+    "chikan": {
+        "train":    ["train_interior", "crowded", "standing", "public"],
+        "toilet":   ["public_restroom", "toilet_stall", "indoors", "against_wall"],
+        "outdoor":  ["alley", "public", "against_wall"],
+        "default":  ["public", "crowded"],
+    },
+    "teacher_student": {
+        "classroom": ["classroom", "chalkboard", "school_desk", "indoors"],
+        "office":    ["office", "desk", "indoors"],
+        "gym":       ["gym_storeroom", "indoors"],
+        "bathroom":  ["shower_room", "indoors", "wet"],
+        "default":   ["classroom", "indoors"],
+    },
+    "office": {
+        "office":   ["office", "desk", "indoors", "workplace"],
+        "toilet":   ["restroom", "indoors", "against_wall"],
+        "default":  ["office", "indoors"],
+    },
+}
+
+
+def _resolve_scene_location_group(scene: dict) -> str:
+    """シーンのlocationフィールドから場所グループを推定"""
+    loc = scene.get("location", "")
+    if not loc:
+        return ""
+    loc_lower = loc.lower()
+    for kw, group in _LOC_GROUP_KEYWORD_MAP.items():
+        if kw in loc_lower:
+            return group
+    return ""
+
+
+# ── 体位サポートタグマップ (Phase2) ──────────────────────────
+# 体位タグに必須のサポートタグ（視覚的整合性のため）
+_POSITION_SUPPORT_TAGS = {
+    "cowgirl_position": ["girl_on_top", "straddling"],
+    "reverse_cowgirl": ["girl_on_top", "straddling"],
+    "missionary": ["on_back", "lying"],
+    "doggy_style": ["all_fours", "from_behind"],
+    "mating_press": ["on_back", "legs_up"],
+    "prone_bone": ["on_stomach", "prone"],
+    "fellatio": ["kneeling", "oral"],
+    "standing_sex": ["standing"],
+    "spooning": ["on_side", "lying"],
+    "suspended": ["carrying", "legs_around_waist"],
+    "lotus_position": ["sitting", "face_to_face"],
+    "reverse_suspended": ["carrying", "from_behind"],
+    "piledriver": ["legs_up", "upside-down"],
+    "amazon_position": ["girl_on_top", "sitting_on_person"],
+    "sixty-nine": ["oral", "lying"],
+}
+
+
+# ── タグ順序最適化グループ (Phase3) ──────────────────────────
+# SDモデルは先頭のタグほど影響が強い。意味グループ別に最適順序で並べ替え
+_TAG_ORDER_GROUPS = {
+    # group_name: (priority, tag_set)  ※priority数値が小さいほど先頭
+    "subject": (0, {"1girl", "2girls", "1boy", "2boys", "multiple_girls", "multiple_boys", "solo"}),
+    "action": (2, {
+        "sex", "vaginal", "anal", "penetration", "fellatio", "oral", "paizuri",
+        "cunnilingus", "handjob", "footjob", "thrusting", "ejaculation", "cum",
+        "creampie", "orgasm", "fingering", "grinding", "intercrural",
+        "deep_penetration", "cum_in_pussy", "double_penetration",
+    }),
+    "position": (3, {
+        "missionary", "doggy_style", "cowgirl_position", "reverse_cowgirl",
+        "mating_press", "prone_bone", "standing_sex", "spooning",
+        "all_fours", "on_back", "on_stomach", "sitting_on_lap",
+        "spread_legs", "legs_up", "straddling", "girl_on_top",
+        "from_behind", "lying", "kneeling", "standing", "prone",
+        "piledriver", "lotus_position", "suspended",
+    }),
+    "expression": (4, {
+        "ahegao", "blush", "crying", "tears", "panting", "drooling",
+        "tongue_out", "rolling_eyes", "trembling", "heart_pupils",
+        "torogao", "half-closed_eyes", "clenched_teeth", "open_mouth",
+        "smile", "embarrassed", "scared", "fearful", "dazed",
+        "looking_away", "closed_eyes", "wide-eyed", "lip_biting",
+        "empty_eyes",
+    }),
+    "clothing": (5, {
+        "nude", "naked", "completely_nude", "topless", "bottomless",
+        "panties_aside", "skirt_lift", "shirt_lift", "undressing",
+        "open_shirt", "no_bra", "no_panties", "partially_undressed",
+        "school_uniform", "sailor_uniform", "serafuku", "blazer",
+        "bikini", "swimsuit", "lingerie", "maid", "nurse",
+    }),
+    "body_state": (6, {
+        "sweat", "sweaty_body", "sweat_drops", "cum_on_body", "cum_on_face",
+        "cum_overflow", "cum_string", "cum_pool", "cum_drip",
+        "pussy_juice", "body_fluids", "flushed", "arched_back",
+        "exhausted", "limp",
+    }),
+    "hand_limb": (7, {
+        "gripping_sheets", "grabbing_hips", "hair_pulling",
+        "holding_hands", "hugging", "clinging", "breast_grab",
+        "hand_on_wall", "hand_on_hip", "hand_on_neck",
+        "caressing", "groping",
+    }),
+    "angle": (8, {
+        "pov", "from_above", "from_below", "from_side",
+        "dutch_angle", "close-up", "full_body", "cowboy_shot",
+        "upper_body", "lower_body", "portrait", "wide_shot",
+        "depth_of_field",
+    }),
+    "background": (9, {
+        "classroom", "bedroom", "bathroom", "kitchen", "living_room",
+        "office", "hotel_room", "onsen", "park", "forest", "beach",
+        "car_interior", "train_interior", "indoors", "outdoors",
+        "alley", "rooftop", "pool", "shrine", "dungeon",
+    }),
+    "lighting": (10, {
+        "dim_lighting", "soft_lighting", "warm_lighting", "natural_lighting",
+        "moonlight", "sunlight", "candlelight", "backlight",
+        "neon", "golden_hour", "light_rays",
+    }),
+    "atmosphere": (11, {
+        "romantic", "dark_atmosphere", "intense", "melancholy",
+        "gentle", "sensual",
+    }),
+    "male": (12, {
+        "faceless_male", "muscular_male", "veiny_arms",
+    }),
+}
+
+# intensity連動ウェイト強化マップ (Phase3)
+_INTENSITY_WEIGHT_BOOST = {
+    5: {"orgasm": 1.4, "ahegao": 1.4, "cum": 1.3, "cum_in_pussy": 1.3, "rolling_eyes": 1.3},
+    4: {"sex": 1.3, "penetration": 1.3, "panting": 1.2, "sweaty_body": 1.2},
+    3: {"blush": 1.2, "undressing": 1.2, "open_mouth": 1.1},
+}
+
+
+def _reorder_sd_tags(tags: list, intensity: int = 3, char_danbooru: list = None) -> list:
+    """SDタグを意味グループ別に最適順序で並べ替え。
+    SDモデルは先頭のタグほど影響が強いため、重要タグを前方に配置。"""
+    import re as _re_order
+
+    # タグ→(正規化名, 元タグ) のマッピング
+    tag_entries = []
+    for tag in tags:
+        m = _re_order.match(r'^\(([^:]+):([\d.]+)\)$', tag.strip())
+        if m:
+            norm = m.group(1).strip().lower().replace(" ", "_")
+        else:
+            norm = tag.strip().lower().replace(" ", "_")
+        tag_entries.append((norm, tag))
+
+    # キャラタグセット（priority 1）
+    _char_set = set()
+    if char_danbooru:
+        _char_set = {c.lower().replace(" ", "_") for c in char_danbooru}
+
+    # 各タグのグループとpriority割当
+    def _get_priority(norm_tag):
+        if norm_tag in _char_set:
+            return 1  # character tags
+        for _gname, (_prio, _gset) in _TAG_ORDER_GROUPS.items():
+            if norm_tag in _gset:
+                return _prio
+        return 8  # デフォルト: angle付近（未分類タグ）
+
+    # 安定ソート（同一priority内は元の順序維持）
+    sorted_entries = sorted(tag_entries, key=lambda e: _get_priority(e[0]))
+    return [entry[1] for entry in sorted_entries]
+
+
+def _extract_narrative_sd_tags(scene: dict) -> list:
+    """description/mood/direction/character_feelingsから視覚的SDタグを抽出。
+    最大8タグまで。"""
+    text_parts = []
+    for key in ("description", "mood", "direction", "character_feelings"):
+        val = scene.get(key, "")
+        if val:
+            text_parts.append(str(val))
+    combined = " ".join(text_parts)
+    if not combined:
+        return []
+
+    extracted = []
+    seen = set()
+    for _category, mappings in _NARRATIVE_SD_MAP.items():
+        for keyword, sd_tags in mappings.items():
+            if keyword in combined:
+                for tag in sd_tags:
+                    if tag not in seen:
+                        seen.add(tag)
+                        extracted.append(tag)
+    # 上限8タグ
+    return extracted[:8]
+
+
+def _generate_negative_prompt(scene: dict, theme: str = "") -> str:
+    """シーン固有のネガティブプロンプトを生成（APIコスト不要）。"""
+    # ベース共通ネガティブ
+    base = [
+        "worst_quality", "low_quality", "bad_anatomy", "bad_hands",
+        "missing_fingers", "extra_digits", "fewer_digits",
+        "text", "signature", "watermark", "username",
+        "blurry", "jpeg_artifacts", "cropped",
+    ]
+
+    intensity = scene.get("intensity", 3)
+    sd = scene.get("sd_prompt", "")
+    _sd_tags = {t.strip().lower().replace(" ", "_") for t in sd.split(",") if t.strip()}
+    mood = scene.get("mood", "")
+
+    # intensity連動: 低intensity時はexplicitコンテンツ抑制
+    if intensity <= 2:
+        base.extend(["explicit", "nsfw", "sex", "penetration"])
+
+    # 衣装連動: nudeなら着衣をネガティブに
+    if _sd_tags & {"nude", "naked", "completely_nude"}:
+        base.extend(["clothed", "dressed", "uniform"])
+
+    # テーマ連動
+    _theme_neg = {
+        "humiliation": ["happy", "willing", "smile", "romantic"],
+        "love": ["forced", "unwilling", "scared"],
+        "sleep": ["awake", "standing", "walking"],
+        "bondage": ["free_hands", "standing_freely"],
+    }
+    if theme in _theme_neg:
+        base.extend(_theme_neg[theme])
+
+    # 表情連動: 現在の表情と矛盾する表情をネガティブに
+    if _sd_tags & {"ahegao", "rolling_eyes"}:
+        base.extend(["calm", "composed", "serious"])
+    if _sd_tags & {"crying", "tears"}:
+        base.extend(["smile", "happy", "laughing"])
+    if _sd_tags & {"smile", "happy"}:
+        base.extend(["crying", "tears", "sad"])
+
+    # 重複排除
+    seen = set()
+    result = []
+    for tag in base:
+        if tag not in seen:
+            seen.add(tag)
+            result.append(tag)
+    return ", ".join(result)
 
 
 def deduplicate_sd_tags(prompt: str) -> str:
@@ -2452,6 +3008,99 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                 "体液消失検出: 前シーンで射精があったがsd_promptにcum系タグなし")
         if _has_cum_tags:
             _val_had_cum = True
+
+    # Phase1: ナラティブ↔SDタグ不整合チェック
+    for i, scene in enumerate(results):
+        sid = scene.get("scene_id", i + 1)
+        desc = scene.get("description", "")
+        sd = scene.get("sd_prompt", "")
+        if not desc or not sd:
+            continue
+        _sd_tags_nc = {t.strip().lower().replace(" ", "_") for t in sd.split(",") if t.strip()}
+        # ウェイト付きタグも正規化
+        import re as _re_nc
+        _sd_tags_nc = {_re_nc.sub(r'[()]', '', t).split(":")[0].strip() for t in _sd_tags_nc}
+        for _kw, _required_tags, _check_name in _CRITICAL_NARRATIVE_CHECKS:
+            if _kw in desc and not (_sd_tags_nc & _required_tags):
+                scene_issues.setdefault(f"S{sid}", []).append(
+                    f"SD不整合: {_check_name}")
+
+    # Phase5: 非Danbooruタグ検出
+    for i, scene in enumerate(results):
+        sid = scene.get("scene_id", i + 1)
+        sd = scene.get("sd_prompt", "")
+        if not sd:
+            continue
+        import re as _re_p5
+        for t in sd.split(","):
+            _t_norm_p5 = t.strip().lower().replace(" ", "_")
+            _t_inner_p5 = _re_p5.sub(r'[()]', '', _t_norm_p5).split(":")[0].strip()
+            if _t_inner_p5 in _NON_DANBOORU_TAGS:
+                scene_issues.setdefault(f"S{sid}", []).append(
+                    f"非Danbooruタグ: {_t_inner_p5}")
+
+    # Phase7: 構図偏りチェック
+    import re as _re_p7
+    _closeup_check = {"close-up", "portrait", "upper_body", "face_focus"}
+    _closeup_v_count = 0
+    n_scenes_v = len(results)
+    if n_scenes_v >= 8:
+        for scene in results:
+            sd = scene.get("sd_prompt", "")
+            if not sd:
+                continue
+            _p7_tags = {_re_p7.sub(r'[()]', '', t.strip().lower().replace(" ", "_")).split(":")[0].strip()
+                        for t in sd.split(",") if t.strip()}
+            if _p7_tags & _closeup_check:
+                _closeup_v_count += 1
+        if n_scenes_v > 0 and _closeup_v_count / n_scenes_v > 0.60:
+            scene_issues.setdefault("全体", []).append(
+                f"構図偏り: close-up系が{_closeup_v_count}/{n_scenes_v}({_closeup_v_count*100//n_scenes_v}%)で60%超過")
+
+    # 体位サポートタグ完全性チェック
+    import re as _re_pos
+    for i, scene in enumerate(results):
+        sid = scene.get("scene_id", i + 1)
+        sd = scene.get("sd_prompt", "")
+        if not sd:
+            continue
+        _pos_tags_v = {_re_pos.sub(r'[()]', '', t.strip().lower().replace(" ", "_")).split(":")[0].strip()
+                       for t in sd.split(",") if t.strip()}
+        for _pos_k, _pos_supports in _POSITION_SUPPORT_TAGS.items():
+            if _pos_k in _pos_tags_v:
+                _missing_sup = [s for s in _pos_supports[:2] if s not in _pos_tags_v]
+                if _missing_sup:
+                    scene_issues.setdefault(f"S{sid}", []).append(
+                        f"体位サポート不足: {_pos_k}に{','.join(_missing_sup)}がない")
+
+    # アクセサリ消失チェック（初回検出後に消失したシーンを検出）
+    _acc_first_seen = {}  # tag -> first scene index
+    for i, scene in enumerate(results):
+        sd = scene.get("sd_prompt", "")
+        if not sd:
+            continue
+        _acc_tags_v = {t.strip().lower().replace(" ", "_") for t in sd.split(",") if t.strip()}
+        for _acc_tag in _ACCESSORY_PERSISTENT_TAGS:
+            if _acc_tag in _acc_tags_v and _acc_tag not in _acc_first_seen:
+                _acc_first_seen[_acc_tag] = i
+    # 初回検出後、5シーン以上連続で消失していたら警告
+    if _acc_first_seen and len(results) >= 10:
+        for _acc_tag, _first_idx in _acc_first_seen.items():
+            _consecutive_missing = 0
+            for i in range(_first_idx + 1, len(results)):
+                sd = results[i].get("sd_prompt", "")
+                if not sd:
+                    continue
+                _acc_v = {t.strip().lower().replace(" ", "_") for t in sd.split(",") if t.strip()}
+                if _acc_tag not in _acc_v:
+                    _consecutive_missing += 1
+                else:
+                    _consecutive_missing = 0
+                if _consecutive_missing >= 5:
+                    sid = results[i].get("scene_id", i + 1)
+                    scene_issues.setdefault(f"S{sid}", []).append(
+                        f"アクセサリ消失: {_acc_tag}が5シーン以上連続で欠落")
+                    break  # 1タグにつき1回だけ警告
 
     n_issues = sum(len(v) for v in scene_issues.values()) + len(repeated_moans) + len(repeated_onom)
     # スコア計算: シーン数で正規化（大規模シーンでもscore=0にならないように）
@@ -3882,9 +4531,39 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         pool.extend(get_moan_pool(intensity))
         return pool
 
+    # 性格タイプ別speech禁止パターン（キャラ個性消失防止）
+    _af_personality = ""
+    if char_profiles:
+        try:
+            _af_personality = _detect_personality_type(char_profiles)
+        except Exception:
+            pass
+    _PERSONALITY_SPEECH_EXCLUDE = {
+        # _detect_personality_type() の返り値に完全対応
+        "seiso": ["もっと！", "すごい！", "最高！", "もっとして！", "ちょうだい♡♡",
+                  "壊して", "犯して", "もっと激しく"],  # 清楚=激しい要求NG
+        "tsundere": ["好き…♡", "嬉しい♡", "大好き♡", "幸せ♡", "ずっと一緒♡"],  # 低intensityのみ適用
+        "kuudere": ["きゃー", "すごーい", "わーい", "もっともっと♡", "いっぱい♡"],
+        "ojou": ["ヤバい", "マジ", "ウケる", "まじ", "やべー", "ちょー"],
+        "submissive": [],  # 従順=制限なし（何でも受け入れる）
+        "sadistic": ["怖い", "やめて", "痛い", "助けて", "許して"],  # S気質=怯えNG
+        "gal": ["お願いします", "すみません", "恐れ入り"],  # ギャル=敬語NG
+        "genki": ["もう…無理…", "動けない…", "力が…"],  # 元気=脱力NG
+        "inkya": ["もっと！", "すごい！", "最高！", "もっとして！", "きゃー"],  # 陰キャ=過度にはしゃぐNG
+    }
+
+    # THOUGHT_POOL intensity別フィルタキーワード
+    # 低intensity(1-2): 穏やか・戸惑い系 → 激しい快感表現を除外
+    # 高intensity(4-5): 快感・崩壊系 → 穏やか・冷静表現を除外
+    _THOUGHT_INTENSITY_EXCLUDE = {
+        "low": ["♡♡", "壊れ", "溶け", "おかしくなる", "狂", "もっと欲しい", "全部",
+                "真っ白", "快感", "気持ちいい", "とまらない", "止まらない", "中毒"],
+        "high": ["大丈夫", "平気", "冷静", "落ち着", "普通に", "気にしない", "余裕"],
+    }
+
     def _get_speech_pool_with_char(btype: str, theme_: str, intensity: int,
                                     scene_idx: int = 0, total: int = 1) -> list:
-        """get_speech_poolにキャラ固有プールを優先混合"""
+        """get_speech_poolにキャラ固有プールを優先混合 + thought intensity適合フィルタ"""
         phase = ""
         if _has_pool:
             try:
@@ -3901,6 +4580,28 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                     char_lines = _char_pool[btype].get(base_phase, [])
                 pool.extend(char_lines)
         pool.extend(get_speech_pool(btype, theme_, intensity, phase=phase))
+        # thought の intensity 適合フィルタ
+        if btype == "thought" and pool:
+            if intensity <= 2:
+                _excl = _THOUGHT_INTENSITY_EXCLUDE["low"]
+                _filtered = [p for p in pool if not any(kw in p for kw in _excl)]
+                if len(_filtered) >= 10:  # フィルタ後最低10個確保
+                    pool = _filtered
+            elif intensity >= 4:
+                _excl = _THOUGHT_INTENSITY_EXCLUDE["high"]
+                _filtered = [p for p in pool if not any(kw in p for kw in _excl)]
+                if len(_filtered) >= 10:
+                    pool = _filtered
+        # 性格タイプ別speech/thoughtフィルタ（キャラ個性消失防止）
+        if _af_personality and btype in ("speech", "thought") and pool:
+            _p_excl = _PERSONALITY_SPEECH_EXCLUDE.get(_af_personality, [])
+            # ツンデレは低intensityのみ素直表現を禁止（高intensityでは堕ちてOK）
+            if _af_personality == "tsundere" and intensity >= 4:
+                _p_excl = []
+            if _p_excl:
+                _p_filtered = [p for p in pool if not any(kw in p for kw in _p_excl)]
+                if len(_p_filtered) >= 10:
+                    pool = _p_filtered
         return pool
 
     def _get_male_pool_for_theme(theme_str: str, intensity: int) -> list:
@@ -4258,6 +4959,190 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         log_message(f"  感情矛盾修正: {_contradiction_fix_count}件")
 
     # 10c. シーン間心理状態遷移モデル（2段階以上乖離するセリフを差替え）
+    # テーマ別心理遷移定義（各テーマ固有の5段階）
+    _THEME_PSYCH_STAGES = {
+        "netorare": {
+            "stages": ["rejection", "body_betrayal", "guilt", "comparison", "fallen"],
+            "speech": {
+                "rejection":     ["やめて", "嫌", "離して", "来ないで", "彼氏がいる", "こんなの"],
+                "body_betrayal": ["なんで…感じて", "身体が", "嘘…こんな", "おかしい", "反応して"],
+                "guilt":         ["ごめん", "ごめんなさい", "許して", "最低", "彼に", "裏切り"],
+                "comparison":    ["こんなの初めて", "…違う", "…こんなに", "知らなかった", "負けて"],
+                "fallen":        ["もっと", "♡♡", "ちょうだい", "欲しい", "もう…いい…♡", "好き"],
+            },
+            "thought": {
+                "rejection":     ["嫌だ…", "逃げなきゃ", "彼氏に", "こんな男"],
+                "body_betrayal": ["なんで…感じてる", "身体が勝手に", "嘘…", "おかしい"],
+                "guilt":         ["ごめんね…", "最低だ…私", "彼に顔向け", "裏切ってる"],
+                "comparison":    ["…こんなの知らなかった", "彼とは…違う", "こんなに…奥"],
+                "fallen":        ["もう…戻れない", "彼よりも…♡", "こっちの方が", "壊れちゃう"],
+            },
+        },
+        "love": {
+            "stages": ["shyness", "trust", "passion", "unity", "devotion"],
+            "speech": {
+                "shyness":   ["恥ずかしい", "見ないで", "明るい", "初めて", "緊張する"],
+                "trust":     ["…いいよ", "信じてる", "大丈夫", "怖くない", "あなたなら"],
+                "passion":   ["もっと", "近くに", "離さないで", "好き", "感じる"],
+                "unity":     ["一緒に", "奥まで", "繋がって", "気持ちいい", "もっと奥"],
+                "devotion":  ["大好き", "ずっと", "離れたくない", "幸せ", "また…したい♡"],
+            },
+            "thought": {
+                "shyness":   ["恥ずかしい…", "心臓うるさい", "顔見れない"],
+                "trust":     ["怖くない…この人なら", "温かい…", "安心する"],
+                "passion":   ["もっと…触れたい", "好き…好き…", "溶けちゃう"],
+                "unity":     ["繋がってる…", "同じ気持ち…", "満たされて"],
+                "devotion":  ["幸せ…", "ずっと一緒に", "この人だけ…♡"],
+            },
+        },
+        "forced": {
+            "stages": ["fear", "resistance", "submission", "pleasure", "dependence"],
+            "speech": {
+                "fear":       ["やめて", "嫌", "怖い", "助けて", "離して", "痛い", "来ないで"],
+                "resistance": ["やだ", "やめ…", "触らないで", "嫌って言ってる", "無理"],
+                "submission": ["…もう…いい", "…好きにして", "抵抗…できない", "わかった"],
+                "pleasure":   ["あっ…なんで…", "気持ち…", "止まらない", "もっと…♡"],
+                "dependence": ["お願い", "もっと", "欲しい♡", "ください", "離さないで♡"],
+            },
+            "thought": {
+                "fear":       ["怖い…", "逃げなきゃ", "誰か…助けて", "嫌だ嫌だ"],
+                "resistance": ["負けない…", "こんな奴に…", "感じるもんか"],
+                "submission": ["もう…無理…", "力が…入らない", "抵抗できない"],
+                "pleasure":   ["なんで…気持ちいい…", "身体が…裏切る", "おかしくなる"],
+                "dependence": ["もう…なしじゃ…", "この人がいないと", "壊されちゃった"],
+            },
+        },
+        "corruption": {
+            "stages": ["innocence", "curiosity", "temptation", "indulgence", "corruption"],
+            "speech": {
+                "innocence":  ["これ…なに", "知らない", "変な感じ", "なんで触る", "やめて"],
+                "curiosity":  ["…なにこれ", "変…だけど", "もう少しだけ", "気になる"],
+                "temptation": ["だめ…なのに", "止められない", "…もっと教えて", "知りたい"],
+                "indulgence": ["気持ちいい", "もっと", "教えて♡", "お願い", "すごい"],
+                "corruption": ["もっとして♡", "全部♡", "狂っちゃう♡", "壊して♡", "♡♡♡"],
+            },
+            "thought": {
+                "innocence":  ["なにされてるの…", "怖い…", "わからない"],
+                "curiosity":  ["…変な感じ", "知りたい…だめ？", "なんだろう…これ"],
+                "temptation": ["だめって…わかってるのに", "止まれない…", "もっと…♡"],
+                "indulgence": ["気持ちいい…もう…", "こんなの知らなかった", "溺れちゃう"],
+                "corruption": ["もう戻れない…♡", "壊れちゃう…♡", "なんでもする…♡"],
+            },
+        },
+        "hypnosis": {
+            "stages": ["unaware", "discomfort", "acceptance", "voluntary", "normalized"],
+            "speech": {
+                "unaware":    ["あれ…", "なんか変", "ぼーっと", "…え？", "なにしてる…？"],
+                "discomfort": ["なんで…こんな", "おかしい", "身体が勝手に", "止められない"],
+                "acceptance": ["…いいかも", "気持ちいい…から", "自然と…", "求めてる"],
+                "voluntary":  ["もっとして", "欲しい", "お願い", "催眠なんかじゃ", "自分から"],
+                "normalized": ["当然", "毎日して♡", "ないと困る♡", "もう普通のこと♡"],
+            },
+            "thought": {
+                "unaware":    ["あれ…なにされて…", "頭がぼんやり", "意識が…"],
+                "discomfort": ["おかしい…自分の意思じゃ", "身体だけが…", "抗えない"],
+                "acceptance": ["…気持ちいいから…いい…", "自然なこと…", "受け入れて"],
+                "voluntary":  ["これは…私の意思…", "催眠じゃない…好きだから", "欲しい"],
+                "normalized": ["何も…おかしくない…♡", "毎日の日課…♡", "普通…♡"],
+            },
+        },
+        "chikan": {
+            "stages": ["confusion", "shame", "hypersensitivity", "surrender", "anticipation"],
+            "speech": {
+                "confusion":       ["え…", "なに…", "誰…", "ちょっと", "やめ…", "ここ電車"],
+                "shame":           ["人が…いるのに", "見られ…", "声…出ちゃ", "恥ずかし"],
+                "hypersensitivity":["そこ…だめ…っ", "あっ…敏感…", "やば…", "触らないで…あっ"],
+                "surrender":       ["…もう…いい", "好きにして…", "…ん…♡", "止められない…"],
+                "anticipation":    ["…また…来る…？", "今日も…♡", "待ってた…♡", "奥まで…♡"],
+            },
+            "thought": {
+                "confusion":       ["え…なに…触られて…", "電車の中で…", "嘘でしょ"],
+                "shame":           ["周りにバレたら…", "声出しちゃだめ…", "最低…感じてる"],
+                "hypersensitivity":["やば…身体が…", "こんなとこで…感じちゃ…", "敏感すぎ"],
+                "surrender":       ["もう…どうでもいい…", "抵抗する力…ない", "このまま…"],
+                "anticipation":    ["また…あの人…♡", "期待してる…最低…", "今日も…♡"],
+            },
+        },
+        "humiliation": {
+            "stages": ["defiance", "humiliation", "crumbling", "pleasure", "submission"],
+            "speech": {
+                "defiance":    ["ふざけないで", "こんなの", "絶対に", "屈しない", "離せ"],
+                "humiliation": ["…っ", "見るな…", "恥ずかし…", "やめ…て…", "最低…"],
+                "crumbling":   ["嫌…なのに…", "なんで…声が…", "身体が…", "…あ…っ"],
+                "pleasure":    ["あっ…♡", "だめ…気持ち…", "認めない…けど…♡", "嫌…♡"],
+                "submission":  ["…はい…♡", "ごめんなさい…♡", "負けました…♡", "お願い♡♡"],
+            },
+            "thought": {
+                "defiance":    ["こんな奴に…絶対…", "負けない…", "プライドが"],
+                "humiliation": ["恥ずかしい…見られてる", "こんな姿…", "屈辱…"],
+                "crumbling":   ["なんで…感じてる…", "嫌なはず…なのに", "おかしい"],
+                "pleasure":    ["認めたくない…けど…♡", "気持ちいい…嫌…♡", "負けそう"],
+                "submission":  ["…負けた…♡", "もう…どうでもいい♡", "この人に…♡"],
+            },
+        },
+        "time_stop": {
+            "stages": ["shock", "helplessness", "sensation", "overwhelm", "resignation"],
+            "thought": {
+                "shock":        ["身体が…動かない…", "なに…されて…", "嘘…止まって…"],
+                "helplessness": ["助けて…誰か…", "声も…出せない", "抵抗…できない"],
+                "sensation":    ["動けないのに…感じてる", "身体だけ…反応して", "やだ…"],
+                "overwhelm":    ["おかしくなる…", "止めて…壊れちゃう", "限界…"],
+                "resignation":  ["もう…なんでもいい…", "好きにして…", "慣れちゃった…"],
+            },
+        },
+        "teacher_student": {
+            "stages": ["boundary", "forbidden", "secret", "addiction", "devotion"],
+            "speech": {
+                "boundary":  ["先生…だめです", "生徒ですよ…", "こんなの…いけない", "離れて"],
+                "forbidden": ["ここ学校…", "バレたら…", "いけないって…わかってる", "…でも"],
+                "secret":    ["二人だけの…秘密", "誰にも言わない", "先生だけ…", "…もっと"],
+                "addiction": ["先生…♡", "放課後…待ってる♡", "もっと教えて♡", "好き…♡"],
+                "devotion":  ["先生のもの♡", "ずっと…先生だけ♡", "卒業しても♡", "全部♡"],
+            },
+            "thought": {
+                "boundary":  ["先生と生徒なのに…", "いけない…", "こんなの間違って"],
+                "forbidden": ["バレたら…退学…", "でも…止められない", "禁断…"],
+                "secret":    ["秘密…二人だけの", "背徳感が…", "でも嬉しい"],
+                "addiction": ["先生のこと…考えちゃう", "授業中も…♡", "中毒…"],
+                "devotion":  ["先生なしじゃ…もう…♡", "全部…先生に♡", "一生…♡"],
+            },
+        },
+        "femdom": {
+            "stages": ["dominance", "teasing", "control", "reward", "ownership"],
+            "speech": {
+                "dominance":  ["ほら…どうしたの？", "跪きなさい", "許可した？", "だめよ"],
+                "teasing":    ["こんなになって…♡", "可愛い反応♡", "もっと見せて", "我慢しなさい"],
+                "control":    ["私のものでしょ♡", "逃がさない♡", "言うこと聞きなさい♡"],
+                "reward":     ["いい子ね♡", "ご褒美あげる♡", "気持ちいい？♡", "もっと♡"],
+                "ownership":  ["私だけのもの♡♡", "離さないから♡♡", "永遠に♡♡"],
+            },
+            "thought": {
+                "dominance":  ["この子…可愛い♡", "もっと…支配したい"],
+                "teasing":    ["いい反応…♡", "もっと焦らしちゃおう♡", "壊しちゃだめ…まだ"],
+                "control":    ["私のもの…♡", "逃がさない♡", "完全に…手の中♡"],
+                "reward":     ["頑張ったね…♡", "ご褒美…♡", "気持ちよくしてあげる♡"],
+                "ownership":  ["もう離さない…♡♡", "永遠に私の…♡♡"],
+            },
+        },
+        "incest": {
+            "stages": ["taboo", "wavering", "crossing", "immersion", "normalization"],
+            "speech": {
+                "taboo":         ["だめ…家族なのに", "お兄ちゃん…やめて", "いけないこと"],
+                "wavering":      ["…だめ…だけど", "家族…なのに…こんな", "嫌…じゃないけど"],
+                "crossing":      ["もう…いい…", "家族とか…もう", "…お兄ちゃん…♡"],
+                "immersion":     ["お兄ちゃん…もっと♡", "気持ちいい♡", "大好き…♡"],
+                "normalization": ["毎晩…来て♡", "お兄ちゃんだけ♡♡", "秘密だよ♡♡"],
+            },
+            "thought": {
+                "taboo":         ["家族なのに…こんなこと", "いけない…", "バレたら"],
+                "wavering":      ["だめ…でも…嫌じゃない", "おかしい…家族なのに"],
+                "crossing":      ["もう…超えちゃった", "戻れない…", "でも…嬉しい"],
+                "immersion":     ["お兄ちゃん…好き…♡", "家族とか…もうどうでも♡"],
+                "normalization": ["これが…普通…♡", "もう…離れられない♡"],
+            },
+        },
+    }
+    # デフォルト（テーマ別定義がないテーマ用フォールバック）
     _PSYCHOLOGICAL_STAGES = ["resistance", "confusion", "acceptance", "desire", "abandon"]
     _STAGE_SPEECH_PATTERNS = {
         "resistance": ["やめて", "嫌", "離して", "来ないで", "やだ", "助けて", "痛い", "怖い"],
@@ -4274,36 +5159,54 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "abandon":    ["壊れ", "何も考え", "真っ白", "溶け", "♡♡"],
     }
 
-    def _infer_psychological_stage(scene_idx: int, intensity: int, total: int, theme_str: str) -> str:
-        """シーン位置/intensity/テーマ→心理段階推定"""
-        ratio = scene_idx / max(total, 1)
-        is_pure_love = any(k in (theme_str or "").lower() for k in ["純愛", "vanilla", "love", "ラブ"])
-        if is_pure_love:
-            # 純愛: resistanceスキップ → confusion開始
-            if ratio < 0.15:
-                return "confusion"
-            elif ratio < 0.4:
-                return "acceptance"
-            elif ratio < 0.7:
-                return "desire"
-            else:
-                return "abandon"
-        if intensity <= 1:
-            return "resistance"
-        elif intensity == 2:
-            return "confusion" if ratio < 0.5 else "acceptance"
-        elif intensity == 3:
-            return "acceptance" if ratio < 0.6 else "desire"
-        elif intensity == 4:
-            return "desire"
-        else:
-            return "abandon"
+    # テーマ名→_THEME_PSYCH_STAGES キーのマッピング
+    _THEME_PSYCH_KEY_MAP = {
+        "netorare": "netorare", "ntr": "netorare", "寝取": "netorare",
+        "love": "love", "vanilla": "love", "純愛": "love", "ラブ": "love", "和姦": "love",
+        "forced": "forced", "強制": "forced", "無理やり": "forced",
+        "corruption": "corruption", "堕ち": "corruption", "調教": "corruption",
+        "hypnosis": "hypnosis", "催眠": "hypnosis", "洗脳": "hypnosis",
+        "chikan": "chikan", "痴漢": "chikan",
+        "humiliation": "humiliation", "凌辱": "humiliation", "屈辱": "humiliation",
+        "time_stop": "time_stop", "時間停止": "time_stop",
+        "teacher_student": "teacher_student", "先生": "teacher_student",
+        "femdom": "femdom", "女性優位": "femdom", "痴女": "femdom",
+        "incest": "incest", "近親": "incest",
+    }
 
-    def _is_stage_mismatch(text: str, stage: str, patterns_dict: dict) -> bool:
+    def _resolve_theme_psych(theme_str: str) -> tuple:
+        """テーマ→(stages_list, speech_patterns, thought_patterns) を解決"""
+        _ts = (theme_str or "").lower()
+        for _kw, _key in _THEME_PSYCH_KEY_MAP.items():
+            if _kw in _ts and _key in _THEME_PSYCH_STAGES:
+                _td = _THEME_PSYCH_STAGES[_key]
+                return (_td["stages"],
+                        _td.get("speech", {}),
+                        _td.get("thought", {}))
+        return (_PSYCHOLOGICAL_STAGES, _STAGE_SPEECH_PATTERNS, _STAGE_THOUGHT_PATTERNS)
+
+    def _infer_psychological_stage(scene_idx: int, intensity: int, total: int, theme_str: str) -> str:
+        """シーン位置/intensity/テーマ→心理段階推定（テーマ別5段階対応）"""
+        stages, _, _ = _resolve_theme_psych(theme_str)
+        ratio = scene_idx / max(total, 1)
+        # 5段階を ratio + intensity で推定
+        # 段階0=序盤低i / 段階1=序盤中i / 段階2=中盤 / 段階3=中盤後半高i / 段階4=終盤高i
+        if intensity <= 1:
+            return stages[0]
+        elif intensity == 2:
+            return stages[1] if ratio < 0.5 else stages[2]
+        elif intensity == 3:
+            return stages[2] if ratio < 0.6 else stages[3]
+        elif intensity == 4:
+            return stages[3]
+        else:
+            return stages[4]
+
+    def _is_stage_mismatch(text: str, stage: str, patterns_dict: dict, stages_list: list) -> bool:
         """テキストが現在の心理段階から2段階以上離れたキーワードを含むか"""
-        stage_idx = _PSYCHOLOGICAL_STAGES.index(stage) if stage in _PSYCHOLOGICAL_STAGES else 2
+        stage_idx = stages_list.index(stage) if stage in stages_list else 2
         for other_stage, keywords in patterns_dict.items():
-            other_idx = _PSYCHOLOGICAL_STAGES.index(other_stage) if other_stage in _PSYCHOLOGICAL_STAGES else 2
+            other_idx = stages_list.index(other_stage) if other_stage in stages_list else 2
             if abs(stage_idx - other_idx) >= 2:
                 if any(kw in text for kw in keywords):
                     return True
@@ -4312,6 +5215,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     _stage_fix_count = 0
     if _has_pool:
         _total_s_psy = len(results)
+        # テーマ別心理パターンを解決（ループ外で1回だけ）
+        _psy_stages, _psy_speech, _psy_thought = _resolve_theme_psych(theme)
         for _si_psy, scene in enumerate(results):
             intensity = scene.get("intensity", 3)
             _stage = _infer_psychological_stage(_si_psy, intensity, _total_s_psy, theme)
@@ -4320,30 +5225,33 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 txt = b.get("text", "")
                 if not txt:
                     continue
-                if btype == "speech":
-                    if _is_stage_mismatch(txt, _stage, _STAGE_SPEECH_PATTERNS):
+                if btype == "speech" and _psy_speech:
+                    # i=5のspeechはStep 20bで1文字に崩壊するため、ここでの置換は無駄→スキップ
+                    if intensity >= 5:
+                        continue
+                    if _is_stage_mismatch(txt, _stage, _psy_speech, _psy_stages):
                         pool = _get_speech_pool_with_char("speech", theme, intensity, _si_psy, _total_s_psy)
                         # 現在段階のキーワードを含むセリフを優先
-                        stage_kw = _STAGE_SPEECH_PATTERNS.get(_stage, [])
+                        stage_kw = _psy_speech.get(_stage, [])
                         _stage_pool = [p for p in pool if any(kw in p for kw in stage_kw)]
                         target_pool = _stage_pool if _stage_pool else pool
                         repl = pick_replacement(target_pool, _used_speech_for_fix, _normalize_bubble_text,
                                                intensity=intensity)
                         if repl:
-                            log_message(f"  心理遷移修正: シーン{_si_psy+1}({_stage}) speech「{txt[:12]}」→「{repl}」")
+                            log_message(f"  心理遷移修正: シーン{_si_psy+1}({_stage}) speech")
                             b["text"] = repl
                             _used_speech_for_fix.add(repl)
                             _stage_fix_count += 1
-                elif btype == "thought":
-                    if _is_stage_mismatch(txt, _stage, _STAGE_THOUGHT_PATTERNS):
+                elif btype == "thought" and _psy_thought:
+                    if _is_stage_mismatch(txt, _stage, _psy_thought, _psy_stages):
                         pool = _get_speech_pool_with_char("thought", theme, intensity, _si_psy, _total_s_psy)
-                        stage_kw = _STAGE_THOUGHT_PATTERNS.get(_stage, [])
+                        stage_kw = _psy_thought.get(_stage, [])
                         _stage_pool = [p for p in pool if any(kw in p for kw in stage_kw)]
                         target_pool = _stage_pool if _stage_pool else pool
                         repl = pick_replacement(target_pool, _used_speech_for_fix, _normalize_bubble_text,
                                                intensity=intensity)
                         if repl:
-                            log_message(f"  心理遷移修正: シーン{_si_psy+1}({_stage}) thought「{txt[:12]}」→「{repl}」")
+                            log_message(f"  心理遷移修正: シーン{_si_psy+1}({_stage}) thought")
                             b["text"] = repl
                             _used_speech_for_fix.add(repl)
                             _stage_fix_count += 1
@@ -4705,6 +5613,60 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
 
     # 12b. mood重複修正（同一moodの3回目以降をintensity別バリエーションで置換）
     # v8.9: 6→15個に拡充（100シーンで枯渇防止）
+    # テーマ別mood拡張バリアント（テーマ固有の雰囲気をintensity別に）
+    _THEME_MOOD_VARIANTS = {
+        "netorare": {
+            1: ["密かに芽生える禁断の予感", "日常の裏に潜む裏切りの気配"],
+            2: ["彼氏の影がちらつく罪悪感", "背徳の甘さに手が伸びる瞬間"],
+            3: ["比較が止まらない背徳の沼", "罪悪感を快楽が塗り潰していく"],
+            4: ["もう彼の顔を思い出せない堕落", "裏切りの快楽に溺れる暗い恍惚"],
+            5: ["完全に堕ちた背徳の極致", "彼氏より深い快楽に染まった証"],
+        },
+        "love": {
+            1: ["二人だけの穏やかな時間の始まり", "心が近づく温かな予感"],
+            2: ["恥じらいと信頼が交差する甘い空気", "触れ合うたび深まる想い"],
+            3: ["愛する人に身を委ねる幸福な恥じらい", "信頼が肌を通して伝わる温もり"],
+            4: ["二つの身体が一つに溶け合う恍惚", "愛情が快楽となって全身を巡る"],
+            5: ["魂まで一つになる至福の絶頂", "愛し合う二人だけの永遠の瞬間"],
+        },
+        "forced": {
+            1: ["逃げ場のない恐怖が忍び寄る", "日常が壊れる不吉な予兆"],
+            2: ["抵抗する心と従う身体の乖離", "暴力的な手に震える無力感"],
+            3: ["屈服しかけた心に残る最後の抵抗", "身体の裏切りに絶望する恥辱"],
+            4: ["壊された理性の残骸で感じる快楽", "もう抗えない絶望的な恍惚"],
+            5: ["完全に支配された魂の叫び", "壊されて初めて知った快楽の深淵"],
+        },
+        "corruption": {
+            1: ["無垢な日常に忍び込む淫靡な影", "知らない感覚への戸惑い"],
+            2: ["好奇心が理性を侵食し始める瞬間", "禁じられた快楽への無自覚な渇望"],
+            3: ["堕ちていく自分を止められない背徳感", "快楽を知った身体が求め始める"],
+            4: ["もう元には戻れない淫蕩の深み", "堕落を受け入れた解放感と快楽"],
+            5: ["完全に書き換わった快楽の価値観", "堕ちきった先に見えた暗い至福"],
+        },
+        "humiliation": {
+            1: ["プライドが試される不穏な空気", "屈辱の予感に身が固まる"],
+            2: ["晒される恥辱と消えない自尊心", "見下される視線に震える怒りと羞恥"],
+            3: ["誇りが砕ける音を聞きながら感じる快楽", "恥辱の中に芽生える異常な悦び"],
+            4: ["プライドの残骸の上で喘ぐ堕落", "屈辱が快楽に変わった暗い恍惚"],
+            5: ["全てを差し出して跪く恍惚の底", "屈辱に酔いしれる壊れた心"],
+        },
+        "chikan": {
+            1: ["満員電車の中の異常な気配", "逃げられない空間の圧迫感"],
+            2: ["人混みの中で密かに犯される羞恥", "声を出せない状況の絶望的な興奮"],
+            3: ["周囲にバレる恐怖と止まらない快感", "公衆の面前で身体が裏切る恥辱"],
+            4: ["バレてもいいと思い始める堕落", "人目の中で果てる背徳の絶頂"],
+            5: ["衆人環視の中で完全に堕ちた恍惚", "もう隠す気もない公開の悦楽"],
+        },
+    }
+    # テーマキーワード→_THEME_MOOD_VARIANTSキーのマッピング
+    _THEME_MOOD_KEY_MAP = {
+        "ntr": "netorare", "netorare": "netorare", "寝取": "netorare",
+        "love": "love", "vanilla": "love", "純愛": "love", "ラブ": "love",
+        "forced": "forced", "強制": "forced", "無理やり": "forced", "レイプ": "forced",
+        "corruption": "corruption", "堕ち": "corruption", "調教": "corruption",
+        "humiliation": "humiliation", "凌辱": "humiliation", "屈辱": "humiliation",
+        "chikan": "chikan", "痴漢": "chikan",
+    }
     _MOOD_VARIANTS = {
         1: ["静かな緊張感", "不安と期待が入り混じる空気", "甘い予感が漂う空間",
             "戸惑いと好奇心の狭間", "穏やかだが張りつめた沈黙", "秘めた欲望が滲む雰囲気",
@@ -4735,6 +5697,13 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     _mood_fix_count = 0
     _mood_seen_count = {}  # mood_text -> occurrence_count
     _mood_used_variants = set()
+    # テーマ別mood辞書を解決（ループ外で1回）
+    _resolved_theme_mood = {}
+    _tl = (theme or "").lower()
+    for _tmk, _tmv in _THEME_MOOD_KEY_MAP.items():
+        if _tmk in _tl and _tmv in _THEME_MOOD_VARIANTS:
+            _resolved_theme_mood = _THEME_MOOD_VARIANTS[_tmv]
+            break
     for scene in results:
         m = scene.get("mood", "")
         if not m:
@@ -4742,16 +5711,26 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         _mood_seen_count[m] = _mood_seen_count.get(m, 0) + 1
         if _mood_seen_count[m] >= 3:  # 3回目以降を置換
             intensity = scene.get("intensity", 3)
-            variants = _MOOD_VARIANTS.get(intensity, _MOOD_VARIANTS[3])
             chosen = None
-            for v in variants:
-                if v not in _mood_used_variants and v != m:
-                    chosen = v
-                    break
+            # テーマ別バリアントを優先
+            if _resolved_theme_mood:
+                for v in _resolved_theme_mood.get(intensity, []):
+                    if v not in _mood_used_variants and v != m:
+                        chosen = v
+                        break
+            # テーマ別で見つからなければ汎用バリアント
+            if chosen is None:
+                variants = _MOOD_VARIANTS.get(intensity, _MOOD_VARIANTS[3])
+                for v in variants:
+                    if v not in _mood_used_variants and v != m:
+                        chosen = v
+                        break
             if chosen is None:
                 # 隣接intensityからも探索
                 for adj_i in [max(1, intensity - 1), min(5, intensity + 1)]:
-                    for v in _MOOD_VARIANTS.get(adj_i, []):
+                    _pool = _resolved_theme_mood.get(adj_i, []) if _resolved_theme_mood else []
+                    _pool = _pool + _MOOD_VARIANTS.get(adj_i, [])
+                    for v in _pool:
                         if v not in _mood_used_variants:
                             chosen = v
                             break
@@ -4773,8 +5752,10 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             m = scene.get("mood", "")
             if m and m in _theme_key_emotions:
                 intensity = scene.get("intensity", 3)
-                variants = _MOOD_VARIANTS.get(intensity, _MOOD_VARIANTS[3])
-                for v in variants:
+                # テーマ別バリアント優先
+                _qpool = (_resolved_theme_mood.get(intensity, []) if _resolved_theme_mood else []) + \
+                         _MOOD_VARIANTS.get(intensity, _MOOD_VARIANTS[3])
+                for v in _qpool:
                     if v not in _mood_used_variants:
                         scene["mood"] = v
                         _mood_used_variants.add(v)
@@ -4891,6 +5872,39 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         log_message(f"  メタ参照description修正: {_meta_fix_count}件（「シーンXXの場面では」除去）")
 
     # 13. character_feelings重複修正（全既出シーンと比較、一致→intensity別テンプレートで差し替え）
+    # テーマ別feelings拡張（テーマ固有の心理状態をintensity別に）
+    _THEME_FEELINGS_VARIANTS = {
+        "netorare": {
+            2: ["彼氏を裏切っている罪悪感と、それでも止められない快感に揺れている",
+                "他の男に触れられているのに身体が反応することに、自己嫌悪を感じている"],
+            3: ["彼氏のことを考えるたびに罪悪感が胸を刺すが、快楽がそれを上回り始めている",
+                "比較してしまう自分に気づき、もう取り返しがつかないと悟り始めている"],
+            4: ["もう彼氏のことを考える余裕もなく、目の前の快楽に完全に支配されている",
+                "裏切りの罪悪感すら快楽のスパイスに変わり、堕ちていく自分を止められない"],
+            5: ["彼氏よりもこの快楽を選んでしまった自分を受け入れ、完全に堕ちている",
+                "もう二度と彼氏の前に出られないほど深く堕ちたことに、背徳の悦びを感じている"],
+        },
+        "love": {
+            2: ["好きな人に触れられる幸福感と恥ずかしさで心が一杯になっている",
+                "愛されている実感が肌を通して伝わり、涙が出そうなほど嬉しい"],
+            3: ["愛する人に身を委ねる幸福と、もっと近づきたい切なさに震えている",
+                "信頼しているからこそ、こんな自分を見せられる安堵を感じている"],
+            4: ["二人が一つに溶け合うような感覚に、愛情と快楽が区別できなくなっている",
+                "この人に全てを捧げたいという衝動が、理性を超えて溢れ出している"],
+            5: ["愛する人との一体感に心から満たされ、至福の涙を流している",
+                "この瞬間が永遠に続けばいいと、心の底から願っている"],
+        },
+        "forced": {
+            2: ["恐怖で身体が震えているが、声を出すこともできず固まっている",
+                "逃げたいのに足が動かない。恐怖が全身を支配している"],
+            3: ["嫌なはずなのに身体が感じてしまう。自分の身体が一番の裏切り者だ",
+                "抵抗する気力が奪われていく。快楽が恐怖を上書きしていくのが怖い"],
+            4: ["もう抗う意思が残っていない。快楽に壊された心が、それでも助けを求めている",
+                "壊されていく自分を、どこか遠くから見ているような解離感を感じている"],
+            5: ["完全に壊されて、快楽以外何も感じられなくなっている",
+                "もう元の自分には戻れないことを悟り、暗い諦念に沈んでいる"],
+        },
+    }
     _FEELINGS_VARIANTS = {
         1: [
             "まだ状況を理解できず、困惑と不安を感じている",
@@ -4946,7 +5960,14 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             continue
         if cf_key in _seen_feelings:
             intensity = scene.get("intensity", 3)
-            variants = _FEELINGS_VARIANTS.get(intensity, _FEELINGS_VARIANTS[3])
+            # テーマ別feelings優先
+            _theme_feel_key = None
+            for _tfk, _tfv in _THEME_MOOD_KEY_MAP.items():
+                if _tfk in _tl:
+                    _theme_feel_key = _tfv
+                    break
+            _theme_feel_list = _THEME_FEELINGS_VARIANTS.get(_theme_feel_key, {}).get(intensity, []) if _theme_feel_key else []
+            variants = _theme_feel_list + list(_FEELINGS_VARIANTS.get(intensity, _FEELINGS_VARIANTS[3]))
             # 全バリアントを試し、未使用のものを選択
             chosen = None
             for try_idx in range(_feelings_fix_count, _feelings_fix_count + len(variants)):
@@ -4973,16 +5994,38 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     if _feelings_fix_count > 0:
         log_message(f"  character_feelings重複修正: {_feelings_fix_count}件")
 
-    # 14. story_flow先頭20字重複修正
+    # 14. story_flow先頭20字重複修正（接続詞追加 + intensity別実質テンプレート）
     _STORYFLOW_PREFIXES = [
         "さらに、", "その後、", "やがて、", "次第に、", "一方で、",
         "そして、", "続けて、", "同時に、", "ここから、", "それから、",
-        # v8.2追加: 遷移バリエーション
         "そこから、", "息つく間もなく、", "勢いのまま、", "流れるように、",
         "間を置かず、", "畳みかけるように、", "一転して、",
     ]
+    # intensity別のstory_flow実質テンプレート（接続詞追加より先にマッチを試みる）
+    _STORYFLOW_TEMPLATES = {
+        1: ["日常の空気が、かすかに変わり始め、",
+            "まだ何も起きていないのに、胸騒ぎが止まらず、",
+            "いつもと同じはずの時間が、どこか違って感じられ、"],
+        2: ["触れられた場所の余韻が消えないまま、",
+            "鼓動が速まるのを抑えきれず、",
+            "抗えない引力に引き寄せられるように、",
+            "身体が熱を帯び始め、理性がぐらつき、"],
+        3: ["快感が理性を侵食し始め、",
+            "もう後戻りできない一線を越え、",
+            "抵抗する力が快楽に奪われていき、",
+            "身体が正直に求め始め、心がそれに追いつけないまま、"],
+        4: ["止まらない快感の波に呑まれ、",
+            "理性の最後の砦が崩れ落ち、",
+            "もう何も考えられないまま快楽に身を委ね、",
+            "全身が求めることしかできなくなり、"],
+        5: ["限界を超えた快楽が全てを焼き尽くし、",
+            "意識が白く染まる中で、",
+            "もう戻れないほど深く堕ちたまま、",
+            "壊れたはずの感覚が、さらなる高みへ駆け上がり、"],
+    }
     _sf_fix_count = 0
     _seen_sf = {}  # prefix20 -> first scene_id
+    _used_sf_templates = set()
     for i, scene in enumerate(results):
         sf = scene.get("story_flow", "")
         if not sf or len(sf) < 20:
@@ -4993,19 +6036,32 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         sf20 = sf[:20]
         sid = scene.get("scene_id", i + 1)
         if sf20 in _seen_sf:
-            # 先頭に接続詞を追加して20字を変化させる
             _sf_fixed = False
-            for try_idx in range(_sf_fix_count, _sf_fix_count + len(_STORYFLOW_PREFIXES)):
-                prefix = _STORYFLOW_PREFIXES[try_idx % len(_STORYFLOW_PREFIXES)]
-                new_sf = prefix + sf
-                if new_sf[:20] not in _seen_sf:
-                    scene["story_flow"] = new_sf
-                    _sf_fix_count += 1
-                    _seen_sf[new_sf[:20]] = sid
-                    _sf_fixed = True
-                    break
+            intensity = scene.get("intensity", 3)
+            # まずintensity別テンプレートで実質的な置換を試みる
+            _i_templates = _STORYFLOW_TEMPLATES.get(intensity, _STORYFLOW_TEMPLATES[3])
+            for _tmpl in _i_templates:
+                if _tmpl not in _used_sf_templates:
+                    new_sf = _tmpl + sf[min(len(sf), 15):]  # テンプレート+元の後半
+                    if new_sf[:20] not in _seen_sf:
+                        scene["story_flow"] = new_sf
+                        _used_sf_templates.add(_tmpl)
+                        _sf_fix_count += 1
+                        _seen_sf[new_sf[:20]] = sid
+                        _sf_fixed = True
+                        break
+            # テンプレート枯渇→従来の接続詞追加
             if not _sf_fixed:
-                # 全プレフィックス枯渇 → シーン番号で一意化
+                for try_idx in range(_sf_fix_count, _sf_fix_count + len(_STORYFLOW_PREFIXES)):
+                    prefix = _STORYFLOW_PREFIXES[try_idx % len(_STORYFLOW_PREFIXES)]
+                    new_sf = prefix + sf
+                    if new_sf[:20] not in _seen_sf:
+                        scene["story_flow"] = new_sf
+                        _sf_fix_count += 1
+                        _seen_sf[new_sf[:20]] = sid
+                        _sf_fixed = True
+                        break
+            if not _sf_fixed:
                 new_sf = f"[S{sid}] " + sf
                 scene["story_flow"] = new_sf
                 _sf_fix_count += 1
@@ -5481,6 +6537,59 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     if _intensity_fix_count > 0:
         log_message(f"  intensity不一致修正: {_intensity_fix_count}件")
 
+    # 20b. Speech崩壊パターン（高intensityのspeechを段階的に断片化）
+    # i=1: そのまま / i=2: やや不安定 / i=3: 断片化開始 / i=4: ほぼ崩壊 / i=5: moan支配
+    _speech_frag_count = 0
+    import random as _frag_rand
+    for scene in results:
+        intensity = scene.get("intensity", 3)
+        if intensity <= 2:
+            continue  # i1-2はそのまま
+        for bubble in scene.get("bubbles", []):
+            if bubble.get("type") != "speech":
+                continue
+            txt = bubble.get("text", "")
+            if not txt or len(txt) < 4:
+                continue
+            # 男性セリフは崩壊させない（_is_male_by_nameで包括判定）
+            _spk = bubble.get("speaker", "")
+            if _spk and _is_male_by_name(_spk):
+                continue
+            orig = txt
+            if intensity == 3:
+                # i3: 文末に「…っ」挿入、句読点を「…」に
+                if not txt.endswith("…") and not txt.endswith("っ"):
+                    txt = txt.rstrip("。、！!？?") + "…っ"
+                txt = txt.replace("。", "…")
+            elif intensity == 4:
+                # i4: 文字間に「…」挿入で断片化 + 末尾切断
+                # 「やめてください」→「やめ…て…っ」
+                chars = list(txt.replace("…", "").replace("♡", "").replace("っ", "").replace("。", "").replace("、", ""))
+                if len(chars) >= 3:
+                    # 2-3文字ごとに「…」を挿入
+                    fragmented = []
+                    _chunk_size = 2 if len(chars) <= 6 else 3
+                    for _fi in range(0, len(chars), _chunk_size):
+                        fragmented.append("".join(chars[_fi:_fi + _chunk_size]))
+                    txt = "…".join(fragmented)
+                    # ♡があれば末尾に1つ
+                    if "♡" in orig:
+                        txt += "…♡"
+                    else:
+                        txt += "…っ"
+            elif intensity >= 5:
+                # i5: speechをmoan的に変換（3文字以下+「…♡」）
+                # 元の先頭1-2文字を残して崩壊
+                _core = txt.replace("…", "").replace("♡", "").replace("っ", "").replace("。", "").replace("、", "")
+                if _core:
+                    _first = _core[0]
+                    txt = _first + "…っ…♡"
+            if txt != orig:
+                bubble["text"] = txt
+                _speech_frag_count += 1
+    if _speech_frag_count > 0:
+        log_message(f"  speech崩壊: {_speech_frag_count}件 (intensity連動)")
+
     # 21. エピローグ・ストーリーリセット検出＋修正
     # 最後の10%のシーンでintensityがi=2以下に戻った場合、ストーリーがリセットしている
     _progress("Step 21 エピローグリセット修正")
@@ -5916,7 +7025,10 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                        sd_prefix_tags: str = "",
                        sd_suffix_tags: str = "",
                        theme: str = "",
-                       faceless_male: bool = True) -> list:
+                       faceless_male: bool = True,
+                       sd_neg_base: str = "",
+                       sd_neg_prefix: str = "",
+                       sd_neg_suffix: str = "") -> list:
     """全シーンのSDプロンプトを後処理で最適化（APIコスト不要）。
 
     - 日本語タグ除去
@@ -6044,6 +7156,23 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         "cum_string", "cum_pool", "cum_drip", "excessive_cum",
     }
 
+    # Phase6: アクセサリ永続化トラッキング
+    _detected_accessories = set()  # 全シーン横断で検出されたアクセサリタグ
+
+    # Phase6: キャラ保護タグ（char_danbooru上位5タグは除去対象外）
+    _protected_char_tags = set()
+    if char_danbooru:
+        _protected_char_tags = {c.lower().replace(" ", "_") for c in char_danbooru[:5]}
+
+    # Phase6: 性格タイプ検出
+    _char_personality = ""
+    if char_profiles:
+        for cp in char_profiles:
+            _pt = cp.get("personality_type", "")
+            if _pt:
+                _char_personality = _pt.lower()
+                break
+
     for scene in results:
         sd = scene.get("sd_prompt", "")
         if not sd:
@@ -6116,6 +7245,20 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             _pre_clean_tags.append(t)
         tags = _pre_clean_tags
 
+        # 1.9. Danbooruタグ正規化（非Danbooruタグ→正規タグ or 除去）
+        _normalized_tags = []
+        for t in tags:
+            _t_norm19 = t.strip().lower().replace(" ", "_")
+            _t_inner19 = _re.sub(r'[()]', '', _t_norm19).split(":")[0].strip()
+            if _t_inner19 in _TAG_ALIAS_MAP:
+                _alias = _TAG_ALIAS_MAP[_t_inner19]
+                if _alias is None:
+                    continue  # 非視覚タグ除去
+                _normalized_tags.append(_alias)
+            else:
+                _normalized_tags.append(t)
+        tags = _normalized_tags
+
         # 2. quality tags先頭確保（QUALITY_TAGS_DISABLED時は完全除去）
         if sd_quality_tags == QUALITY_TAGS_DISABLED:
             # カスタムモードで空欄→既存のquality tagsも除去
@@ -6136,6 +7279,42 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     tags.insert(insert_at, ct)
                     insert_at += 1
                     existing.add(ct.lower().replace(" ", "_"))
+
+        # 3.5. ナラティブ→SDタグ意味連携（description/mood等から視覚タグ抽出・注入）
+        _narrative_tags = _extract_narrative_sd_tags(scene)
+        if _narrative_tags:
+            _existing_35 = {t.strip().lower().replace(" ", "_") for t in tags}
+            _injected_35 = 0
+            for nt in _narrative_tags:
+                if nt not in _existing_35 and _injected_35 < 8:
+                    tags.append(nt)
+                    _existing_35.add(nt)
+                    _injected_35 += 1
+
+        # 3.6. 場所タグ動的解決（v9.3再実装: シーンのlocationに基づきテーマ場所タグを差替）
+        if theme:
+            _scene_loc_group = _resolve_scene_location_group(scene)
+            if _scene_loc_group:
+                # 現在のシーン場所と矛盾する他の場所グループのタグを除去
+                _all_loc_tags_to_remove = set()
+                for _grp_name, _grp_tags in _LOCATION_TAG_GROUPS.items():
+                    if _grp_name != _scene_loc_group:
+                        _all_loc_tags_to_remove |= _grp_tags
+                # 現在の場所グループのタグは保持
+                _current_grp_tags = _LOCATION_TAG_GROUPS.get(_scene_loc_group, set())
+                _all_loc_tags_to_remove -= _current_grp_tags
+                if _all_loc_tags_to_remove:
+                    tags = [t for t in tags
+                            if t.strip().lower().replace(" ", "_") not in _all_loc_tags_to_remove]
+                # テーマ固有の場所詳細タグを注入
+                _detail_map = _THEME_LOCATION_DETAIL_TAGS.get(theme, {})
+                _detail_tags = _detail_map.get(_scene_loc_group, _detail_map.get("default", []))
+                if _detail_tags:
+                    _existing_36 = {t.strip().lower().replace(" ", "_") for t in tags}
+                    for _dt in _detail_tags:
+                        if _dt not in _existing_36:
+                            tags.append(_dt)
+                            _existing_36.add(_dt)
 
         # 4. 照明タグ追加
         has_light = any(any(lw in t.lower() for lw in LIGHTING_WORDS) for t in tags)
@@ -6310,15 +7489,32 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     existing_lower.add(mt)
 
         # 4.6. intensity別 表情・身体反応タグ自動注入（プールからサンプリング）
+        # Phase6: 性格別表情バイアス適用
         if intensity >= 1:
             _expr_pool = _INTENSITY_EXPRESSION_MAP.get(min(intensity, 5), [])
             existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
-            # 既存タグにないものだけ候補に
-            _avail = [et for et in _expr_pool if et not in existing_lower]
+
+            # Phase6: 性格バイアス - suppressタグを除外、boostタグを優先注入
+            _bias = _PERSONALITY_EXPRESSION_BIAS.get(_char_personality, {})
+            _suppress = _bias.get("suppress", set())
+            _boost = _bias.get("boost", [])
+
+            # suppressタグを候補から除外
+            _avail = [et for et in _expr_pool if et not in existing_lower and et not in _suppress]
+            # boostタグを先頭に追加（重複除外）
+            _boost_avail = [bt for bt in _boost if bt not in existing_lower and bt not in _avail]
+            _avail = _boost_avail + _avail
+
             # intensity 1-2: 2-3個, intensity 3: 4-5個, 4-5: 5-6個
             _max_inject = {1: 2, 2: 3, 3: 5, 4: 6, 5: 6}.get(min(intensity, 5), 4)
             import random as _rnd_expr
-            _selected = _rnd_expr.sample(_avail, min(len(_avail), _max_inject))
+            # boostタグは確定注入、残りをランダムサンプリング
+            _boost_inject = [bt for bt in _boost_avail if bt not in existing_lower][:2]
+            _remaining = [et for et in _avail if et not in _boost_inject]
+            _remaining_count = max(0, _max_inject - len(_boost_inject))
+            _random_pick = _rnd_expr.sample(_remaining, min(len(_remaining), _remaining_count))
+            _selected = _boost_inject + _random_pick
+
             for et in _selected:
                 tags.append(et)
                 existing_lower.add(et)
@@ -6474,6 +7670,12 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         _prev_camera_angle = _cur_angle or _prev_camera_angle
         _angle_history.append(_cur_angle or "")
 
+        # 4.95. 被写界深度自動制御（Phase7: close-up/portrait時に depth_of_field 追加）
+        _existing_495 = {t.strip().lower().replace(" ", "_") for t in tags}
+        _closeup_kw = {"close-up", "portrait", "upper_body", "face_focus"}
+        if (_existing_495 & _closeup_kw) and "depth_of_field" not in _existing_495:
+            tags.append("depth_of_field")
+
         # 5. 設定スタイル適用（タグ置換・禁止・追加）
         if setting_style:
             replace_map = setting_style.get("replace", {})
@@ -6561,8 +7763,21 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             }
             _conflicts = _THEME_CLOTHING_CONFLICTS.get(theme, set())
             if _conflicts:
+                # Phase6: キャラ保護タグは除去対象外
+                _safe_conflicts = _conflicts - _protected_char_tags
                 tags = [t for t in tags
-                        if t.strip().lower().replace(" ", "_") not in _conflicts]
+                        if t.strip().lower().replace(" ", "_") not in _safe_conflicts]
+
+        # 5.55. 体位サポートタグ注入（体位に必須の視覚タグを補完）
+        _tags_lower_555 = {t.strip().lower().replace(" ", "_") for t in tags}
+        for _pos_tag, _support_list in _POSITION_SUPPORT_TAGS.items():
+            if _pos_tag in _tags_lower_555:
+                _injected_sup = 0
+                for _sup in _support_list:
+                    if _sup not in _tags_lower_555 and _injected_sup < 2:
+                        tags.append(_sup)
+                        _tags_lower_555.add(_sup)
+                        _injected_sup += 1
 
         # 5.5. 矛盾する体位/行為タグの相互排他チェック
         # 同時に成立しない行為の組み合わせを検出し、descriptionに近い方を残す
@@ -6579,6 +7794,13 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             ({"underwater"}, {"indoors", "bedroom", "classroom"}),
             # v8.6: multiple_boys + 1boy矛盾（gangbangテーマで混入防止）
             ({"multiple_boys"}, {"1boy"}),
+            # Phase2追加: 体位矛盾ペア
+            ({"standing_sex", "standing"}, {"lying", "on_back", "on_bed"}),
+            ({"missionary"}, {"standing", "standing_sex"}),
+            ({"cowgirl_position"}, {"on_stomach", "prone"}),
+            ({"prone_bone"}, {"on_back", "cowgirl_position", "girl_on_top"}),
+            ({"kneeling"}, {"sitting", "chair"}),
+            ({"spooning"}, {"standing_sex", "against_wall"}),
         ]
         _tags_lower_set = {t.strip().lower().replace(" ", "_") for t in tags}
         for group_a, group_b in _CONTRADICTORY_PAIRS:
@@ -6611,7 +7833,41 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     tags.append(at_tag)
                     _existing.add(at_tag)
 
+        # 5.7. mood↔表情矛盾検出・修正
+        _mood_text = scene.get("mood", "")
+        if _mood_text:
+            _tags_lower_57 = {t.strip().lower().replace(" ", "_") for t in tags}
+            for _rule_name, _rule in _MOOD_EXPRESSION_CONFLICTS.items():
+                _mood_match = any(mk in _mood_text for mk in _rule["mood_kw"])
+                if _mood_match and _rule["conflict_tag"] in _tags_lower_57:
+                    # 矛盾タグを除去
+                    tags = [t for t in tags if t.strip().lower().replace(" ", "_") != _rule["conflict_tag"]]
+                    _tags_lower_57.discard(_rule["conflict_tag"])
+                    # 代替タグを注入
+                    for _repl in _rule["replace_with"]:
+                        if _repl not in _tags_lower_57:
+                            tags.append(_repl)
+                            _tags_lower_57.add(_repl)
+
+        # 5.8. アクセサリ永続化（Phase6: 初回検出後、全シーンで維持）
+        _existing_58 = {t.strip().lower().replace(" ", "_") for t in tags}
+        # 現在のシーンのアクセサリを検出・蓄積
+        _cur_accessories = _existing_58 & _ACCESSORY_PERSISTENT_TAGS
+        _detected_accessories.update(_cur_accessories)
+        # 過去のシーンで検出されたアクセサリを注入
+        _injected_acc = 0
+        for _acc_tag in _detected_accessories:
+            if _acc_tag not in _existing_58 and _injected_acc < 3:
+                tags.append(_acc_tag)
+                _existing_58.add(_acc_tag)
+                _injected_acc += 1
+
+        # 5.9. タグ順序最適化（Phase3: SDモデルは先頭タグほど影響大）
+        tags = _reorder_sd_tags(tags, intensity, char_danbooru)
+
         # 6. 重要タグにウェイト付加（未ウェイトのもののみ）
+        # Phase3: intensity連動ウェイト強化
+        _boost_map = _INTENSITY_WEIGHT_BOOST.get(min(intensity, 5), {})
         weighted = []
         for tag in tags:
             norm = tag.strip().lower().replace(" ", "_").strip("()")
@@ -6619,7 +7875,10 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             if ":" in tag and "(" in tag:
                 weighted.append(tag)
                 continue
-            if norm in WEIGHT_EXPRESSION:
+            # Phase3: intensity連動ブースト（既存ウェイトより優先）
+            if norm in _boost_map:
+                weighted.append(f"({tag}:{_boost_map[norm]})")
+            elif norm in WEIGHT_EXPRESSION:
                 weighted.append(f"({tag}:1.3)")
             elif norm in WEIGHT_ACTION:
                 weighted.append(f"({tag}:1.2)")
@@ -6722,6 +7981,41 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     sc["sd_prompt"] = deduplicate_sd_tags(", ".join(new_tags))
                 log_message(f"体位リバランス: {ptag} {cnt}/{total}({cnt*100//total}%)→{cnt-len(replace_targets[:excess])}/{total}に削減")
 
+    # 8.5. 構図バランス監視（Phase7: close-up系が60%超→一部をfull_body/cowboy_shotに差替え）
+    import re as _re_comp
+    _closeup_tags = {"close-up", "portrait", "upper_body", "face_focus"}
+    _wideshot_alternatives = ["cowboy_shot", "full_body", "wide_shot", "from_above"]
+    if total >= 8:
+        _closeup_count = 0
+        _closeup_scenes = []
+        for idx, sc in enumerate(results):
+            prompt = sc.get("sd_prompt", "")
+            _p_tags = {_re_comp.sub(r'[()]', '', t.strip().lower().replace(" ", "_")).split(":")[0].strip()
+                       for t in prompt.split(",") if t.strip()}
+            if _p_tags & _closeup_tags:
+                _closeup_count += 1
+                _closeup_scenes.append(idx)
+        if total > 0 and _closeup_count / total > 0.60:
+            _target = int(total * 0.45)
+            _excess = _closeup_count - _target
+            _replace_idx = [i for i in _closeup_scenes if i % 3 == 0][:_excess]
+            _alt_i = 0
+            for sidx in _replace_idx:
+                sc = results[sidx]
+                old_prompt = sc.get("sd_prompt", "")
+                new_tags = []
+                replaced = False
+                for t in old_prompt.split(","):
+                    _norm = _re_comp.sub(r'[()]', '', t.strip().lower().replace(" ", "_")).split(":")[0].strip()
+                    if _norm in _closeup_tags and not replaced:
+                        new_tags.append(_wideshot_alternatives[_alt_i % len(_wideshot_alternatives)])
+                        _alt_i += 1
+                        replaced = True
+                    else:
+                        new_tags.append(t.strip())
+                if replaced:
+                    sc["sd_prompt"] = deduplicate_sd_tags(", ".join(new_tags))
+
     # 最終パス: 体位/アングル連続重複の再チェック（Step 8で再導入された可能性対応）
     import re as _re_final
     _prev_pos_f = set()
@@ -6755,6 +8049,38 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         if changed:
             scene["sd_prompt"] = ", ".join(new_tags)
         _prev_pos_f = _cur_pos_f
+
+    # Phase4: シーン固有ネガティブプロンプト生成
+    # ユーザー設定のネガティブベース（指定があれば自動生成のベース部分を置換）
+    for scene in results:
+        if scene.get("sd_prompt"):
+            auto_neg = _generate_negative_prompt(scene, theme)
+            if sd_neg_base:
+                # ユーザー指定のベースを使用し、自動生成のシーン固有部分のみ追加
+                # 自動生成からベース品質タグを除いたシーン固有分を抽出
+                _auto_base = {
+                    "worst_quality", "low_quality", "bad_anatomy", "bad_hands",
+                    "missing_fingers", "extra_digits", "fewer_digits",
+                    "text", "signature", "watermark", "username",
+                    "blurry", "jpeg_artifacts", "cropped",
+                }
+                _auto_tags = [t.strip() for t in auto_neg.split(",") if t.strip()]
+                _scene_specific = [t for t in _auto_tags if t not in _auto_base]
+                # ユーザーベース + シーン固有
+                _neg_parts = [sd_neg_base]
+                if _scene_specific:
+                    _neg_parts.append(", ".join(_scene_specific))
+                core_neg = ", ".join(_neg_parts)
+            else:
+                core_neg = auto_neg
+            # prefix + core + suffix 組み立て
+            neg_parts = []
+            if sd_neg_prefix:
+                neg_parts.append(sd_neg_prefix)
+            neg_parts.append(core_neg)
+            if sd_neg_suffix:
+                neg_parts.append(sd_neg_suffix)
+            scene["sd_negative_prompt"] = ", ".join(neg_parts).replace(",,", ",").strip(", ")
 
     return results
 
@@ -7893,13 +9219,14 @@ def generate_synopsis(
 2. 起承転結のある一貫したストーリーであること
 3. テーマ「{theme_name}」のアーク「{story_arc}」に沿うこと
 4. プロローグ（約20%）→ 展開・焦らし（約30%）→ 本番エロシーン（約40%）→ エピローグ（約10%）の配分
-5. 各キャラの個性・口調が活きる展開にすること
-6. 本番パートでは具体的な行為の流れも簡潔に含めること
-7. エロシーンは段階的にエスカレートし、クライマックスに向かうこと
-8. コンセプトにない極端な展開は絶対に追加しないこと（コンセプトの範囲内で物語を展開する）
-9. **同じ行為の繰り返し禁止**: 本番パートで最低5種の異なる展開（体位変更/場所移動/行為変更/主導権交代等）を含めること
-10. **展開バリエーション例**: 愛撫→口淫→正常位→体位変更→騎乗位→バック→絶頂のように行為を変化させエスカレートすること
-11. **視点**: あらすじは女性キャラ（ヒロイン）視点で書くこと。男性は「相手の男」「彼」と呼び、「主人公」と呼ばないこと
+5. **焦らしの重要性**: エロの品質は焦らし（i1-2）で決まる。「まだしない」の緊張感、予感、間接的接触を丁寧に描け。焦らしが薄いと後半が平坦になる
+6. 各キャラの個性・口調が活きる展開にすること
+7. 本番パートでは具体的な行為の流れも簡潔に含めること
+8. エロシーンは段階的にエスカレートし、クライマックスに向かうこと
+9. コンセプトにない極端な展開は絶対に追加しないこと（コンセプトの範囲内で物語を展開する）
+10. **同じ行為の繰り返し禁止**: 本番パートで最低5種の異なる展開（体位変更/場所移動/行為変更/主導権交代等）を含めること
+11. **展開バリエーション例**: 愛撫→口淫→正常位→体位変更→騎乗位→バック→絶頂のように行為を変化させエスカレートすること
+12. **視点**: あらすじは女性キャラ（ヒロイン）視点で書くこと。男性は「相手の男」「彼」と呼び、「主人公」と呼ばないこと
 
 あらすじの文章のみ出力してください。JSON不要。"""
 
@@ -8601,8 +9928,8 @@ def generate_outline(
 {story_pattern_section}
 
 ## シーン配分（{num_scenes}シーン・エロ70%以上）
-- 第1幕・導入: {act1}シーン → intensity 1-2（最低限の状況設定。1ページで済ませる）
-- 第2幕・前戯: {act2}シーン → intensity 3（焦らし・脱衣・愛撫）
+- 第1幕・導入: {act1}シーン → intensity 1-2（状況設定だが手を抜くな。キャラの魅力・空気の変化・予感を丁寧に。ここの品質が全体を決める）
+- 第2幕・前戯: {act2}シーン → intensity 3（焦らし=エロの核。「まだしない」の緊張感。間接的接触→直接接触へのゆっくりした移行）
 - 第3幕・本番: {act3}シーン → intensity 3-5を使い分けること。i=4を基本としつつ、5シーンごとにi=3の緩急を入れ、各mini-arcのクライマックスでi=5を使え
 - 第4幕・余韻: {act4}シーン → intensity 3-4（事後・余韻。エロの余韻を残す。第1幕のリピート禁止）
 ※ FANZA CG集は読者がエロを求めて購入する。導入は短く、エロシーンを手厚く。
@@ -9640,10 +10967,14 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 最高潮のエロシーン。画像が全てを語る。絶頂・射精・快楽堕ちの瞬間。
 
-【descriptionの書き方（50字以上）】
-具体的な行為・体位・身体の状態を描写。
-例: 「正常位で激しくピストンされ、両足を男の腰に巻きつけた三玖が絶頂を迎える。目を見開き舌を出し、膣が痙攣する中で中出しされている。」
-❌ 「快感に溺れている」のような抽象表現は禁止。何をされて、体がどうなっているか書け。
+【descriptionの書き方（50字以上）— 描写であって説明ではない】
+画像が「何が起きているか」を見せる。descriptionは「どう感じているか」を書け。
+■ 触覚を最優先: 温度、圧迫感、痙攣、脈動を書け
+■ 聴覚を混ぜろ: 肌が打ち合う音、呼吸、心音
+■ 文体: 短文連打。体言止めOK。テンポ速く
+✅ 「腰が跳ね上がる。奥を突き上げられるたび、頭が真っ白になる。熱い塊が注がれる感覚に、全身が痙攣した。」
+✅ 「背中を反らし、声にならない悲鳴。脈打つ熱が奥で弾け、意識が途切れる。」
+❌ 「快感に溺れている」「絶頂を迎えた」のような報告文は禁止。身体の感覚を書け。
 
 【吹き出し指針（1-3個）】
 ・女: 絶頂系の喘ぎ1-2個（★セリフ品質ガイドの【段階4】から選べ。自作するな。前シーンと被らないこと）
@@ -9669,10 +11000,14 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 濃厚なエロシーン。挿入・激しい行為。画像の行為を吹き出しが補強。
 
-【descriptionの書き方（50字以上）】
-具体的な行為・体位・身体の反応を描写。
-例: 「背後から挿入され、机に手をついて喘ぐ三玖。男の手が胸を鷲掴みにし、乳首を弄っている。腰が自然と動き出し、快感に抗えなくなっている。」
-❌ 「快感に溺れていく」「罪悪感と快楽の狭間」のような抽象表現のみは禁止
+【descriptionの書き方（50字以上）— 感覚で書け、状況説明するな】
+画像が体位を見せる。descriptionは「身体がどう反応しているか」を書け。
+■ 触覚中心: 挿入感、摩擦、圧迫、内部の感覚
+■ 聴覚: 水音、肌を打つ音、漏れる息
+■ 視覚は画像に任せろ: 「胸を鷲掴みにし」より「胸を掴む指に力が込められ、甘い痺れが走る」
+✅ 「背後から突き上げられるたび、机を掴む指が白くなる。耐えきれず漏れる声が、静かな教室に響いた。」
+✅ 「奥を擦り上げられる感覚に、膝が震える。抗おうとする指先が、いつの間にかシーツを掻きむしっている。」
+❌ 「快感に溺れていく」「挿入された」だけの報告文は禁止。感覚と反応を書け
 
 【吹き出し指針（1-3個）】
 ・女: 喘ぎ1-2個（★セリフ品質ガイドの【段階3】から選べ。自作するな。前シーンと被らないこと）
@@ -9697,6 +11032,14 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 エロの助走。脱衣・愛撫・キス等。期待感を煽る画像に短い吹き出し。
 
+【descriptionの書き方 — 「まだしない」の緊張感こそエロの核】
+触れる前の予感。触れた瞬間の反応。もっと触れたいのに我慢する葛藤。
+■ 触覚: 服越しの温もり、指先が触れた瞬間の電撃感、肌のざわめき
+■ 空間: 二人の距離感、静寂、息遣いだけの空間
+✅ 「制服越しに触れた指先が、ゆっくりと鎖骨をなぞる。息を詰める彼女の肩が、かすかに震えた。」
+✅ 「唇が触れる寸前で止められ、焦らされる。吐息が肌にかかるだけで、身体が熱くなる。」
+❌ 「愛撫された」「キスした」だけの事実報告は禁止。触れる前後の感覚を書け
+
 【吹き出し指針（1-3個）】
 ・女: ドキドキ感のある反応1-2個（★セリフ品質ガイドの【段階2】から選べ）
 ・男: 煽りor会話0-1個（前シーンと同じ意味のセリフ禁止。脅迫/挑発/命令/嘲笑/独白の5パターンを使い分けろ）
@@ -9715,6 +11058,13 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 
 雰囲気作り。接近する画像に自然な一言。
 
+【descriptionの書き方 — 日常から非日常への移行を描け】
+まだ何も起きていないのに、空気が変わる瞬間。予感と緊張の描写。
+■ 空間と距離: いつもより近い距離、いつもと違う視線、変化した空気
+■ 五感: ふわりと香る匂い、聞こえる心臓の音、頬に触れる吐息
+✅ 「いつもの距離より一歩近い。彼の視線が、制服の胸元に一瞬だけ落ちたのを、彼女は見逃さなかった。」
+❌ 「二人きりになった」だけの状況説明は禁止。空気の変化を書け
+
 【吹き出し指針】
 ・自然な短い会話（1-3個）
 ・例: 「ねえ…」「え…？」
@@ -9731,6 +11081,13 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 ## 導入シーン（intensity 1）
 
 状況設定。キャラ紹介の画像に短い会話。
+
+【descriptionの書き方 — キャラの魅力と状況を一文で伝えろ】
+読者が「この子がこれからどうなるのか」を期待する導入。
+■ キャラの外見/仕草の特徴的なディテール1つ
+■ 場所の空気感、時間帯の光
+✅ 「夕暮れの教室。窓際の席で頬杖をつく彼女の横顔に、オレンジの光が差している。」
+❌ 「教室にいる」だけの場所説明は禁止。画になるディテールを1つ入れろ
 
 【吹き出し指針】
 ・自然な一言（1-3個）。状況説明はdescriptionで行い、吹き出しは最小限
@@ -10104,7 +11461,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 
 ## ルール
 
-1. descriptionは必ず100字程度で詳しく書く。**具体的な体位・行為・身体の状態・表情**を書け。「囲まれている」「溺れている」のような抽象表現のみは不可
+1. descriptionは必ず100字程度。**「説明」ではなく「描写」**。触覚・聴覚中心。「～された」報告文禁止。身体の感覚・反応・空間の空気感を書け
 2. character_feelingsで心情を明確に。前シーンと異なる感情変化を示すこと
 3. **bubblesは1-3個**（ヒロイン1-2個 + 男性0-1個。セリフの長さは自由）。男性セリフは全体の25-35%のシーンにのみ入れること（20シーンなら5-7シーンのみ）
 4. typeはspeech/moan/thoughtの3種。intensity 4-5はmoanメイン。**moanには喘ぎ声のみ（説明文禁止）**
@@ -10117,7 +11474,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 11. **descriptionは全て日本語で書くこと**（英語タグはsd_promptのみ）
 12. **titleに「○回戦」「続き」等の安易な表現禁止**。具体的な行為・状況を反映した簡潔なタイトルにすること
 13. **キャラ名**: 初出時はフルネーム「{', '.join(char_names) if char_names else 'ヒロイン'}」を使用。同じdescription内の2回目以降は姓「{', '.join(char_short_names) if char_short_names else 'ヒロイン'}」でよい。表記ブレ厳禁（他の呼び方は禁止）
-14. **descriptionに具体的な行為・体位を必ず書け**。「囲まれる」「溺れる」だけの抽象表現は禁止。何をどうされているか書くこと
+14. **descriptionは感覚で書け**。「挿入された」→「奥を突かれた衝撃で腰が跳ねる」。行為の報告ではなく、身体がどう反応したかを書くこと
 15. **視点**: descriptionは女性キャラ視点で書くこと。男性を「主人公」と呼ばない。男性は「彼」「相手の男」「男性」と表記
 16. **お嬢様口調のintensity対応**: intensity 4-5ではお嬢様口調（ですの/ですわ等）は崩壊させること。理性が飛んだ状態で丁寧語は不自然。「ですの」→「…の…♡」「ですわ」→「…♡」に崩す"""
 
@@ -10578,6 +11935,9 @@ def generate_pipeline(
     provider: str = "",
     quality_priority: bool = False,
     faceless_male: bool = True,
+    sd_neg_base: str = "",
+    sd_neg_prefix: str = "",
+    sd_neg_suffix: str = "",
 ) -> tuple[list, CostTracker]:
     client = anthropic.Anthropic(api_key=api_key)
     log_message("Claude (Anthropic) バックエンドで生成開始")
@@ -11102,7 +12462,10 @@ def generate_pipeline(
                                         sd_prefix_tags=sd_prefix_tags,
                                         sd_suffix_tags=sd_suffix_tags,
                                         theme=theme,
-                                        faceless_male=faceless_male)
+                                        faceless_male=faceless_male,
+                                        sd_neg_base=sd_neg_base,
+                                        sd_neg_prefix=sd_neg_prefix,
+                                        sd_neg_suffix=sd_neg_suffix)
         log_message("SDプロンプト最適化完了")
         if callback:
             callback("[OK]SDプロンプト最適化完了")
@@ -11399,20 +12762,15 @@ def export_json(results: list, output_path: Path, metadata: dict = None):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def export_sd_prompts(results: list, output_path: Path,
-                      negative_prompt: str = ""):
+def export_sd_prompts(results: list, output_path: Path):
     """SDプロンプト一括エクスポート（1行1プロンプト、シーンID付き）"""
-    neg = negative_prompt.strip() if negative_prompt else DEFAULT_NEGATIVE_PROMPT
     lines = []
-    lines.append(f"# Negative prompt (common): {neg}")
-    lines.append("")
     for scene in results:
         sd = scene.get("sd_prompt", "").strip()
         if sd:
             sid = scene.get("scene_id", "?")
             lines.append(f"# Scene {sid}: {scene.get('title', '')}")
             lines.append(sd)
-            lines.append(f"Negative prompt: {neg}")
             lines.append("")
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
@@ -11424,10 +12782,6 @@ def export_wildcard(results: list, output_path: Path,
                     location_type: str = ""):
     """Wild Card形式エクスポート（1行1プロンプト、SD Wild Card対応）"""
     lines = []
-    # 設定コメントヘッダ追加
-    if male_tags or time_tags or location_type:
-        header = f"# Male: {male_tags or 'auto'} | Time: {time_tags or 'auto'} | Location: {location_type or 'auto'}"
-        lines.append(header)
     for scene in results:
         sd = scene.get("sd_prompt", "").strip()
         if sd:
@@ -11436,6 +12790,21 @@ def export_wildcard(results: list, output_path: Path,
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     log_message(f"Wild Card出力完了: {output_path}（{len(lines)}行）")
+
+
+def export_wildcard_negative(results: list, output_path: Path):
+    """ネガティブプロンプト Wild Card形式エクスポート（1行1プロンプト）"""
+    lines = []
+    for scene in results:
+        neg = scene.get("sd_negative_prompt", "").strip()
+        if neg:
+            sid = scene.get("scene_id", "")
+            lines.append(f'{neg}, "シーン{sid}",')
+    if not lines:
+        return
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    log_message(f"Negative Wild Card出力完了: {output_path}（{len(lines)}行）")
 
 
 def export_dialogue_list(results: list, output_path: Path):
@@ -12770,6 +14139,7 @@ class ExportDialog(ctk.CTkToplevel):
         ("xlsx", "Excel", "折り返し表示対応（要openpyxl）"),
         ("sd_prompts", "SDプロンプト一括", "1行1プロンプト テキストファイル"),
         ("wildcard", "Wild Card", "SD用1行1プロンプト（__filename__で参照）"),
+        ("wildcard_neg", "Wild Card (Negative)", "ネガティブプロンプト用Wild Card"),
         ("dialogue", "セリフ一覧", "話者・種類付きテキストファイル"),
         ("markdown", "マークダウン", "脚本全体の読みやすいビュー"),
     ]
@@ -12779,7 +14149,7 @@ class ExportDialog(ctk.CTkToplevel):
         self.results = results
         self.metadata = metadata
         self.title("エクスポート")
-        self.geometry("460x450")
+        self.geometry("460x480")
         self.resizable(False, False)
         self.transient(master)
         self.grab_set()
@@ -12916,13 +14286,16 @@ class ExportDialog(ctk.CTkToplevel):
                         exported.append(f"Excel: {p.name}")
                 elif fmt == "sd_prompts":
                     p = EXPORTS_DIR / f"sd_prompts_{timestamp}.txt"
-                    _neg = self.sd_negative_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_negative_text') else ""
-                    export_sd_prompts(self.results, p, negative_prompt=_neg)
+                    export_sd_prompts(self.results, p)
                     exported.append(f"SDプロンプト: {p.name}")
                 elif fmt == "wildcard":
                     p = EXPORTS_DIR / f"wildcard_{timestamp}.txt"
                     export_wildcard(self.results, p)
                     exported.append(f"Wild Card: {p.name}")
+                elif fmt == "wildcard_neg":
+                    p = EXPORTS_DIR / f"wildcard_negative_{timestamp}.txt"
+                    export_wildcard_negative(self.results, p)
+                    exported.append(f"Wild Card (Neg): {p.name}")
                 elif fmt == "dialogue":
                     p = EXPORTS_DIR / f"dialogue_{timestamp}.txt"
                     export_dialogue_list(self.results, p)
@@ -13547,29 +14920,91 @@ class App(ctk.CTk):
         self.sd_suffix_text.pack(fill="x", pady=(0, 8))
         self.sd_suffix_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_suffix_text, 100, 1200))
 
-        # --- ネガティブプロンプト（v9.0） ---
-        _neg_header = ctk.CTkFrame(sd_content, fg_color="transparent")
-        _neg_header.pack(fill="x", pady=(0, 4))
+        # 区切り線
+        ctk.CTkFrame(sd_content, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", pady=8)
+
+        # ── ネガティブプロンプト設定 ──
         ctk.CTkLabel(
-            _neg_header, text="ネガティブプロンプト（エクスポート時に付与）",
+            sd_content, text="ネガティブプロンプト",
+            font=ctk.CTkFont(family=FONT_JP, size=14, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE
+        ).pack(anchor="w", pady=(0, 4))
+        ctk.CTkLabel(
+            sd_content, text="シーン固有のネガティブは自動生成されます。ここではベース・プレフィックス・サフィックスを設定します。",
+            font=ctk.CTkFont(family=FONT_JP, size=11),
+            text_color=MaterialColors.ON_SURFACE_VARIANT, wraplength=380,
+        ).pack(anchor="w", pady=(0, 8))
+
+        # --- ネガティブ品質ベース ---
+        _neg_base_header = ctk.CTkFrame(sd_content, fg_color="transparent")
+        _neg_base_header.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(
+            _neg_base_header, text="品質ネガティブ（共通ベース）",
             font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
             text_color=MaterialColors.ON_SURFACE_VARIANT
         ).pack(side="left")
         MaterialButton(
-            _neg_header, text="リセット", variant="text", size="small",
-            command=lambda: (self.sd_negative_text.delete("1.0", "end"),
-                             self.sd_negative_text.insert("1.0", DEFAULT_NEGATIVE_PROMPT))
+            _neg_base_header, text="リセット", variant="text", size="small",
+            command=lambda: (
+                self.sd_neg_base_text.delete("1.0", "end"),
+                self.sd_neg_base_text.insert("1.0", "worst_quality, low_quality, bad_anatomy, bad_hands, missing_fingers, extra_digits, fewer_digits, text, signature, watermark, username, blurry, jpeg_artifacts, cropped"),
+                self._auto_resize_textbox(self.sd_neg_base_text, 60, 400),
+            )
         ).pack(side="right")
-        self.sd_negative_text = ctk.CTkTextbox(
-            sd_content, height=80,
+        self.sd_neg_base_text = ctk.CTkTextbox(
+            sd_content, height=60,
             font=ctk.CTkFont(size=13),
             fg_color=MaterialColors.SURFACE_CONTAINER,
             corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
             text_color=MaterialColors.ON_SURFACE,
         )
-        self.sd_negative_text.pack(fill="x", pady=(0, 8))
-        self.sd_negative_text.insert("1.0", DEFAULT_NEGATIVE_PROMPT)
-        self.sd_negative_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_negative_text, 80, 600))
+        self.sd_neg_base_text.pack(fill="x", pady=(0, 8))
+        self.sd_neg_base_text.insert("1.0", "worst_quality, low_quality, bad_anatomy, bad_hands, missing_fingers, extra_digits, fewer_digits, text, signature, watermark, username, blurry, jpeg_artifacts, cropped")
+        self.sd_neg_base_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_neg_base_text, 60, 400))
+
+        # --- ネガティブプレフィックス ---
+        _neg_prefix_header = ctk.CTkFrame(sd_content, fg_color="transparent")
+        _neg_prefix_header.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(
+            _neg_prefix_header, text="ネガティブ プレフィックス",
+            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(side="left")
+        MaterialButton(
+            _neg_prefix_header, text="クリア", variant="text", size="small",
+            command=lambda: (self.sd_neg_prefix_text.delete("1.0", "end"))
+        ).pack(side="right")
+        self.sd_neg_prefix_text = ctk.CTkTextbox(
+            sd_content, height=60,
+            font=ctk.CTkFont(size=13),
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+        )
+        self.sd_neg_prefix_text.pack(fill="x", pady=(0, 8))
+        self.sd_neg_prefix_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_neg_prefix_text, 60, 400))
+
+        # --- ネガティブサフィックス ---
+        _neg_suffix_header = ctk.CTkFrame(sd_content, fg_color="transparent")
+        _neg_suffix_header.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(
+            _neg_suffix_header, text="ネガティブ サフィックス",
+            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
+            text_color=MaterialColors.ON_SURFACE_VARIANT
+        ).pack(side="left")
+        MaterialButton(
+            _neg_suffix_header, text="クリア", variant="text", size="small",
+            command=lambda: (self.sd_neg_suffix_text.delete("1.0", "end"))
+        ).pack(side="right")
+        self.sd_neg_suffix_text = ctk.CTkTextbox(
+            sd_content, height=60,
+            font=ctk.CTkFont(size=13),
+            fg_color=MaterialColors.SURFACE_CONTAINER,
+            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
+            text_color=MaterialColors.ON_SURFACE,
+        )
+        self.sd_neg_suffix_text.pack(fill="x", pady=(0, 8))
+        self.sd_neg_suffix_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_neg_suffix_text, 60, 400))
 
         # 区切り線
         ctk.CTkFrame(sd_content, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", pady=8)
@@ -13638,6 +15073,10 @@ class App(ctk.CTk):
             png_apply_row, text="サフィックスに適用", variant="filled_tonal", size="small",
             command=self._apply_png_to_suffix
         ).pack(side="left")
+        MaterialButton(
+            png_apply_row, text="Negに適用", variant="filled_tonal", size="small",
+            command=self._apply_png_to_negative
+        ).pack(side="left", padx=(8, 0))
 
         # ══════════════════════════════════════════════════════════════
         # 5. 生成設定
@@ -14095,11 +15534,19 @@ class App(ctk.CTk):
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", self.config_data["sd_suffix_tags"])
             self._auto_resize_textbox(self.sd_suffix_text, 100, 1200)
-        if self.config_data.get("sd_negative_prompt"):
-            self.sd_negative_text.delete("1.0", "end")
-            self.sd_negative_text.insert("1.0", self.config_data["sd_negative_prompt"])
-            self._auto_resize_textbox(self.sd_negative_text, 80, 600)
-
+        # ネガティブプロンプト設定の復元
+        if self.config_data.get("sd_neg_base") and hasattr(self, 'sd_neg_base_text'):
+            self.sd_neg_base_text.delete("1.0", "end")
+            self.sd_neg_base_text.insert("1.0", self.config_data["sd_neg_base"])
+            self._auto_resize_textbox(self.sd_neg_base_text, 60, 400)
+        if self.config_data.get("sd_neg_prefix") and hasattr(self, 'sd_neg_prefix_text'):
+            self.sd_neg_prefix_text.delete("1.0", "end")
+            self.sd_neg_prefix_text.insert("1.0", self.config_data["sd_neg_prefix"])
+            self._auto_resize_textbox(self.sd_neg_prefix_text, 60, 400)
+        if self.config_data.get("sd_neg_suffix") and hasattr(self, 'sd_neg_suffix_text'):
+            self.sd_neg_suffix_text.delete("1.0", "end")
+            self.sd_neg_suffix_text.insert("1.0", self.config_data["sd_neg_suffix"])
+            self._auto_resize_textbox(self.sd_neg_suffix_text, 60, 400)
         # v8.7: 品質優先モードの復元
         if self.config_data.get("quality_priority") and hasattr(self, 'quality_priority_var'):
             self.quality_priority_var.set(True)
@@ -14265,6 +15712,33 @@ class App(ctk.CTk):
         self._auto_resize_textbox(self.sd_suffix_text, min_h=100, max_h=1200)
         if hasattr(self, 'snackbar'):
             self.snackbar.show("サフィックスに適用しました", type="success")
+
+    def _apply_png_to_negative(self):
+        """PNG Infoのnegativeプロンプトをネガティブ品質ベースに適用"""
+        result = getattr(self, '_png_info_result', None)
+        if not result or "error" in result:
+            return
+        content = result.get("negative", "").strip()
+        if not content:
+            # negativeが無い場合はpositiveをネガティブプレフィックスに適用
+            content = result.get("positive", "").strip()
+            if not content:
+                return
+            target = self.sd_neg_prefix_text
+            label = "ネガティブプレフィックス"
+        else:
+            target = self.sd_neg_base_text
+            label = "ネガティブ品質ベース"
+        existing = target.get("1.0", "end-1c").strip()
+        if existing:
+            target.delete("1.0", "end")
+            target.insert("1.0", f"{existing}, {content}")
+        else:
+            target.delete("1.0", "end")
+            target.insert("1.0", content)
+        self._auto_resize_textbox(target, min_h=60, max_h=400)
+        if hasattr(self, 'snackbar'):
+            self.snackbar.show(f"{label}に適用しました", type="success")
 
     def update_cost_preview(self, event=None):
         """シーン数に基づいてコスト予測を更新"""
@@ -14501,7 +15975,9 @@ class App(ctk.CTk):
             "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
-            "sd_negative_prompt": self.sd_negative_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_negative_text') else DEFAULT_NEGATIVE_PROMPT,
+            "sd_neg_base": self.sd_neg_base_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_base_text') else "",
+            "sd_neg_prefix": self.sd_neg_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_prefix_text') else "",
+            "sd_neg_suffix": self.sd_neg_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_suffix_text') else "",
             "quality_priority": self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False,
         }
         save_config(self.config_data)
@@ -14535,7 +16011,9 @@ class App(ctk.CTk):
             "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
-            "sd_negative_prompt": self.sd_negative_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_negative_text') else DEFAULT_NEGATIVE_PROMPT,
+            "sd_neg_base": self.sd_neg_base_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_base_text') else "",
+            "sd_neg_prefix": self.sd_neg_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_prefix_text') else "",
+            "sd_neg_suffix": self.sd_neg_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_suffix_text') else "",
         }
 
     def apply_config(self, config: dict):
@@ -14614,10 +16092,19 @@ class App(ctk.CTk):
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", config["sd_suffix_tags"])
             self._auto_resize_textbox(self.sd_suffix_text, 100, 1200)
-        if config.get("sd_negative_prompt") and hasattr(self, 'sd_negative_text'):
-            self.sd_negative_text.delete("1.0", "end")
-            self.sd_negative_text.insert("1.0", config["sd_negative_prompt"])
-            self._auto_resize_textbox(self.sd_negative_text, 80, 600)
+        # ネガティブプロンプト設定
+        if config.get("sd_neg_base") and hasattr(self, 'sd_neg_base_text'):
+            self.sd_neg_base_text.delete("1.0", "end")
+            self.sd_neg_base_text.insert("1.0", config["sd_neg_base"])
+            self._auto_resize_textbox(self.sd_neg_base_text, 60, 400)
+        if config.get("sd_neg_prefix") and hasattr(self, 'sd_neg_prefix_text'):
+            self.sd_neg_prefix_text.delete("1.0", "end")
+            self.sd_neg_prefix_text.insert("1.0", config["sd_neg_prefix"])
+            self._auto_resize_textbox(self.sd_neg_prefix_text, 60, 400)
+        if config.get("sd_neg_suffix") and hasattr(self, 'sd_neg_suffix_text'):
+            self.sd_neg_suffix_text.delete("1.0", "end")
+            self.sd_neg_suffix_text.insert("1.0", config["sd_neg_suffix"])
+            self._auto_resize_textbox(self.sd_neg_suffix_text, 60, 400)
         self.update_cost_preview()
 
     def refresh_profile_list(self):
@@ -14992,6 +16479,11 @@ class App(ctk.CTk):
             _sd_prefix = self.sd_prefix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_prefix_text') else ""
             _sd_suffix = self.sd_suffix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_suffix_text') else ""
 
+            # ネガティブプロンプト設定をGUIから取得
+            _sd_neg_base = self.sd_neg_base_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_neg_base_text') else ""
+            _sd_neg_prefix = self.sd_neg_prefix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_neg_prefix_text') else ""
+            _sd_neg_suffix = self.sd_neg_suffix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_neg_suffix_text') else ""
+
             _quality_priority = self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False
             _faceless_male = self.male_faceless_var.get() if hasattr(self, 'male_faceless_var') else True
             results, cost_tracker, pipeline_metadata = generate_pipeline(
@@ -15005,6 +16497,9 @@ class App(ctk.CTk):
                 provider=PROVIDER_CLAUDE,
                 quality_priority=_quality_priority,
                 faceless_male=_faceless_male,
+                sd_neg_base=_sd_neg_base,
+                sd_neg_prefix=_sd_neg_prefix,
+                sd_neg_suffix=_sd_neg_suffix,
             )
 
             if self.stop_requested:
@@ -15021,11 +16516,13 @@ class App(ctk.CTk):
 
             export_csv(results, csv_path)
             export_json(results, json_path, metadata=pipeline_metadata)
-            _neg_prompt = self.sd_negative_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_negative_text') else ""
-            export_sd_prompts(results, sd_path, negative_prompt=_neg_prompt)
+            export_sd_prompts(results, sd_path)
             export_wildcard(results, wc_path,
                            male_tags=_male_tags, time_tags=_time_tags,
                            location_type=_location_type)
+            # ネガティブプロンプト Wildcard出力
+            wc_neg_path = EXPORTS_DIR / f"wildcard_negative_{timestamp}.txt"
+            export_wildcard_negative(results, wc_neg_path)
             export_dialogue_list(results, dlg_path)
 
             # Excel出力（openpyxlがある場合）
