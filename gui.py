@@ -1929,6 +1929,14 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             if name:
                 heroine_names.add(name)
 
+    def _is_male_speaker(speaker: str) -> bool:
+        if not speaker:
+            return False
+        for h in heroine_names:
+            if h in speaker:
+                return False
+        return True
+
     scene_issues = {}
     all_moan_texts = []   # [(scene_id, text)]
     all_speech_texts = [] # [(scene_id, text)]
@@ -1993,6 +2001,29 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                 _clean_txt = txt.rstrip("…♡♥")
                 if _re_val.search(r".{4,}(?:だな|してるな|だろうな)$", _clean_txt):
                     problems.append(f"男性「{speaker}」観察型: 「{txt}」")
+
+        # speaker-content不整合チェック（男性speakerに女性的内容 / 女性speakerに男性的内容）
+        _FEMALE_RESIST_KW = ["やめて", "いや…", "いやっ", "だめ…", "だめっ", "こわい", "痛い", "助けて",
+                             "きもちぃ", "んっ…", "あっ♡", "んぁ", "あへ", "んほ"]
+        _MALE_COMMAND_KW = ["出すぞ", "イケ", "脱げ", "来い", "行くぞ", "しゃぶれ", "締めろ",
+                            "鳴け", "黙れ", "受け取れ", "感じろ", "見せろ"]
+        for b in bubbles:
+            speaker = b.get("speaker", "")
+            txt = b.get("text", "")
+            btype = b.get("type", "")
+            if not speaker or not txt:
+                continue
+            is_male = _is_male_speaker(speaker)
+            if is_male:
+                # 男性speakerがmoanタイプ or 女性的抵抗/快感表現を持つ
+                if btype == "moan":
+                    problems.append(f"speaker不整合: 男性「{speaker}」がmoan「{txt}」→ヒロイン名に修正推奨")
+                elif any(kw in txt for kw in _FEMALE_RESIST_KW):
+                    problems.append(f"speaker不整合: 男性「{speaker}」が女性的表現「{txt}」")
+            else:
+                # 女性speakerが男性命令口調を持つ
+                if any(kw in txt for kw in _MALE_COMMAND_KW):
+                    problems.append(f"speaker不整合: 女性「{speaker}」が男性的表現「{txt}」")
 
         # thought部位ラベル冒頭チェック
         _BODY_PART_CHECK = ["胸…", "太もも…", "お尻…", "首筋…", "耳…", "唇…",
@@ -3296,6 +3327,8 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
             get_pattern_key_lines = None
             log_message("ero_dialogue_pool.py未検出、重複は除去のみ（置換なし）")
 
+    import re
+
     # ヒロイン名セット構築（これ以外のspeakerは全て男性扱い）
     _heroine_set = set()
     if heroine_names:
@@ -3344,6 +3377,10 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
             if intensity >= 4:
                 pool.extend(SPEECH_MALE_POOL.get("command", []))
                 pool.extend(SPEECH_MALE_POOL.get("dirty", []))
+            elif intensity <= 2:
+                pool.extend(SPEECH_MALE_POOL.get("gentle", []))
+                pool.extend(SPEECH_MALE_POOL.get("foreplay", []))
+                pool.extend(SPEECH_MALE_POOL.get("praise", []))
             else:
                 pool.extend(SPEECH_MALE_POOL.get("dirty", []))
                 pool.extend(SPEECH_MALE_POOL.get("praise", []))
@@ -3705,6 +3742,9 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                     callback: Optional[Callable] = None, concept: str = "") -> list:
     """生成結果の自動修正（APIコスト不要のローカル後処理）"""
     import re
+    import random as _rng
+
+    _step_errors = []  # (step_name, error_msg) — 失敗Stepを記録し、残りのStepは続行
 
     _total_scenes = len(results)
 
@@ -3832,6 +3872,58 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         if heroine_name_set:
             return speaker not in heroine_name_set and not any(h in speaker for h in heroine_name_set)
         return speaker in _MALE_SPEAKER_NAMES or any(m in speaker for m in _MALE_SPEAKER_NAMES)
+    # 4.5pre. speaker名の正規化（男性の不正な名前→「男性」に統一）
+    _male_normalize_count = 0
+    for scene in results:
+        if "bubbles" not in scene:
+            continue
+        for bubble in scene["bubbles"]:
+            speaker = bubble.get("speaker", "")
+            if not speaker:
+                continue
+            is_male = _is_male_by_name(speaker)
+            if is_male and speaker != "男性":
+                old = speaker
+                bubble["speaker"] = "男性"
+                _male_normalize_count += 1
+                if _male_normalize_count <= 5:
+                    log_message(f"  speaker正規化: 「{old}」→「男性」")
+    if _male_normalize_count > 0:
+        log_message(f"  speaker正規化完了: {_male_normalize_count}件の男性speaker名を「男性」に統一")
+
+    # 4.5a. speaker-content不整合の自動修正（男性speakerに女性的内容→ヒロイン名に修正）
+    # ※ moan→speech変換より先に実行（変換後だとmoan判定不可）
+    _FEMALE_CONTENT_KW = frozenset(["やめて", "いや…", "いやっ", "だめ…", "だめっ", "こわい",
+                                     "痛い", "助けて", "きもちぃ", "んっ…", "あっ♡", "んぁ", "あへ", "んほ"])
+    heroine_label = correct_names[0] if correct_names else "ヒロイン"
+    _speaker_content_fix_count = 0
+    for scene in results:
+        if "bubbles" not in scene:
+            continue
+        for bubble in scene["bubbles"]:
+            speaker = bubble.get("speaker", "")
+            txt = bubble.get("text", "")
+            btype = bubble.get("type", "")
+            if not speaker or not txt:
+                continue
+            is_male = _is_male_by_name(speaker)
+            if is_male:
+                # 男性speakerがmoanタイプ → ヒロイン名に修正
+                if btype == "moan":
+                    old_speaker = speaker
+                    bubble["speaker"] = heroine_label
+                    log_message(f"  speaker不整合修正: moanの話者「{old_speaker}」→「{heroine_label}」")
+                    _speaker_content_fix_count += 1
+                # 男性speakerが女性的抵抗/快感表現を持つ → ヒロイン名に修正
+                elif any(kw in txt for kw in _FEMALE_CONTENT_KW):
+                    old_speaker = speaker
+                    bubble["speaker"] = heroine_label
+                    log_message(f"  speaker不整合修正: 「{old_speaker}」の女性的セリフ「{txt[:15]}」→話者を「{heroine_label}」に")
+                    _speaker_content_fix_count += 1
+    if _speaker_content_fix_count > 0:
+        log_message(f"  speaker-content不整合修正: {_speaker_content_fix_count}件")
+
+    # 4.5b. 男性セリフ自動修正（♡除去、moan→speech変換）
     for scene in results:
         if "bubbles" in scene:
             for bubble in scene["bubbles"]:
@@ -4014,7 +4106,6 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 if txt.rstrip("…♡").endswith(suffix) or suffix in txt:
                     _suffix_counts[suffix] = _suffix_counts.get(suffix, 0) + 1
                     if _suffix_counts[suffix] > 2:  # 3回目以降は置換
-                        import random as _rng
                         alt = _rng.choice(alts)
                         old_txt = txt
                         bubble["text"] = alt
@@ -4627,6 +4718,10 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             if intensity >= 4:
                 pool.extend(SPEECH_MALE_POOL.get("command", []))
                 pool.extend(SPEECH_MALE_POOL.get("dirty", []))
+            elif intensity <= 2:
+                pool.extend(SPEECH_MALE_POOL.get("gentle", []))
+                pool.extend(SPEECH_MALE_POOL.get("foreplay", []))
+                pool.extend(SPEECH_MALE_POOL.get("praise", []))
             else:
                 pool.extend(SPEECH_MALE_POOL.get("dirty", []))
                 pool.extend(SPEECH_MALE_POOL.get("praise", []))
@@ -4772,10 +4867,21 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "いい匂いだな": "いい匂いだ",
         "素直だな": "素直だろ",
         "正直だな": "正直だろ",
+        # v9.5追加: ～のか型
+        "感じてるのか": "感じろ",
+        "濡れてるのか": "もっと濡らせ",
+        "欲しいのか": "欲しいんだろ",
+        "気持ちいいのか": "気持ちいいだろ",
+        "イきたいのか": "イケ",
+        "我慢できないのか": "我慢すんな",
+        "動いてくれるのか": "自分で動け",
+        "慣れてきたのか": "もっとくれ",
+        "感じちゃうのか": "感じろ",
+        "足りないのか": "欲しいんだろ",
     }
     import re as _re_autofix
-    # 「～だな」「～してるな」「～だろうな」で終わる観察型パターン検出
-    _MALE_OBS_RE = _re_autofix.compile(r".{4,}(?:だな|するな|してるな|だろうな|てるな)$")
+    # 「～だな」「～してるな」「～だろうな」「～のか」で終わる観察型パターン検出
+    _MALE_OBS_RE = _re_autofix.compile(r".{4,}(?:だな|するな|してるな|だろうな|てるな|のか|んだな)$")
     _male_obs_fix_count = 0
     _used_male_obs_fix = set()
     for scene in results:
@@ -4802,7 +4908,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 continue
             # 2. 正規表現マッチ（「～だな」系で終わる4文字以上）
             clean = txt.rstrip("…♡♥")
-            if _MALE_OBS_RE.match(clean):
+            if _MALE_OBS_RE.match(clean) and _has_pool:
                 intensity = scene.get("intensity", 3)
                 pool = _get_male_pool_for_theme(theme if theme else "", intensity)
                 # 観察型を除外
@@ -4817,14 +4923,15 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     if _male_obs_fix_count > 0:
         log_message(f"  男性観察型セリフ修正: {_male_obs_fix_count}件")
 
-    # 9b. thought部位ラベル冒頭修正（「胸…」「太もも…」等の部位名冒頭を感覚型に置換）
+    # 9b. thought部位ラベル冒頭修正（「胸…」「胸が…」「太ももの…」等の部位名冒頭を感覚型に置換）
     _BODY_PART_LABELS = [
         "胸", "太もも", "お尻", "首筋", "耳", "唇", "舌", "指", "脚", "腕",
         "背中", "お腹", "腰", "膝", "肩", "足", "髪", "うなじ", "乳首", "クリ",
         "おっぱい", "おしり", "ふともも", "くちびる", "みみ",
+        "頭", "からだ", "体", "あたま", "心臓", "脳みそ", "指先", "つま先",
     ]
     _BODY_PART_RE = _re_autofix.compile(
-        r"^(" + "|".join(_re_autofix.escape(bp) for bp in _BODY_PART_LABELS) + r")…"
+        r"^(" + "|".join(_re_autofix.escape(bp) for bp in _BODY_PART_LABELS) + r")[がのはを]?…"
     )
     _thought_body_fix_count = 0
     if _has_pool:
@@ -4868,6 +4975,67 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 _thought_trim_count += 1
     if _thought_trim_count > 0:
         log_message(f"  thought長さトリミング: {_thought_trim_count}件")
+
+    # 9d. thought描写型検出（「体が～」「脳が～」「心が～」等の主語＋述語ナレーション型を置換）
+    _DESCRIPTIVE_THOUGHT_RE = _re_autofix.compile(
+        r"^(体が|脳が|心が|思考が|意識が|理性が|本能が|感覚が|心臓が|神経が|頭が|胸が)"
+    )
+    _desc_thought_fix_count = 0
+    if _has_pool:
+        _used_desc_fix = set()
+        for _si_dt, scene in enumerate(results):
+            intensity = scene.get("intensity", 3)
+            for b in scene.get("bubbles", []):
+                if b.get("type") != "thought":
+                    continue
+                txt = b.get("text", "")
+                if not txt:
+                    continue
+                if _DESCRIPTIVE_THOUGHT_RE.match(txt):
+                    pool = _get_speech_pool_with_char("thought", theme if theme else "",
+                                                      intensity, _si_dt, len(results))
+                    pool = [t for t in pool if not _DESCRIPTIVE_THOUGHT_RE.match(t)
+                            and not _BODY_PART_RE.match(t)]
+                    replacement = pick_replacement(pool, _used_desc_fix, _normalize_bubble_text,
+                                                   intensity=intensity)
+                    if replacement:
+                        log_message(f"  thought描写型修正: 「{txt}」→「{replacement}」")
+                        b["text"] = replacement
+                        _used_desc_fix.add(replacement)
+                        _desc_thought_fix_count += 1
+    if _desc_thought_fix_count > 0:
+        log_message(f"  thought描写型修正: {_desc_thought_fix_count}件")
+
+    # 9e. 男性セリフ誤割り当て検出（女性的表現が男性speakerに割り当てられている場合を修正）
+    _FEMALE_ONLY_PATTERNS = _re_autofix.compile(
+        r"(?:やだ|いや[ぁ…♡]|だめ[ぇ…♡]|こわい|はずかし|きもちぃ|んほ[ぉ♡]|あへ[ぇ♡]|おほ[ぉ♡]|イっち[ゃ…]|♡)"
+    )
+    _male_misassign_count = 0
+    if _has_pool:
+        _used_male_reassign = set()
+        for scene in results:
+            intensity = scene.get("intensity", 3)
+            for b in scene.get("bubbles", []):
+                speaker = b.get("speaker", "")
+                if not (speaker and _is_male_by_name(speaker)):
+                    continue
+                if b.get("type") != "speech":
+                    continue
+                txt = b.get("text", "").strip()
+                if not txt:
+                    continue
+                if _FEMALE_ONLY_PATTERNS.search(txt):
+                    pool = _get_male_pool_for_theme(theme if theme else "", intensity)
+                    pool = [p for p in pool if not _FEMALE_ONLY_PATTERNS.search(p)]
+                    replacement = pick_replacement(pool, _used_male_reassign, _normalize_bubble_text,
+                                                   intensity=intensity)
+                    if replacement:
+                        log_message(f"  男性セリフ誤割当修正: 「{txt}」→「{replacement}」 (speaker={speaker})")
+                        b["text"] = replacement
+                        _used_male_reassign.add(replacement)
+                        _male_misassign_count += 1
+    if _male_misassign_count > 0:
+        log_message(f"  男性セリフ誤割り当て修正: {_male_misassign_count}件")
 
     # 10. 同一シーン内テキスト重複修正
     _intra_dup_count = 0
@@ -5261,7 +5429,6 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     # 10d. N-gram語彙多様性修正（4文字N-gramが5回超出現→3回目以降をプール代替）
     _ngram_fix_count = 0
     if _has_pool:
-        from collections import Counter as _NgramCounter
         # 全バブルからN-gram頻度集計
         _ngram_positions = {}  # ngram -> [(scene_idx, bubble_idx, start_pos)]
         for _si_ng, scene in enumerate(results):
@@ -5780,7 +5947,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             for b in bubbles:
                 speaker = b.get("speaker", "")
                 btype = b.get("type", "")
-                if _is_male_speaker(speaker):
+                if _is_male_by_name(speaker):
                     continue  # 男性（時間停止の使い手）はspeechのまま
                 if btype == "speech":
                     b["type"] = "thought"
@@ -6540,7 +6707,6 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     # 20b. Speech崩壊パターン（高intensityのspeechを段階的に断片化）
     # i=1: そのまま / i=2: やや不安定 / i=3: 断片化開始 / i=4: ほぼ崩壊 / i=5: moan支配
     _speech_frag_count = 0
-    import random as _frag_rand
     for scene in results:
         intensity = scene.get("intensity", 3)
         if intensity <= 2:
@@ -6717,6 +6883,11 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
 
     if _phys_fix_count > 0:
         _progress(f"Step 23 物理状態累積修正: {_phys_fix_count}箇所")
+
+    if _step_errors:
+        log_message(f"  [WARN] auto_fix_script: {len(_step_errors)}件のStep失敗:")
+        for step_name, err_msg in _step_errors:
+            log_message(f"    - {step_name}: {err_msg}")
 
     return results
 
@@ -8051,36 +8222,49 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         _prev_pos_f = _cur_pos_f
 
     # Phase4: シーン固有ネガティブプロンプト生成
-    # ユーザー設定のネガティブベース（指定があれば自動生成のベース部分を置換）
+    # ユーザー設定のネガティブベース/プレフィックス/サフィックスと自動生成の重複を排除
+    # ベース側を優先し、自動生成側の重複タグを除去する
+    _normalize_tag = lambda t: t.strip().lower().replace(" ", "_")
+    _user_neg_tags = set()
+    for _user_part in (sd_neg_base, sd_neg_prefix, sd_neg_suffix):
+        if _user_part:
+            for _t in _user_part.split(","):
+                _nt = _normalize_tag(_t)
+                if _nt:
+                    _user_neg_tags.add(_nt)
     for scene in results:
         if scene.get("sd_prompt"):
             auto_neg = _generate_negative_prompt(scene, theme)
             if sd_neg_base:
-                # ユーザー指定のベースを使用し、自動生成のシーン固有部分のみ追加
-                # 自動生成からベース品質タグを除いたシーン固有分を抽出
-                _auto_base = {
-                    "worst_quality", "low_quality", "bad_anatomy", "bad_hands",
-                    "missing_fingers", "extra_digits", "fewer_digits",
-                    "text", "signature", "watermark", "username",
-                    "blurry", "jpeg_artifacts", "cropped",
-                }
+                # 自動生成タグからユーザー設定済みタグを除外（ベース優先）
                 _auto_tags = [t.strip() for t in auto_neg.split(",") if t.strip()]
-                _scene_specific = [t for t in _auto_tags if t not in _auto_base]
-                # ユーザーベース + シーン固有
+                _scene_specific = [t for t in _auto_tags if _normalize_tag(t) not in _user_neg_tags]
                 _neg_parts = [sd_neg_base]
                 if _scene_specific:
                     _neg_parts.append(", ".join(_scene_specific))
                 core_neg = ", ".join(_neg_parts)
             else:
                 core_neg = auto_neg
-            # prefix + core + suffix 組み立て
+            # prefix + core + suffix 組み立て → 全体重複排除
             neg_parts = []
             if sd_neg_prefix:
                 neg_parts.append(sd_neg_prefix)
             neg_parts.append(core_neg)
             if sd_neg_suffix:
                 neg_parts.append(sd_neg_suffix)
-            scene["sd_negative_prompt"] = ", ".join(neg_parts).replace(",,", ",").strip(", ")
+            _combined = ", ".join(neg_parts).replace(",,", ",").strip(", ")
+            # 最終重複排除（出現順を維持、ベース→プレフィックス→コア→サフィックス順）
+            _seen = set()
+            _deduped = []
+            for _t in _combined.split(","):
+                _ts = _t.strip()
+                if not _ts:
+                    continue
+                _key = _normalize_tag(_ts)
+                if _key not in _seen:
+                    _seen.add(_key)
+                    _deduped.append(_ts)
+            scene["sd_negative_prompt"] = ", ".join(_deduped)
 
     return results
 
@@ -10920,11 +11104,19 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
         _scene_char_pool = load_character_pool(_cp_id)
         if _scene_char_pool:
             sample_lines = []
+            thought_lines = []
             for _ph in ["foreplay", "penetration", "climax"]:
                 phase_speech = _scene_char_pool.get("speech", {}).get(_ph, [])[:2]
                 sample_lines.extend(phase_speech)
-            if sample_lines:
-                char_pool_section = "\n## キャラ固有セリフ例（このトーンで書け）\n" + "\n".join(f"・{l}" for l in sample_lines)
+                phase_thought = _scene_char_pool.get("thought", {}).get(_ph, [])[:1]
+                thought_lines.extend(phase_thought)
+            if sample_lines or thought_lines:
+                char_pool_section = "\n## キャラ固有セリフ例（このトーンで書け）\n"
+                if sample_lines:
+                    char_pool_section += "### 会話(speech)例:\n" + "\n".join(f"・{l}" for l in sample_lines) + "\n"
+                if thought_lines:
+                    char_pool_section += "### 心の声(thought)例:\n" + "\n".join(f"・({l})" for l in thought_lines) + "\n"
+                char_pool_section += "※thoughtは感覚・感情主体で書け。「指が…」「胸が…」等の身体部位実況は禁止。\n"
 
     # v8.8: テーマ世界ルール（セリフ制約等）
     world_rules = theme_guide.get("world_rules", [])
@@ -11167,7 +11359,7 @@ story_so_farのセリフ・SEと同一・類似は絶対禁止。毎シーン辞
 ### セリフ内容整合性
 - moan=喘ぎ声のみ。説明文禁止（❌「そうなんだ」「汗すごい」）
 - speech=感情的反応のみ。身体報告禁止（❌「震えてる」「目が回る」）
-- thought=感情断片のみ。ナレーション禁止（❌「こんなことをしている自分が…」）。部位ラベル冒頭禁止（❌「胸…こんなに…」「太もも…そんな…」→✅「熱い…」「ゾクって…」）
+- thought=感覚・感情の断片のみ。ナレーション・文語表現禁止。❌部位/器官を主語にする描写型（「胸が…」「体が…」「脳が…」「心が…」「思考が…」）❌文語的表現（「胸がときめく」「心が満たされ」「魂が震え」）→✅感覚主体の断片（「熱い…」「ゾクって…」「とけちゃう…」「やばい…」）
 - 男性speech=命令/挑発/独白のみ。観察実況禁止（❌「いい声だな」「敏感だな」「ここも感じるんだな」→✅「もっと鳴け」「欲しいんだろ」「逃がさねぇ」）
 - descriptionと吹き出しの内容が**論理的に一致**すること
 
@@ -11182,7 +11374,7 @@ speech/thoughtの語尾は毎シーン構造を変えろ（体言止め/疑問/�
 同じ書き出し（先頭2文字）を3シーン以内で再使用するな。バリエーションが生命線。
 同一構文（X…Yが…Z…）の3連続も禁止。構文パターンを変えろ（疑問/自嘲/矛盾/驚き/諦め/感覚）。
 感情は恐怖/羞恥/快感否定の3種だけでなく、怒り/諦め/自嘲/混乱/背徳感も使え。
-❌禁止: thoughtで「胸…」「太もも…」「耳…」等、部位名を冒頭に置く説明型（「胸…こんなに…」）。部位を主語にするな。感覚・感情を主語にしろ（「熱い…」「ゾクって…」「やばい…」）。
+❌禁止: thoughtで部位名・器官名を主語にする説明型（「胸…」「体が…」「脳が…」「心が…」「思考が…」）。文語的表現（「胸がときめく」「心が満たされ」）も禁止。感覚・感情を主語にしろ（「熱い…」「ゾクって…」「やばい…」「とけちゃう…」）。
 同じキーワード（「だめ」「声」等）は全シーン中4回まで。
 
 ## オノマトペ辞書（同じ組み合わせの連続禁止）
@@ -11326,7 +11518,8 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 - **前シーンと同じ状況描写・同じ展開の繰り返し禁止**
 - **ストーリーを必ず前シーンより先に進めること（行為をエスカレート）**
 - **同じ場所名は前シーンと同じ表記を使え（表記ブレ禁止）**
-- **キャラ名はフルネーム「{', '.join(char_names) if char_names else 'ヒロイン'}」または姓「{', '.join(char_short_names) if char_short_names else 'ヒロイン'}」のみ使用**
+- **女性キャラのspeaker名: 「{', '.join(char_names) if char_names else 'ヒロイン'}」（フルネーム）または「{', '.join(char_short_names) if char_short_names else 'ヒロイン'}」（姓）のみ使用**
+- **男性キャラのspeaker名: 「男性」固定**（「男」「彼」「先生」「医師」等は使うな。必ず「男性」と書け）
 
 ### ⚠️ エスカレーション制御（段階飛躍禁止）
 - **前シーンの行為レベルから1段階だけ進めること**
@@ -11441,9 +11634,9 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
         "{char_names[0] if char_names else 'ヒロイン'}": "このシーンでの心情"
     }},
     "bubbles": [
-        {{"speaker": "キャラ名", "type": "speech", "text": "短い一言"}},
-        {{"speaker": "キャラ名", "type": "moan", "text": "あっ♡"}},
-        {{"speaker": "キャラ名", "type": "thought", "text": "心の声"}}
+        {{"speaker": "{char_names[0] if char_names else 'ヒロイン'}", "type": "speech", "text": "短い一言"}},
+        {{"speaker": "{char_names[0] if char_names else 'ヒロイン'}", "type": "moan", "text": "あっ♡"}},
+        {{"speaker": "男性", "type": "speech", "text": "男のセリフ"}}
     ],
     "onomatopoeia": ["効果音1", "効果音2"],
     "direction": "演出・ト書き",
@@ -11463,7 +11656,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 
 1. descriptionは必ず100字程度。**「説明」ではなく「描写」**。触覚・聴覚中心。「～された」報告文禁止。身体の感覚・反応・空間の空気感を書け
 2. character_feelingsで心情を明確に。前シーンと異なる感情変化を示すこと
-3. **bubblesは1-3個**（ヒロイン1-2個 + 男性0-1個。セリフの長さは自由）。男性セリフは全体の25-35%のシーンにのみ入れること（20シーンなら5-7シーンのみ）
+3. **bubblesは1-3個**（speaker「{char_names[0] if char_names else 'ヒロイン'}」1-2個 + speaker「男性」0-1個）。男性セリフは全体の25-35%のシーンにのみ入れること。**speakerには必ず上記のキャラ名を正確に使え**
 4. typeはspeech/moan/thoughtの3種。intensity 4-5はmoanメイン。**moanには喘ぎ声のみ（説明文禁止）**
 5. **onomatopoeiaは場面に合った効果音**（intensity 1-2はなし〜1個、3は1-2個、4-5は2-4個）
 6. sd_promptはこのシーン固有の描写タグのみ出力: 「キャラ外見 + ポーズ・行為 + 表情 + エロ描写 + アングル + 場所・背景 + 照明」。**品質タグ(masterpiece, best_quality, score_9等)は絶対に含めるな**（後処理で自動付与される）
@@ -12486,38 +12679,11 @@ def generate_pipeline(
         except Exception as _save_err:
             log_message(f"中間結果保存失敗: {_save_err}")
 
-    # 5-3.5: Opusクライマックス清書パス（intensity >= 5 のシーンのみ）
-    opus_targets = [i for i, r in enumerate(results) if r.get("intensity", 0) >= 5]
-    if opus_targets:
-        log_message(f"Opus清書パス: {len(opus_targets)}シーン対象（intensity >= 5）")
-        if callback:
-            callback(f"[POLISH]Opus清書: {len(opus_targets)}シーン開始...")
-        _opus_ok = 0
-        for idx in opus_targets:
-            scene = results[idx]
-            _sid = scene.get("scene_id", idx + 1)
-            _orig_intensity = scene.get("intensity", 0)
-            _orig_scene_id = scene.get("scene_id")
-            try:
-                _opus_context = {"concept": concept, "theme": theme}
-                polished = polish_scene(
-                    client, _opus_context,
-                    scene, char_profiles, cost_tracker, callback,
-                    model=MODELS["opus"]
-                )
-                if polished and isinstance(polished, dict):
-                    # intensity/scene_idの上書き保護
-                    polished["intensity"] = _orig_intensity
-                    if _orig_scene_id is not None:
-                        polished["scene_id"] = _orig_scene_id
-                    results[idx] = polished
-                    _opus_ok += 1
-                    log_message(f"  Opus清書OK: シーン{_sid}")
-            except Exception as _opus_err:
-                log_message(f"  [WARN]Opus清書失敗（シーン{_sid}、元データ維持）: {_opus_err}")
-        log_message(f"Opus清書パス完了: {_opus_ok}/{len(opus_targets)}シーン成功")
-        if callback:
-            callback(f"[OK]Opus清書完了: {_opus_ok}/{len(opus_targets)}シーン")
+    # 5-3.5: Opus清書パス — 無効化中（Haiku+Sonnetのみでテスト）
+    # opus_targets = [i for i, r in enumerate(results) if r.get("intensity", 0) >= 5]
+    # if opus_targets:
+    #     ... (Opus清書コード省略)
+    log_message("Opus清書パス: スキップ（無効化中）")
 
     # 5-3: 自動修正（文字数マーカー除去、キャラ名統一、SDタグ整理、セリフ重複置換）
     if callback:
@@ -12526,9 +12692,11 @@ def generate_pipeline(
         results = auto_fix_script(results, char_profiles, theme=theme, callback=callback, concept=concept)
         log_message("自動修正完了")
     except Exception as _autofix_err:
-        log_message(f"[WARN]自動修正中にエラー発生（結果はそのまま使用）: {_autofix_err}")
+        log_message(f"[ERROR]自動修正クラッシュ（全Step失敗、未修正データ使用）: {_autofix_err}")
         import traceback
         log_message(traceback.format_exc())
+        if callback:
+            callback(f"⚠️ 自動修正クラッシュ: {type(_autofix_err).__name__}: {str(_autofix_err)[:80]}")
     if callback:
         callback("🔧 自動修正完了")
 
@@ -12641,6 +12809,42 @@ def export_csv(results: list, output_path: Path):
                         "story_flow": scene.get("story_flow", "") if idx == 0 else "",
                         "sd_prompt": sd_with_label if idx == 0 else ""
                     })
+
+
+def export_fukidashi_csv(results: list, output_path: Path):
+    """フキダシラック用CSV（filename, キャラ1, セリフ1, キャラ2, セリフ2, ...）"""
+    # 各シーンのバブル数を調べて最大列数を決定
+    max_bubbles = 0
+    for scene in results:
+        bubbles = scene.get("bubbles", []) or scene.get("dialogue", [])
+        if len(bubbles) > max_bubbles:
+            max_bubbles = len(bubbles)
+    if max_bubbles == 0:
+        max_bubbles = 1
+
+    # ヘッダー構築: filename, キャラ1, セリフ1, キャラ2, セリフ2, ...
+    header = ["filename"]
+    for i in range(1, max_bubbles + 1):
+        header.append(f"キャラ{i}")
+        header.append(f"セリフ{i}")
+
+    with open(output_path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+
+        for scene in results:
+            sid = scene.get("scene_id", "")
+            bubbles = scene.get("bubbles", []) or scene.get("dialogue", [])
+            row = [f"{sid}.jpg"]
+            for bubble in bubbles:
+                speaker = bubble.get("speaker", "")
+                text = bubble.get("text", bubble.get("line", ""))
+                row.append(speaker)
+                row.append(text)
+            # 残りの列を空で埋める
+            while len(row) < len(header):
+                row.append("")
+            writer.writerow(row)
 
 
 def export_excel(results: list, output_path: Path):
@@ -14141,6 +14345,7 @@ class ExportDialog(ctk.CTkToplevel):
         ("wildcard", "Wild Card", "SD用1行1プロンプト（__filename__で参照）"),
         ("wildcard_neg", "Wild Card (Negative)", "ネガティブプロンプト用Wild Card"),
         ("dialogue", "セリフ一覧", "話者・種類付きテキストファイル"),
+        ("fukidashi", "フキダシラック用CSV", "シーン別キャラ+セリフ対応表"),
         ("markdown", "マークダウン", "脚本全体の読みやすいビュー"),
     ]
 
@@ -14149,7 +14354,7 @@ class ExportDialog(ctk.CTkToplevel):
         self.results = results
         self.metadata = metadata
         self.title("エクスポート")
-        self.geometry("460x480")
+        self.geometry("460x510")
         self.resizable(False, False)
         self.transient(master)
         self.grab_set()
@@ -14300,6 +14505,10 @@ class ExportDialog(ctk.CTkToplevel):
                     p = EXPORTS_DIR / f"dialogue_{timestamp}.txt"
                     export_dialogue_list(self.results, p)
                     exported.append(f"セリフ一覧: {p.name}")
+                elif fmt == "fukidashi":
+                    p = EXPORTS_DIR / f"fukidashi_{timestamp}.csv"
+                    export_fukidashi_csv(self.results, p)
+                    exported.append(f"フキダシラック: {p.name}")
                 elif fmt == "markdown":
                     p = EXPORTS_DIR / f"script_{timestamp}.md"
                     export_markdown(self.results, p)
@@ -15665,11 +15874,18 @@ class App(ctk.CTk):
             self.png_drop_frame.configure(border_color="#B3261E")  # error red
         else:
             positive = result.get("positive", "")
+            negative = result.get("negative", "")
             raw = result.get("raw", "")
             log_message(f"PNG Info positive[:{min(80,len(positive))}]: {repr(positive[:80])}")
+            if negative:
+                log_message(f"PNG Info negative[:{min(80,len(negative))}]: {repr(negative[:80])}")
             if raw != positive:
                 log_message(f"PNG Info raw[:{min(80,len(raw))}]: {repr(raw[:80])}")
-            self.png_preview_text.insert("1.0", positive if positive else "(情報なし)")
+            # positive + negative を見やすく表示
+            display_parts = []
+            display_parts.append(f"[Positive]\n{positive}" if positive else "[Positive]\n(なし)")
+            display_parts.append(f"\n\n[Negative]\n{negative}" if negative else "\n\n[Negative]\n(なし)")
+            self.png_preview_text.insert("1.0", "".join(display_parts))
             self.png_drop_frame.configure(border_color=MaterialColors.PRIMARY)  # success
         self.png_preview_text.configure(state="disabled")
         # 内容に応じて高さを自動調整
