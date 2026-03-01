@@ -7649,11 +7649,48 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
 
         # 4.55. 男性体型タグ（ユーザー指定がない場合のデフォルト）
         if not male_tags and "1boy" in existing_lower:
-            _male_body_defaults = ["muscular_male", "veiny_arms"]
+            _male_body_defaults = ["muscular_male"]
             for mt in _male_body_defaults:
                 if mt not in existing_lower:
                     tags.append(mt)
                     existing_lower.add(mt)
+
+        # 4.56. faceless_male矛盾タグ除去（v9.6: 顔なし男性に顔/髪タグがあると
+        #        SDが「顔なし男+顔あり男」の2人として描画する問題を根絶）
+        if faceless_male:
+            # 男性専用タグ: ウェイト有無問わず常に除去（女性に使われることはない）
+            _MALE_ONLY_REMOVE = {
+                "young_man", "old_man", "middle_aged", "otaku",
+                "handsome", "bishounen", "ugly_man", "intimidating",
+                "stubble", "veiny_arms",
+            }
+            # 男女共用タグ: ウェイト付き(tag:1.3)のみ除去（= male_tags経由で注入されたもの）
+            # ウェイトなし版は女性キャラのタグである可能性があるため残す
+            _AMBIGUOUS_REMOVE = {
+                "short_hair", "long_hair", "messy_hair", "bald", "buzz_cut",
+                "slicked_back_hair", "ponytail",
+                "black_hair", "brown_hair", "blonde_hair", "grey_hair", "red_hair",
+                "white_hair", "blue_hair",
+                "glasses", "scar",
+            }
+            import re as _re_faceless
+            _new_tags = []
+            for t in tags:
+                _raw = t.strip()
+                _wm = _re_faceless.match(r'^\((.+?):[0-9.]+\)$', _raw)
+                _tag_name = _wm.group(1).lower().replace(" ", "_") if _wm else _raw.lower().replace(" ", "_")
+                if _tag_name in _MALE_ONLY_REMOVE:
+                    continue
+                if _wm and _tag_name in _AMBIGUOUS_REMOVE:
+                    continue
+                _new_tags.append(t)
+            tags = _new_tags
+            existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
+
+        # 4.57. solo + 1boy+1girl 矛盾除去（soloは1人のみを意味するため）
+        _tags_lower_457 = {t.strip().lower().replace(" ", "_") for t in tags}
+        if "solo" in _tags_lower_457 and "1boy" in _tags_lower_457 and "1girl" in _tags_lower_457:
+            tags = [t for t in tags if t.strip().lower().replace(" ", "_") != "solo"]
 
         # 4.6. intensity別 表情・身体反応タグ自動注入（プールからサンプリング）
         # Phase6: 性格別表情バイアス適用
@@ -15400,16 +15437,20 @@ class App(ctk.CTk):
             preset_key = self.male_preset_combo.get() if hasattr(self, 'male_preset_combo') else "おまかせ"
             base = MALE_PRESETS.get(preset_key, "")
 
-        # 髪型・髪色・肌色の追加タグ
+        # faceless_male ON時は髪型・髪色を追加しない（顔/頭部描画を誘発するため）
+        _is_faceless = self.male_faceless_var.get() if hasattr(self, 'male_faceless_var') else True
         extra = []
-        if hasattr(self, 'male_hair_style_combo'):
-            v = MALE_HAIR_STYLE_OPTIONS.get(self.male_hair_style_combo.get(), "")
-            if v:
-                extra.append(v)
-        if hasattr(self, 'male_hair_color_combo'):
-            v = MALE_HAIR_COLOR_OPTIONS.get(self.male_hair_color_combo.get(), "")
-            if v:
-                extra.append(v)
+        if not _is_faceless:
+            # faceless_male OFF時のみ髪型・髪色を追加
+            if hasattr(self, 'male_hair_style_combo'):
+                v = MALE_HAIR_STYLE_OPTIONS.get(self.male_hair_style_combo.get(), "")
+                if v:
+                    extra.append(v)
+            if hasattr(self, 'male_hair_color_combo'):
+                v = MALE_HAIR_COLOR_OPTIONS.get(self.male_hair_color_combo.get(), "")
+                if v:
+                    extra.append(v)
+        # 肌色はfaceless_maleでも有効（体の描写なので問題なし）
         if hasattr(self, 'male_skin_color_combo'):
             v = MALE_SKIN_COLOR_OPTIONS.get(self.male_skin_color_combo.get(), "")
             if v:

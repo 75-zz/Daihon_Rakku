@@ -49,10 +49,24 @@
 - エクスポートダイアログのwildcard_negオプション削除
 - **理由**: Stable Diffusion上でネガティブプロンプトは実質的に無意味なため
 
-### Known Issues
-- SDプロンプト: `faceless_male=True`時に矛盾する男性顔/髪タグ（`young_man`, `short_hair`等）が除去されない
-- SDプロンプト: 男性タグ過多（8-10個）によりSD側が複数男性として解釈する場合がある
-- SDプロンプト: Scene 1-3で`solo`タグと`1boy`+`1girl`が矛盾
+### Fixed (SDプロンプト男性描画問題の根本修正)
+
+#### Step 4.56新設: faceless_male矛盾タグ自動除去 (gui.py)
+- `faceless_male=True`時、男性の顔/髪/外見タグを自動除去
+- 男性専用タグ（`young_man`, `old_man`, `ugly_man`, `handsome`, `bishounen`等）: ウェイト有無問わず除去
+- 男女共用タグ（`short_hair`, `black_hair`, `glasses`等）: ウェイト付き`(tag:1.3)`のみ除去（女性キャラのタグは保護）
+- **効果**: 8-10個の男性タグ → `1boy, faceless_male, muscular_male, (体型:1.3), (肌色:1.3)` の4-5個に削減
+
+#### Step 4.57新設: solo + 1boy+1girl 矛盾除去 (gui.py)
+- `solo`（1人のみ）と`1boy`+`1girl`（2人）の矛盾を検出し`solo`を除去
+
+#### GUI get_male_tags: faceless_male対応 (gui.py)
+- `faceless_male=True`時、髪型・髪色コンボの値をSDタグに含めない（頭部描画を誘発するため）
+- 肌色はfaceless_maleでも有効（体の描写なので問題なし）
+
+#### Step 4.55: veiny_armsデフォルト除去 (gui.py)
+- デフォルト男性体型タグから`veiny_arms`を除去（`muscular_male`のみに）
+- タグ数削減で「二人の男性」問題を軽減
 
 ## [9.5.1] - 2026-03-01
 
