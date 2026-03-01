@@ -1844,57 +1844,6 @@ def _extract_narrative_sd_tags(scene: dict) -> list:
     return extracted[:8]
 
 
-def _generate_negative_prompt(scene: dict, theme: str = "") -> str:
-    """シーン固有のネガティブプロンプトを生成（APIコスト不要）。"""
-    # ベース共通ネガティブ
-    base = [
-        "worst_quality", "low_quality", "bad_anatomy", "bad_hands",
-        "missing_fingers", "extra_digits", "fewer_digits",
-        "text", "signature", "watermark", "username",
-        "blurry", "jpeg_artifacts", "cropped",
-    ]
-
-    intensity = scene.get("intensity", 3)
-    sd = scene.get("sd_prompt", "")
-    _sd_tags = {t.strip().lower().replace(" ", "_") for t in sd.split(",") if t.strip()}
-    mood = scene.get("mood", "")
-
-    # intensity連動: 低intensity時はexplicitコンテンツ抑制
-    if intensity <= 2:
-        base.extend(["explicit", "nsfw", "sex", "penetration"])
-
-    # 衣装連動: nudeなら着衣をネガティブに
-    if _sd_tags & {"nude", "naked", "completely_nude"}:
-        base.extend(["clothed", "dressed", "uniform"])
-
-    # テーマ連動
-    _theme_neg = {
-        "humiliation": ["happy", "willing", "smile", "romantic"],
-        "love": ["forced", "unwilling", "scared"],
-        "sleep": ["awake", "standing", "walking"],
-        "bondage": ["free_hands", "standing_freely"],
-    }
-    if theme in _theme_neg:
-        base.extend(_theme_neg[theme])
-
-    # 表情連動: 現在の表情と矛盾する表情をネガティブに
-    if _sd_tags & {"ahegao", "rolling_eyes"}:
-        base.extend(["calm", "composed", "serious"])
-    if _sd_tags & {"crying", "tears"}:
-        base.extend(["smile", "happy", "laughing"])
-    if _sd_tags & {"smile", "happy"}:
-        base.extend(["crying", "tears", "sad"])
-
-    # 重複排除
-    seen = set()
-    result = []
-    for tag in base:
-        if tag not in seen:
-            seen.add(tag)
-            result.append(tag)
-    return ", ".join(result)
-
-
 def deduplicate_sd_tags(prompt: str) -> str:
     """SDプロンプトのタグを重複排除（順序保持）"""
     import re as _re
@@ -4960,18 +4909,18 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     if _thought_body_fix_count > 0:
         log_message(f"  thought部位ラベル冒頭修正: {_thought_body_fix_count}件")
 
-    # 9c. thought 20文字超をトリミング（ナレーション化防止）
+    # 9c. thought 35文字超をトリミング（ナレーション化防止、ただし内面描写は保持）
     _thought_trim_count = 0
     for scene in results:
         for b in scene.get("bubbles", []):
-            if b.get("type") == "thought" and len(b.get("text", "")) > 20:
+            if b.get("type") == "thought" and len(b.get("text", "")) > 35:
                 txt = b["text"]
-                # 「…」で切れ目を探して20文字以内に
-                cut = txt[:20].rfind("\u2026")
-                if cut > 5:
+                # 「…」で切れ目を探して35文字以内に
+                cut = txt[:35].rfind("\u2026")
+                if cut > 8:
                     b["text"] = txt[:cut + 1]
                 else:
-                    b["text"] = txt[:18] + "\u2026"
+                    b["text"] = txt[:33] + "\u2026"
                 _thought_trim_count += 1
     if _thought_trim_count > 0:
         log_message(f"  thought長さトリミング: {_thought_trim_count}件")
@@ -6704,8 +6653,9 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     if _intensity_fix_count > 0:
         log_message(f"  intensity不一致修正: {_intensity_fix_count}件")
 
-    # 20b. Speech崩壊パターン（高intensityのspeechを段階的に断片化）
-    # i=1: そのまま / i=2: やや不安定 / i=3: 断片化開始 / i=4: ほぼ崩壊 / i=5: moan支配
+    # 20b. Speech自然化（高intensityのspeechに軽い息切れ表現を追加）
+    # v9.6: 機械的断片化を廃止。APIが生成したキャラ固有のセリフを尊重し、
+    # 句読点→「…」置換と末尾処理のみ行う。セリフの意味・感情を破壊しない。
     _speech_frag_count = 0
     for scene in results:
         intensity = scene.get("intensity", 3)
@@ -6717,44 +6667,93 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             txt = bubble.get("text", "")
             if not txt or len(txt) < 4:
                 continue
-            # 男性セリフは崩壊させない（_is_male_by_nameで包括判定）
+            # 男性セリフは変更しない（_is_male_by_nameで包括判定）
             _spk = bubble.get("speaker", "")
             if _spk and _is_male_by_name(_spk):
                 continue
             orig = txt
             if intensity == 3:
-                # i3: 文末に「…っ」挿入、句読点を「…」に
-                if not txt.endswith("…") and not txt.endswith("っ"):
+                # i3: 句読点を「…」に置換、末尾を自然に
+                if not txt.endswith("…") and not txt.endswith("っ") and not txt.endswith("♡"):
                     txt = txt.rstrip("。、！!？?") + "…っ"
                 txt = txt.replace("。", "…")
             elif intensity == 4:
-                # i4: 文字間に「…」挿入で断片化 + 末尾切断
-                # 「やめてください」→「やめ…て…っ」
-                chars = list(txt.replace("…", "").replace("♡", "").replace("っ", "").replace("。", "").replace("、", ""))
-                if len(chars) >= 3:
-                    # 2-3文字ごとに「…」を挿入
-                    fragmented = []
-                    _chunk_size = 2 if len(chars) <= 6 else 3
-                    for _fi in range(0, len(chars), _chunk_size):
-                        fragmented.append("".join(chars[_fi:_fi + _chunk_size]))
-                    txt = "…".join(fragmented)
-                    # ♡があれば末尾に1つ
-                    if "♡" in orig:
-                        txt += "…♡"
-                    else:
-                        txt += "…っ"
+                # i4: 句読点→「…」のみ。セリフの構造は維持する
+                txt = txt.replace("。", "…").replace("、", "…")
+                if not txt.endswith("…") and not txt.endswith("っ") and not txt.endswith("♡"):
+                    txt = txt.rstrip("！!？?") + "…♡"
             elif intensity >= 5:
-                # i5: speechをmoan的に変換（3文字以下+「…♡」）
-                # 元の先頭1-2文字を残して崩壊
-                _core = txt.replace("…", "").replace("♡", "").replace("っ", "").replace("。", "").replace("、", "")
-                if _core:
-                    _first = _core[0]
-                    txt = _first + "…っ…♡"
+                # i5: 句読点→「…」のみ。セリフが長すぎる場合は後半カット
+                txt = txt.replace("。", "…").replace("、", "…")
+                _core = txt.replace("…", "").replace("♡", "").replace("っ", "")
+                if len(_core) > 15:
+                    # 15文字超のみ「…」で切って♡
+                    cut = txt[:20].rfind("…")
+                    if cut > 5:
+                        txt = txt[:cut] + "…♡"
+                if not txt.endswith("♡") and not txt.endswith("っ"):
+                    txt += "…♡"
             if txt != orig:
                 bubble["text"] = txt
                 _speech_frag_count += 1
     if _speech_frag_count > 0:
-        log_message(f"  speech崩壊: {_speech_frag_count}件 (intensity連動)")
+        log_message(f"  speech自然化: {_speech_frag_count}件 (intensity連動)")
+
+    # 20c. 実況型speech検出＆差替え（「入ってる」「後ろから」等の状況報告を感情表現に）
+    _progress("Step 20c 実況型speech差替え")
+    import re as _re_20c
+    # 状況実況パターン: 体位/行為/方向/身体状態の短い報告 + …♡
+    _JIKKYOU_PATTERNS = [
+        _re_20c.compile(r'^.{1,3}…[てにからでへ]…[るいくす]?…?♡?$'),  # 「入…て…る…♡」型
+        _re_20c.compile(r'^(入[っ]?て|後ろ|前|上|下|奥|中|横).{0,4}…♡$'),  # 「後ろ…から…♡」型
+        _re_20c.compile(r'^(激し|温か|冷た|浮い|痛|熱|硬|太|深).{0,3}…♡$'),  # 「激し…い…♡」型
+        _re_20c.compile(r'^(ふら|ぐら|びく|がく|ぞく).{0,4}…♡$'),  # 「ふら…つく…♡」型
+        _re_20c.compile(r'^.{1,2}…っ…♡$'),  # 「も…っ…♡」型（i5崩壊残骸）
+    ]
+    # 差替え候補（キャラ固有性は薄いが、実況よりはマシな感情表現）
+    _JIKKYOU_REPLACEMENTS_I4 = [
+        "やだ…こんなの…っ♡", "なんで…こんな…♡", "もう…むり…♡",
+        "だめ…頭おかしくなる…♡", "止まんない…止まんないよ…♡",
+        "あたしこんなの…知らない…♡", "ばか…ばか…♡", "もっと…して…♡",
+        "嫌いなのに…なんで…♡", "わかんない…もう…♡",
+        "こんなの…おかしい…♡", "声…出ちゃう…♡", "考えられない…♡",
+    ]
+    _JIKKYOU_REPLACEMENTS_I5 = [
+        "もう…だめぇ…♡♡", "あんたの…せいだから…♡♡", "壊れちゃ…う…♡♡",
+        "全部…あんたのせい…♡♡", "もう…戻れない…♡♡",
+        "好き…嘘…好き…♡♡", "やだ…イっちゃう…♡♡", "離さないで…♡♡",
+        "もっと…もっと…♡♡", "あたしもう…♡♡",
+    ]
+    _jikkyou_fix_count = 0
+    _used_jikkyou = set()
+    for scene in results:
+        intensity = scene.get("intensity", 3)
+        if intensity < 3:
+            continue
+        for bubble in scene.get("bubbles", []):
+            if bubble.get("type") != "speech":
+                continue
+            _spk = bubble.get("speaker", "")
+            if _spk and _is_male_by_name(_spk):
+                continue
+            txt = bubble.get("text", "")
+            if not txt:
+                continue
+            _is_jikkyou = any(p.search(txt) for p in _JIKKYOU_PATTERNS)
+            if _is_jikkyou:
+                pool = _JIKKYOU_REPLACEMENTS_I5 if intensity >= 5 else _JIKKYOU_REPLACEMENTS_I4
+                # 未使用の候補から選択
+                candidates = [r for r in pool if r not in _used_jikkyou]
+                if not candidates:
+                    _used_jikkyou.clear()
+                    candidates = pool
+                _rng_20c = _rng if '_rng' in dir() else __import__('random').Random(42)
+                repl = _rng_20c.choice(candidates)
+                _used_jikkyou.add(repl)
+                bubble["text"] = repl
+                _jikkyou_fix_count += 1
+    if _jikkyou_fix_count > 0:
+        log_message(f"  実況型speech差替え: {_jikkyou_fix_count}件")
 
     # 21. エピローグ・ストーリーリセット検出＋修正
     # 最後の10%のシーンでintensityがi=2以下に戻った場合、ストーリーがリセットしている
@@ -7196,10 +7195,7 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                        sd_prefix_tags: str = "",
                        sd_suffix_tags: str = "",
                        theme: str = "",
-                       faceless_male: bool = True,
-                       sd_neg_base: str = "",
-                       sd_neg_prefix: str = "",
-                       sd_neg_suffix: str = "") -> list:
+                       faceless_male: bool = True) -> list:
     """全シーンのSDプロンプトを後処理で最適化（APIコスト不要）。
 
     - 日本語タグ除去
@@ -8220,51 +8216,6 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         if changed:
             scene["sd_prompt"] = ", ".join(new_tags)
         _prev_pos_f = _cur_pos_f
-
-    # Phase4: シーン固有ネガティブプロンプト生成
-    # ユーザー設定のネガティブベース/プレフィックス/サフィックスと自動生成の重複を排除
-    # ベース側を優先し、自動生成側の重複タグを除去する
-    _normalize_tag = lambda t: t.strip().lower().replace(" ", "_")
-    _user_neg_tags = set()
-    for _user_part in (sd_neg_base, sd_neg_prefix, sd_neg_suffix):
-        if _user_part:
-            for _t in _user_part.split(","):
-                _nt = _normalize_tag(_t)
-                if _nt:
-                    _user_neg_tags.add(_nt)
-    for scene in results:
-        if scene.get("sd_prompt"):
-            auto_neg = _generate_negative_prompt(scene, theme)
-            if sd_neg_base:
-                # 自動生成タグからユーザー設定済みタグを除外（ベース優先）
-                _auto_tags = [t.strip() for t in auto_neg.split(",") if t.strip()]
-                _scene_specific = [t for t in _auto_tags if _normalize_tag(t) not in _user_neg_tags]
-                _neg_parts = [sd_neg_base]
-                if _scene_specific:
-                    _neg_parts.append(", ".join(_scene_specific))
-                core_neg = ", ".join(_neg_parts)
-            else:
-                core_neg = auto_neg
-            # prefix + core + suffix 組み立て → 全体重複排除
-            neg_parts = []
-            if sd_neg_prefix:
-                neg_parts.append(sd_neg_prefix)
-            neg_parts.append(core_neg)
-            if sd_neg_suffix:
-                neg_parts.append(sd_neg_suffix)
-            _combined = ", ".join(neg_parts).replace(",,", ",").strip(", ")
-            # 最終重複排除（出現順を維持、ベース→プレフィックス→コア→サフィックス順）
-            _seen = set()
-            _deduped = []
-            for _t in _combined.split(","):
-                _ts = _t.strip()
-                if not _ts:
-                    continue
-                _key = _normalize_tag(_ts)
-                if _key not in _seen:
-                    _seen.add(_key)
-                    _deduped.append(_ts)
-            scene["sd_negative_prompt"] = ", ".join(_deduped)
 
     return results
 
@@ -11169,7 +11120,10 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 ❌ 「快感に溺れている」「絶頂を迎えた」のような報告文は禁止。身体の感覚を書け。
 
 【吹き出し指針（1-3個）】
-・女: 絶頂系の喘ぎ1-2個（★セリフ品質ガイドの【段階4】から選べ。自作するな。前シーンと被らないこと）
+・女: キャラの口調と感情を反映した喘ぎ/speech 1-2個。セリフ品質ガイド【段階4】を参考にしつつ、キャラ固有の言い回しで生成せよ
+  - ツンデレなら: 「あんたのせいで…おかしく…♡」「こんなの…知らない…♡」
+  - 素直系なら: 「もう…だめ…好き…♡♡」
+  - ❌禁止: 体位や状況の実況（「入ってる」「後ろから」等）。感情・欲求・相手への言葉を書け
 ・男: 言葉責め0-1個（5パターンを均等に使え: 脅迫/挑発/命令/嘲笑/独白。前シーンと同じ意味のセリフ禁止）
   例: 「中に出すぞ」「全部受けろ」「イケ」「もう逃がさねえ」「もっと鳴け」
 
@@ -11202,7 +11156,9 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 ❌ 「快感に溺れていく」「挿入された」だけの報告文は禁止。感覚と反応を書け
 
 【吹き出し指針（1-3個）】
-・女: 喘ぎ1-2個（★セリフ品質ガイドの【段階3】から選べ。自作するな。前シーンと被らないこと）
+・女: キャラの口調を維持した反応speech 1個 + 喘ぎ0-1個。セリフ品質ガイド【段階3】を参考に、キャラ固有の感情で生成せよ
+  - 快感の中でもキャラの性格が漏れるセリフを書け（否認/戸惑い/懇願/甘え/自分への驚き）
+  - ❌禁止: 体位や行為の実況（「激しい」「入ってる」等の状況報告）。感情や相手への言葉を書け
 ・男: 言葉責め0-1個（5パターンを均等に使え: 脅迫/挑発/命令/嘲笑/独白。前シーンと同じ意味のセリフ禁止）
   例: 「もっと鳴け」「逃がさねぇぞ」「欲しいんだろ」「もう我慢すんな」
 
@@ -11233,7 +11189,9 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
 ❌ 「愛撫された」「キスした」だけの事実報告は禁止。触れる前後の感覚を書け
 
 【吹き出し指針（1-3個）】
-・女: ドキドキ感のある反応1-2個（★セリフ品質ガイドの【段階2】から選べ）
+・女: キャラの性格が出る反応speech 1-2個（ドキドキ/戸惑い/抵抗/期待）。セリフ品質ガイド【段階2】を参考に、キャラ固有の口調で生成せよ
+  - ツンデレなら: 「べ、別にドキドキなんか…」「あんたが悪いんだからね…」
+  - 素直系なら: 「え…ここで…？」「触らないで…まだ…」
 ・男: 煽りor会話0-1個（前シーンと同じ意味のセリフ禁止。脅迫/挑発/命令/嘲笑/独白の5パターンを使い分けろ）
   例: 「おとなしくしろ」「脱げ」「正直になれよ」
 
@@ -11781,16 +11739,18 @@ def polish_scene(
 
 【吹き出し改善】
 1. 1ページ = ヒロインのセリフ1-2個 + 男性セリフ0-1個（最大3個）
-2. 説明的→感情的に（「嬉しい気持ちです」→「嬉しい…♡」）
-3. 文章→断片に（主語・目的語を削除）
-4. 一人称・語尾を徹底チェック
-5. 4個以上の吹き出しがあればヒロイン1-2個+男性0-1個に絞る
+2. キャラの性格・口調を最優先で維持する。一人称・語尾・口癖を徹底チェック
+3. セリフはキャラの感情や相手への気持ちを表現すること
+4. 4個以上の吹き出しがあればヒロイン1-2個+男性0-1個に絞る
 
-【エロシーン改善】
-- 「気持ちいいです」→「きもちぃ…♡」
-- 「もっとしてください」→「もっと…♡」
-- 「イキそうです」→「イっちゃ…♡」
-- 喘ぎ声は途切れ途切れに
+【エロシーンのセリフ品質基準】
+✅ 良いセリフ = キャラの感情が見える:
+- 「あんたのせいで…おかしくなっちゃう…♡」（相手への感情）
+- 「こんなの…知りたくなかった…♡」（自己認識の変化）
+- 「もう…やだ…止まんない…♡」（抗えない快感への戸惑い）
+❌ 悪いセリフ = 状況の実況報告:
+- 「入ってる」「後ろから」「激しい」「浮いてる」→ これらは感情ではなく体位・行為の説明。禁止
+- 「気持ちいい」の一語だけ → 何がどう気持ちいいのか、キャラの反応を書け
 
 【オノマトペ改善】
 - 場面に合った効果音か確認
@@ -11798,7 +11758,7 @@ def polish_scene(
 
 【禁止】
 ❌ 4個以上の吹き出し（ヒロイン1-2 + 男性0-1 = 最大3個）
-❌ 説明調のテキスト
+❌ 体位・行為の実況報告セリフ（「入ってる」「後ろから」「激しい」等）
 ❌ キャラの一人称・語尾の不一致
 
 Output JSON only."""
@@ -12128,9 +12088,6 @@ def generate_pipeline(
     provider: str = "",
     quality_priority: bool = False,
     faceless_male: bool = True,
-    sd_neg_base: str = "",
-    sd_neg_prefix: str = "",
-    sd_neg_suffix: str = "",
 ) -> tuple[list, CostTracker]:
     client = anthropic.Anthropic(api_key=api_key)
     log_message("Claude (Anthropic) バックエンドで生成開始")
@@ -12655,10 +12612,7 @@ def generate_pipeline(
                                         sd_prefix_tags=sd_prefix_tags,
                                         sd_suffix_tags=sd_suffix_tags,
                                         theme=theme,
-                                        faceless_male=faceless_male,
-                                        sd_neg_base=sd_neg_base,
-                                        sd_neg_prefix=sd_neg_prefix,
-                                        sd_neg_suffix=sd_neg_suffix)
+                                        faceless_male=faceless_male)
         log_message("SDプロンプト最適化完了")
         if callback:
             callback("[OK]SDプロンプト最適化完了")
@@ -12994,21 +12948,6 @@ def export_wildcard(results: list, output_path: Path,
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     log_message(f"Wild Card出力完了: {output_path}（{len(lines)}行）")
-
-
-def export_wildcard_negative(results: list, output_path: Path):
-    """ネガティブプロンプト Wild Card形式エクスポート（1行1プロンプト）"""
-    lines = []
-    for scene in results:
-        neg = scene.get("sd_negative_prompt", "").strip()
-        if neg:
-            sid = scene.get("scene_id", "")
-            lines.append(f'{neg}, "シーン{sid}",')
-    if not lines:
-        return
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-    log_message(f"Negative Wild Card出力完了: {output_path}（{len(lines)}行）")
 
 
 def export_dialogue_list(results: list, output_path: Path):
@@ -14343,7 +14282,6 @@ class ExportDialog(ctk.CTkToplevel):
         ("xlsx", "Excel", "折り返し表示対応（要openpyxl）"),
         ("sd_prompts", "SDプロンプト一括", "1行1プロンプト テキストファイル"),
         ("wildcard", "Wild Card", "SD用1行1プロンプト（__filename__で参照）"),
-        ("wildcard_neg", "Wild Card (Negative)", "ネガティブプロンプト用Wild Card"),
         ("dialogue", "セリフ一覧", "話者・種類付きテキストファイル"),
         ("fukidashi", "フキダシラック用CSV", "シーン別キャラ+セリフ対応表"),
         ("markdown", "マークダウン", "脚本全体の読みやすいビュー"),
@@ -14497,10 +14435,6 @@ class ExportDialog(ctk.CTkToplevel):
                     p = EXPORTS_DIR / f"wildcard_{timestamp}.txt"
                     export_wildcard(self.results, p)
                     exported.append(f"Wild Card: {p.name}")
-                elif fmt == "wildcard_neg":
-                    p = EXPORTS_DIR / f"wildcard_negative_{timestamp}.txt"
-                    export_wildcard_negative(self.results, p)
-                    exported.append(f"Wild Card (Neg): {p.name}")
                 elif fmt == "dialogue":
                     p = EXPORTS_DIR / f"dialogue_{timestamp}.txt"
                     export_dialogue_list(self.results, p)
@@ -15132,88 +15066,6 @@ class App(ctk.CTk):
         # 区切り線
         ctk.CTkFrame(sd_content, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", pady=8)
 
-        # ── ネガティブプロンプト設定 ──
-        ctk.CTkLabel(
-            sd_content, text="ネガティブプロンプト",
-            font=ctk.CTkFont(family=FONT_JP, size=14, weight="bold"),
-            text_color=MaterialColors.ON_SURFACE
-        ).pack(anchor="w", pady=(0, 4))
-        ctk.CTkLabel(
-            sd_content, text="シーン固有のネガティブは自動生成されます。ここではベース・プレフィックス・サフィックスを設定します。",
-            font=ctk.CTkFont(family=FONT_JP, size=11),
-            text_color=MaterialColors.ON_SURFACE_VARIANT, wraplength=380,
-        ).pack(anchor="w", pady=(0, 8))
-
-        # --- ネガティブ品質ベース ---
-        _neg_base_header = ctk.CTkFrame(sd_content, fg_color="transparent")
-        _neg_base_header.pack(fill="x", pady=(0, 4))
-        ctk.CTkLabel(
-            _neg_base_header, text="品質ネガティブ（共通ベース）",
-            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
-            text_color=MaterialColors.ON_SURFACE_VARIANT
-        ).pack(side="left")
-        MaterialButton(
-            _neg_base_header, text="リセット", variant="text", size="small",
-            command=lambda: (
-                self.sd_neg_base_text.delete("1.0", "end"),
-                self.sd_neg_base_text.insert("1.0", "worst_quality, low_quality, bad_anatomy, bad_hands, missing_fingers, extra_digits, fewer_digits, text, signature, watermark, username, blurry, jpeg_artifacts, cropped"),
-                self._auto_resize_textbox(self.sd_neg_base_text, 60, 400),
-            )
-        ).pack(side="right")
-        self.sd_neg_base_text = ctk.CTkTextbox(
-            sd_content, height=60,
-            font=ctk.CTkFont(size=13),
-            fg_color=MaterialColors.SURFACE_CONTAINER,
-            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
-            text_color=MaterialColors.ON_SURFACE,
-        )
-        self.sd_neg_base_text.pack(fill="x", pady=(0, 8))
-        self.sd_neg_base_text.insert("1.0", "worst_quality, low_quality, bad_anatomy, bad_hands, missing_fingers, extra_digits, fewer_digits, text, signature, watermark, username, blurry, jpeg_artifacts, cropped")
-        self.sd_neg_base_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_neg_base_text, 60, 400))
-
-        # --- ネガティブプレフィックス ---
-        _neg_prefix_header = ctk.CTkFrame(sd_content, fg_color="transparent")
-        _neg_prefix_header.pack(fill="x", pady=(0, 4))
-        ctk.CTkLabel(
-            _neg_prefix_header, text="ネガティブ プレフィックス",
-            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
-            text_color=MaterialColors.ON_SURFACE_VARIANT
-        ).pack(side="left")
-        MaterialButton(
-            _neg_prefix_header, text="クリア", variant="text", size="small",
-            command=lambda: (self.sd_neg_prefix_text.delete("1.0", "end"))
-        ).pack(side="right")
-        self.sd_neg_prefix_text = ctk.CTkTextbox(
-            sd_content, height=60,
-            font=ctk.CTkFont(size=13),
-            fg_color=MaterialColors.SURFACE_CONTAINER,
-            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
-            text_color=MaterialColors.ON_SURFACE,
-        )
-        self.sd_neg_prefix_text.pack(fill="x", pady=(0, 8))
-        self.sd_neg_prefix_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_neg_prefix_text, 60, 400))
-
-        # --- ネガティブサフィックス ---
-        _neg_suffix_header = ctk.CTkFrame(sd_content, fg_color="transparent")
-        _neg_suffix_header.pack(fill="x", pady=(0, 4))
-        ctk.CTkLabel(
-            _neg_suffix_header, text="ネガティブ サフィックス",
-            font=ctk.CTkFont(family=FONT_JP, size=13, weight="bold"),
-            text_color=MaterialColors.ON_SURFACE_VARIANT
-        ).pack(side="left")
-        MaterialButton(
-            _neg_suffix_header, text="クリア", variant="text", size="small",
-            command=lambda: (self.sd_neg_suffix_text.delete("1.0", "end"))
-        ).pack(side="right")
-        self.sd_neg_suffix_text = ctk.CTkTextbox(
-            sd_content, height=60,
-            font=ctk.CTkFont(size=13),
-            fg_color=MaterialColors.SURFACE_CONTAINER,
-            corner_radius=4, border_width=1, border_color=MaterialColors.OUTLINE_VARIANT,
-            text_color=MaterialColors.ON_SURFACE,
-        )
-        self.sd_neg_suffix_text.pack(fill="x", pady=(0, 8))
-        self.sd_neg_suffix_text.bind("<KeyRelease>", lambda e: self._auto_resize_textbox(self.sd_neg_suffix_text, 60, 400))
 
         # 区切り線
         ctk.CTkFrame(sd_content, fg_color=MaterialColors.OUTLINE_VARIANT, height=1, corner_radius=0).pack(fill="x", pady=8)
@@ -15282,10 +15134,6 @@ class App(ctk.CTk):
             png_apply_row, text="サフィックスに適用", variant="filled_tonal", size="small",
             command=self._apply_png_to_suffix
         ).pack(side="left")
-        MaterialButton(
-            png_apply_row, text="Negに適用", variant="filled_tonal", size="small",
-            command=self._apply_png_to_negative
-        ).pack(side="left", padx=(8, 0))
 
         # ══════════════════════════════════════════════════════════════
         # 5. 生成設定
@@ -15743,19 +15591,6 @@ class App(ctk.CTk):
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", self.config_data["sd_suffix_tags"])
             self._auto_resize_textbox(self.sd_suffix_text, 100, 1200)
-        # ネガティブプロンプト設定の復元
-        if self.config_data.get("sd_neg_base") and hasattr(self, 'sd_neg_base_text'):
-            self.sd_neg_base_text.delete("1.0", "end")
-            self.sd_neg_base_text.insert("1.0", self.config_data["sd_neg_base"])
-            self._auto_resize_textbox(self.sd_neg_base_text, 60, 400)
-        if self.config_data.get("sd_neg_prefix") and hasattr(self, 'sd_neg_prefix_text'):
-            self.sd_neg_prefix_text.delete("1.0", "end")
-            self.sd_neg_prefix_text.insert("1.0", self.config_data["sd_neg_prefix"])
-            self._auto_resize_textbox(self.sd_neg_prefix_text, 60, 400)
-        if self.config_data.get("sd_neg_suffix") and hasattr(self, 'sd_neg_suffix_text'):
-            self.sd_neg_suffix_text.delete("1.0", "end")
-            self.sd_neg_suffix_text.insert("1.0", self.config_data["sd_neg_suffix"])
-            self._auto_resize_textbox(self.sd_neg_suffix_text, 60, 400)
         # v8.7: 品質優先モードの復元
         if self.config_data.get("quality_priority") and hasattr(self, 'quality_priority_var'):
             self.quality_priority_var.set(True)
@@ -15929,30 +15764,6 @@ class App(ctk.CTk):
         if hasattr(self, 'snackbar'):
             self.snackbar.show("サフィックスに適用しました", type="success")
 
-    def _apply_png_to_negative(self):
-        """PNG Infoのnegativeプロンプトをネガティブ品質ベースに適用"""
-        result = getattr(self, '_png_info_result', None)
-        if not result or "error" in result:
-            return
-        content = result.get("negative", "").strip()
-        if not content:
-            # negativeが無い場合はpositiveをネガティブプレフィックスに適用
-            content = result.get("positive", "").strip()
-            if not content:
-                return
-            target = self.sd_neg_prefix_text
-            label = "ネガティブプレフィックス"
-        else:
-            target = self.sd_neg_base_text
-            label = "ネガティブ品質ベース"
-        existing = target.get("1.0", "end-1c").strip()
-        if existing:
-            target.delete("1.0", "end")
-            target.insert("1.0", f"{existing}, {content}")
-        else:
-            target.delete("1.0", "end")
-            target.insert("1.0", content)
-        self._auto_resize_textbox(target, min_h=60, max_h=400)
         if hasattr(self, 'snackbar'):
             self.snackbar.show(f"{label}に適用しました", type="success")
 
@@ -16191,9 +16002,6 @@ class App(ctk.CTk):
             "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
-            "sd_neg_base": self.sd_neg_base_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_base_text') else "",
-            "sd_neg_prefix": self.sd_neg_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_prefix_text') else "",
-            "sd_neg_suffix": self.sd_neg_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_suffix_text') else "",
             "quality_priority": self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False,
         }
         save_config(self.config_data)
@@ -16227,9 +16035,6 @@ class App(ctk.CTk):
             "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
-            "sd_neg_base": self.sd_neg_base_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_base_text') else "",
-            "sd_neg_prefix": self.sd_neg_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_prefix_text') else "",
-            "sd_neg_suffix": self.sd_neg_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_neg_suffix_text') else "",
         }
 
     def apply_config(self, config: dict):
@@ -16308,19 +16113,6 @@ class App(ctk.CTk):
             self.sd_suffix_text.delete("1.0", "end")
             self.sd_suffix_text.insert("1.0", config["sd_suffix_tags"])
             self._auto_resize_textbox(self.sd_suffix_text, 100, 1200)
-        # ネガティブプロンプト設定
-        if config.get("sd_neg_base") and hasattr(self, 'sd_neg_base_text'):
-            self.sd_neg_base_text.delete("1.0", "end")
-            self.sd_neg_base_text.insert("1.0", config["sd_neg_base"])
-            self._auto_resize_textbox(self.sd_neg_base_text, 60, 400)
-        if config.get("sd_neg_prefix") and hasattr(self, 'sd_neg_prefix_text'):
-            self.sd_neg_prefix_text.delete("1.0", "end")
-            self.sd_neg_prefix_text.insert("1.0", config["sd_neg_prefix"])
-            self._auto_resize_textbox(self.sd_neg_prefix_text, 60, 400)
-        if config.get("sd_neg_suffix") and hasattr(self, 'sd_neg_suffix_text'):
-            self.sd_neg_suffix_text.delete("1.0", "end")
-            self.sd_neg_suffix_text.insert("1.0", config["sd_neg_suffix"])
-            self._auto_resize_textbox(self.sd_neg_suffix_text, 60, 400)
         self.update_cost_preview()
 
     def refresh_profile_list(self):
@@ -16695,11 +16487,6 @@ class App(ctk.CTk):
             _sd_prefix = self.sd_prefix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_prefix_text') else ""
             _sd_suffix = self.sd_suffix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_suffix_text') else ""
 
-            # ネガティブプロンプト設定をGUIから取得
-            _sd_neg_base = self.sd_neg_base_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_neg_base_text') else ""
-            _sd_neg_prefix = self.sd_neg_prefix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_neg_prefix_text') else ""
-            _sd_neg_suffix = self.sd_neg_suffix_text.get("1.0", "end-1c").strip().replace("\n", ", ").replace(", , ", ", ") if hasattr(self, 'sd_neg_suffix_text') else ""
-
             _quality_priority = self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False
             _faceless_male = self.male_faceless_var.get() if hasattr(self, 'male_faceless_var') else True
             results, cost_tracker, pipeline_metadata = generate_pipeline(
@@ -16713,9 +16500,6 @@ class App(ctk.CTk):
                 provider=PROVIDER_CLAUDE,
                 quality_priority=_quality_priority,
                 faceless_male=_faceless_male,
-                sd_neg_base=_sd_neg_base,
-                sd_neg_prefix=_sd_neg_prefix,
-                sd_neg_suffix=_sd_neg_suffix,
             )
 
             if self.stop_requested:
@@ -16736,9 +16520,6 @@ class App(ctk.CTk):
             export_wildcard(results, wc_path,
                            male_tags=_male_tags, time_tags=_time_tags,
                            location_type=_location_type)
-            # ネガティブプロンプト Wildcard出力
-            wc_neg_path = EXPORTS_DIR / f"wildcard_negative_{timestamp}.txt"
-            export_wildcard_negative(results, wc_neg_path)
             export_dialogue_list(results, dlg_path)
 
             # Excel出力（openpyxlがある場合）

@@ -359,7 +359,7 @@ def generate_speech_pool(bible: dict) -> dict[str, list[str]]:
                 unique_candidates.append(c)
                 unique_weights.append(w)
 
-        n_select = min(5, len(unique_candidates))
+        n_select = min(12, len(unique_candidates))
         selected_indices = []
         remaining = list(range(len(unique_candidates)))
         remaining_weights = list(unique_weights)
@@ -443,7 +443,7 @@ def generate_thought_pool(bible: dict) -> dict[str, list[str]]:
                 unique_candidates.append(c)
                 unique_weights.append(w)
 
-        n_select = min(5, len(unique_candidates))
+        n_select = min(12, len(unique_candidates))
         selected_indices = []
         remaining = list(range(len(unique_candidates)))
         remaining_weights = list(unique_weights)

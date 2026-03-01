@@ -1,5 +1,59 @@
 # Changelog
 
+## [9.6.0] - 2026-03-01
+
+### Changed (セリフ人間化 + ネガティブプロンプト削除)
+
+#### A. auto_fix Step 20b: 機械的断片化を廃止 (gui.py)
+- 旧: intensity 4で2-3文字ごとに「…」分断、intensity 5で先頭1文字のみ残す → セリフの意味完全破壊
+- 新: 句読点→「…」置換と末尾処理のみ。APIが生成したキャラ固有のセリフを尊重
+  - i=3: `。→…` + 末尾`…っ`
+  - i=4: `。→…`, `、→…` + 末尾`…♡`
+  - i=5: 句読点置換 + 15文字超の場合のみ自然な切断点でトリミング
+
+#### B. APIプロンプト: 「自作するな」→「キャラ固有の口調で生成せよ」(gui.py)
+- intensity 3/4/5のセリフ生成指示を変更
+- 状況実況型セリフ（「入って…くる…♡」等）を明示的に禁止
+- キャラの性格・感情を反映した生成指示に変更
+
+#### C. polish_scene: 断片化指示を感情重視に変更 (gui.py)
+- 「文章→断片に（主語・目的語を削除）」を削除
+- 「キャラの性格・口調を最優先で維持する」に変更
+- 実況報告型セリフの禁止を明記
+
+#### D. auto_fix Step 20c新設: 実況型speech自動検出・置換 (gui.py)
+- 5つの正規表現パターンで状況実況型speechを検出
+- intensity 4用13パターン / intensity 5用10パターンの感情的セリフに置換
+- プール枯渇時の自動リセット機構あり
+
+#### E. auto_fix Step 9c: thought文字数制限緩和 (gui.py)
+- 20文字→35文字に拡大（短すぎるトリミングで意味破壊されていた）
+
+#### F. pick_replacement: max_len 10→25 (ero_dialogue_pool.py)
+- デフォルト10文字制限が長いセリフを全てフィルタしていた問題を修正
+- 全17箇所の呼び出しがデフォルト値を使用しており、全て恩恵を受ける
+
+#### G. character_pool_generator: n_select 5→12 (character_pool_generator.py)
+- キャラ固有プールを30→72セリフ/キャラに拡大（6フェーズ×12個）
+- 500シーンでのバリエーション枯渇耐性が大幅向上
+
+### Removed (ネガティブプロンプト機能全削除)
+- `_generate_negative_prompt()` 関数削除
+- `export_wildcard_negative()` 関数削除
+- `_apply_png_to_negative()` メソッド削除
+- `enhance_sd_prompts` Phase 4（ネガティブプロンプト生成）ブロック削除
+- GUI: ネガティブプロンプト設定欄3つ（base/prefix/suffix）+ ヘッダー + ボタン削除
+- PNG Info「Negに適用」ボタン削除
+- 設定保存/復元からネガティブプロンプト3キー削除
+- generate_pipeline / enhance_sd_prompts のネガティブプロンプト引数削除
+- エクスポートダイアログのwildcard_negオプション削除
+- **理由**: Stable Diffusion上でネガティブプロンプトは実質的に無意味なため
+
+### Known Issues
+- SDプロンプト: `faceless_male=True`時に矛盾する男性顔/髪タグ（`young_man`, `short_hair`等）が除去されない
+- SDプロンプト: 男性タグ過多（8-10個）によりSD側が複数男性として解釈する場合がある
+- SDプロンプト: Scene 1-3で`solo`タグと`1boy`+`1girl`が矛盾
+
 ## [9.5.1] - 2026-03-01
 
 ### Fixed (セリフ品質根本修正 - 文語表現/描写型thought/男性セリフ誤割当)

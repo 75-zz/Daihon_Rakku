@@ -3950,11 +3950,11 @@ def get_onomatopoeia_pool(intensity: int, action: str = "") -> list:
 # ============================================================================
 
 def pick_replacement(pool_list: list, used_set: set, normalize_fn=None,
-                     max_len: int = 10, avoid_suffix: str = "",
+                     max_len: int = 25, avoid_suffix: str = "",
                      intensity: int = 3) -> str:
     """プールからused_setに含まれない未使用エントリーをランダムに選択。
     normalize_fnがあれば正規化後の値でも重複判定する。
-    max_len: 文字数上限（デフォルト10、CG集吹き出し制限）
+    max_len: 文字数上限（デフォルト25、感情表現を含む自然なセリフ長）
     avoid_suffix: 避けるべき語尾構造パターン（例: "し…"）。直近と同じ語尾を避ける
     intensity: シーンintensity（♡数制限に使用。1-5）
     500シーン耐性: used_setがプールの70%超で自動スライディングウィンドウ"""
