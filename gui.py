@@ -2351,6 +2351,24 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             scene_issues.setdefault("global", []).append(
                 f"mood接頭辞「{m}」が{cnt}回反復")
 
+    # --- クロスシーン: emotional_arc連続性チェック ---
+    _ea_mismatch_count = 0
+    for i in range(len(results) - 1):
+        ea_cur = results[i].get("emotional_arc", {})
+        ea_next = results[i + 1].get("emotional_arc", {})
+        cur_end = ea_cur.get("end", "").strip()
+        next_start = ea_next.get("start", "").strip()
+        if cur_end and next_start and cur_end != next_start:
+            sid = results[i + 1].get("scene_id", i + 2)
+            scene_issues.setdefault(sid, []).append(
+                f"emotional_arc断絶: 前シーンend「{cur_end[:15]}」≠ start「{next_start[:15]}」")
+            _ea_mismatch_count += 1
+    if _ea_mismatch_count > 0 and len(results) > 3:
+        ratio = _ea_mismatch_count / (len(results) - 1)
+        if ratio > 0.3:
+            scene_issues.setdefault("global", []).append(
+                f"emotional_arc不一致{_ea_mismatch_count}/{len(results)-1}件（{ratio:.0%}）— チャンク境界の感情断絶の可能性")
+
     # --- クロスシーン: title長さチェック ---
     for i, scene in enumerate(results):
         title = scene.get("title", "")
@@ -5024,9 +5042,15 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     _NEGATIVE_SPEECH_KW = ["やめて", "嫌", "離して", "痛い", "やだ", "助けて", "来ないで"]
     _NEGATIVE_THOUGHT_KW = ["怖い", "嫌だ", "逃げ", "助けて", "痛い", "無理", "嫌い"]
     _POSITIVE_SPEECH_KW = ["もっと", "気持ちいい", "好き", "♡", "嬉しい", "幸せ", "ちょうだい"]
-    # forced/reluctantテーマのi=3-4は矛盾が正常パターン（快楽堕ち）→免除
+    # 快楽堕ちパターンが正常なテーマのi=3-4は感情矛盾免除
     _is_contradiction_exempt = any(k in (theme or "").lower()
-                                    for k in ["forced", "reluctant", "陵辱", "強制"])
+                                    for k in ["forced", "reluctant", "陵辱", "強制",
+                                              "corruption", "堕ち", "調教",
+                                              "hypnosis", "催眠", "洗脳",
+                                              "chikan", "痴漢",
+                                              "humiliation", "凌辱", "屈辱",
+                                              "netorare", "ntr", "寝取",
+                                              "incest", "近親"])
     _contradiction_fix_count = 0
     if _has_pool:
         for _si_ct, scene in enumerate(results):
@@ -5463,6 +5487,20 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 _bubble_rotate_count += 1
     if _bubble_rotate_count > 0:
         log_message(f"  バブル順序ローテーション: {_bubble_rotate_count}件（3連続同一first防止）")
+
+    # 10f. emotional_arc連続性修正（前シーンのendを次シーンのstartにコピー）
+    _ea_fix_count = 0
+    for i in range(len(results) - 1):
+        ea_cur = results[i].get("emotional_arc", {})
+        ea_next = results[i + 1].get("emotional_arc", {})
+        cur_end = ea_cur.get("end", "").strip()
+        next_start = ea_next.get("start", "").strip()
+        if cur_end and next_start and cur_end != next_start:
+            ea_next["start"] = cur_end
+            results[i + 1]["emotional_arc"] = ea_next
+            _ea_fix_count += 1
+    if _ea_fix_count > 0:
+        log_message(f"  emotional_arc連続性修正: {_ea_fix_count}件（前シーンendを次シーンstartに統一）")
 
     # 11. story_flow重複修正（同一テキストの2回目以降を空にする）
     _seen_flows = {}
@@ -9635,7 +9673,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
     "title": "シーンタイトル",
     "description": "このシーンの詳細説明",
     "location_detail": "場所の具体的な描写",
-    "mood": "雰囲気",
+    "mood": "シーンの空気感・雰囲気（15-30字の情景描写。1-2語のラベル禁止）",
     "character_feelings": {{
         "{char_names[0] if char_names else 'ヒロイン'}": "心情"
     }},
@@ -11624,7 +11662,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
     "title": "シーンタイトル",
     "description": "このシーンの詳細説明。場所、状況、何が起きているか、画像として何が描かれるかを説明",
     "location_detail": "場所の具体的な描写",
-    "mood": "雰囲気",
+    "mood": "シーンの空気感・雰囲気（15-30字の情景描写。1-2語のラベル禁止）",
     "character_feelings": {{
         "{char_names[0] if char_names else 'ヒロイン'}": "このシーンでの心情"
     }},
@@ -16562,6 +16600,8 @@ class App(ctk.CTk):
                            male_tags=_male_tags, time_tags=_time_tags,
                            location_type=_location_type)
             export_dialogue_list(results, dlg_path)
+            fuki_path = EXPORTS_DIR / f"fukidashi_{timestamp}.csv"
+            export_fukidashi_csv(results, fuki_path)
 
             # Excel出力（openpyxlがある場合）
             excel_ok = export_excel(results, xlsx_path)
