@@ -4845,10 +4845,22 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "慣れてきたのか": "もっとくれ",
         "感じちゃうのか": "感じろ",
         "足りないのか": "欲しいんだろ",
+        # v9.6.2追加: ～てる状態観察型 / ～だ断定実況型
+        "もう濡れてる": "もっと濡らせ",
+        "真っ赤になってる": "かわいいな",
+        "鼓動": "離さねえぞ",
+        "心臓聞こえるか": "聞こえるだろ",
+        "中がすごい": "もっと締めろ",
+        "色っぽい": "たまんねぇ",
+        "柔らかくて温かい": "もっとくれ",
+        "この角度": "最高だ",
+        "お前の体": "最高だ",
+        "すごい締まり": "もっと締めろ",
+        "張りついてる": "たまんねぇ",
     }
     import re as _re_autofix
-    # 「～だな」「～してるな」「～だろうな」「～のか」で終わる観察型パターン検出
-    _MALE_OBS_RE = _re_autofix.compile(r".{4,}(?:だな|するな|してるな|だろうな|てるな|のか|んだな)$")
+    # 「～だな」「～してるな」「～だろうな」「～のか」「～てる」で終わる観察型パターン検出
+    _MALE_OBS_RE = _re_autofix.compile(r".{4,}(?:だな|するな|してるな|だろうな|てるな|のか|んだな|なってる|れてる|いてる|ちてる)$")
     _male_obs_fix_count = 0
     _used_male_obs_fix = set()
     for scene in results:
@@ -4896,9 +4908,11 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "背中", "お腹", "腰", "膝", "肩", "足", "髪", "うなじ", "乳首", "クリ",
         "おっぱい", "おしり", "ふともも", "くちびる", "みみ",
         "頭", "からだ", "体", "あたま", "心臓", "脳みそ", "指先", "つま先",
+        # v9.6.2追加: 分析で残存が確認されたパターン
+        "膣", "穴", "素肌", "涎", "精液", "愛液", "子宮", "膣の", "首",
     ]
     _BODY_PART_RE = _re_autofix.compile(
-        r"^(" + "|".join(_re_autofix.escape(bp) for bp in _BODY_PART_LABELS) + r")[がのはを]?…"
+        r"^(" + "|".join(_re_autofix.escape(bp) for bp in _BODY_PART_LABELS) + r")[がのはをも]?.{0,3}…"
     )
     _thought_body_fix_count = 0
     if _has_pool:
