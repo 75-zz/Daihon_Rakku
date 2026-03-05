@@ -1,5 +1,45 @@
 # Changelog
 
+## [9.9.0] - 2026-03-05
+
+### Added (キャラ口調大幅拡充: dojindb月間ランキング分析ベース)
+
+#### SPEECH_FEMALE +18キャラ口調カテゴリ (各28エントリー = +520)
+- **オリジナルキャラ口調8種**: seiso_speech(清楚ですます→崩壊) / imouto_speech(お兄ちゃん口調) / osananajimi_speech(タメ口・距離近い) / tsundere_speech(べ別に→デレ) / kouhai_speech(先輩呼び敬語混じり) / mesugaki_speech(ざぁこ→わからされ) / amaaama_speech(イチャラブ甘々) / bosei_speech(母性・包容力)
+- **二次創作アーキタイプ10種**: elf_speech(古風～じゃ) / knight_speech(凛→堕ち) / mahou_shoujo_speech(正義→闇堕ち) / maid_speech(ご主人様敬語) / miko_speech(神聖葛藤) / sensei_speech(教師崩壊) / nurse_speech(看護師口調) / idol_speech(ファン意識) / hime_speech(王族口調) / kunoichi_speech(忍者口調)
+
+#### THOUGHT +9キャラ内心カテゴリ (各18-22エントリー = +178)
+- seiso/imouto/tsundere/mesugaki_thought (各22): キャラ固有の内面葛藤
+- elf/knight/mahou_shoujo/maid/sensei_thought (各18): 二次創作アーキタイプ内心
+
+#### SPEECH_MALE +6キャラ口調カテゴリ (各18-25エントリー = +127)
+- osananajimi_male(タメ口+本音) / aniki_male(保護者→豹変) / kareshi_sweet(イチャラブ優しい) / ntr_male(寝取り側)
+- master_male(主人/所有者) / demon_lord_male(魔王系)
+
+#### 全カテゴリにSPEECH_FEMALE_THEME_AFFINITY追加
+
+### Changed (既存口調品質改善)
+- **ojou_formal**: 14件のですわ/ですの口調統一（庶民的表現を除去）
+- **ojisan** (SPEECH_MALE): 20件を粘着的おじさん語に全面書換（～かい？/～だねぇ/～あげるよ）
+- **yakuza** (SPEECH_MALE): 20件を威圧感強化（あぁ？/～させてもらうぜ）
+- **delinquent** (SPEECH_MALE): てめぇ/おらのヤンキー口調強化
+- **stepfather** (SPEECH_MALE): 背徳感強化
+- **gal_speech**: +3エントリー（てか/は？/うそ等ギャル語追加）
+- **jirai**: +4エントリー（ねぇ…こっち見て/嫌い嫌い大好き等）
+- **hitozuma**: +1エントリー（背徳感バリエーション）
+- **oneesan**: +5エントリー（母性的早期セリフ）
+
+### Fixed
+- SPEECH_MALE「だな」観察型パターン7件除去（climax/chikan/public/streamer_male/osananajimi_male）
+
+### Stats
+- SPEECH_FEMALE: 59→77カテゴリ / 2436→2956エントリー (+520)
+- THOUGHT: 41→50カテゴリ / 1981→2159エントリー (+178)
+- SPEECH_MALE: 34→40カテゴリ / 1570→1697エントリー (+127)
+- DIALOGUE合計: 7192→7882エントリー (+690)
+- ロングフォーム比率: SF 31.6% / TH 31.3% / SM 31.1% (全て30%+達成)
+- ♡♡♡: 0件 / 「だな」: 0件
+
 ## [9.8.0] - 2026-03-05
 
 ### Added (ストーリーパターン+セリフプール大幅拡充: dojindb月間ランキング分析ベース)
