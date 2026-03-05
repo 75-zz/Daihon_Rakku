@@ -1,5 +1,58 @@
 # Changelog
 
+## [9.8.0] - 2026-03-05
+
+### Added (ストーリーパターン+セリフプール大幅拡充: dojindb月間ランキング分析ベース)
+
+#### story_patterns_ext_f.py 新規 (50パターン: v9.7トレンド対応)
+- 孕ませ特化 8パターン: 排卵日/種付けプレス/托卵/連続中出し/孕ませ合宿/妊娠自覚/ギャル孕ませ/人妻孕ませ
+- ギャル 6パターン: 逆ナン/黒ギャル/援交/NTR/陰キャ逆転/グループ攻略
+- お姉さん・年上 6パターン: 隣人/友達の姉/バイト先/家庭教師/酔い介抱/クリぼっち
+- ハーレム 6パターン: 学園/異世界/職場/奪い合い/姉妹/後輩
+- 地雷系 4パターン: メンヘラ彼女/ストーカー/リスカ/共依存
+- 配信者 4パターン: 生配信/コラボ/スパチャ/引退
+- 人妻 6パターン: 宅配業者/ママ友/団地妻/同窓会/エステ/マッチングアプリ
+- 催眠 5パターン: 学園支配/トリガーワード/アプリ催眠/自己催眠/時間停止
+- シチュエーション 5パターン: 終電逃し/閉じ込め/家庭教師/試着室/温泉混浴
+
+#### story_patterns_ext_g.py 新規 (50パターン: v9.8トレンド拡充)
+- 風俗/ソープ 5パターン: ソープ嬢/デリヘル/リフレ/エステ/風俗堕ち
+- 常識改変 5パターン: 校則/家庭/職場/電車/法律改変
+- わからせ 5パターン: ギャル/女上司/お嬢様/女騎士/SNS女
+- 露出 5パターン: 公園/電車/ビーチ/学校/配信
+- 快楽堕ち 5パターン: 処女/催眠/調教/NTR/モンスター
+- 種付けプレス 5パターン: 正常位/だいしゅきホールド/騎乗位/懇願/連続
+- 処女/初体験 5パターン: 純愛/お嬢様/幼馴染/ぼっち/後輩
+- JK特化 5パターン: 援交/委員長/後輩/不良/隠れビッチ
+- 同棲/日常 5パターン: 新婚/幼馴染/セフレ/ルームシェア/隣人
+- 部活/体操着 5パターン: 体育倉庫/プール/マネージャー/合宿/更衣室
+
+#### ero_dialogue_pool.py 大幅拡充
+- **SPEECH_FEMALE_POOL**: 52→59カテゴリ / 1383→1576エントリー (+193)
+  - v9.7新規: haramase/gal_speech/oneesan/hitozuma/jirai/harem_jealous/streaming/pregnancy_aware
+  - v9.8新規: fuzoku_react/exposure_react/wakarase_react/josoukai_react/tanetsuke_react/virgin_react/cohabitation
+  - 既存カテゴリに長文セリフ(20-50字)追加
+- **THOUGHT_POOL**: 37→41カテゴリ / 861→937エントリー (+76)
+  - v9.7新規: haramase_thought/gal_thought/oneesan_thought/hitozuma_thought/jirai_thought
+  - v9.8新規: fuzoku_thought/exposure_thought/wakarase_thought/virgin_thought
+- **SPEECH_MALE_POOL**: 27→34カテゴリ / 596→846エントリー (+250)
+  - v9.7新規: haramase_male/oneesan_tease/hitozuma_dirty/streamer_male
+  - v9.8新規: fuzoku_client/wakarase/josoukai/exposure_command/tanetsuke/shojo_male/dosei_male
+- **ONOMATOPOEIA_POOL**: 22→25カテゴリ (+tanetsuke_press/massage/clothing_rustle)
+- **NEUTRAL_POOL**: 75→125エントリー (+50)
+- **SPEECH_FEMALE_THEME_AFFINITY**: 15新カテゴリのaffinity値追加
+- **_PATTERN_IMPORTS**: ext_f, ext_g追加 → STORY_PATTERN_LIBRARY 548→598パターン
+
+### Fixed (v9.7-9.8品質修正)
+- story_patterns_ext_f: intensity_pattern修正3件 (haramase_pregnancy/gal_reversal/gal_otaku: valley→ascending)
+- story_patterns_ext_f: harem_isekai説明的earlyセリフ→感情表現に置換
+- story_patterns_ext_f: hitozuma_deliveryダジャレ的lateセリフ→自然表現に置換
+- story_patterns_ext_f: saimin_school speaker混乱修正 (「先生…？」→「え…」)
+- ero_dialogue_pool: ♡♡♡→♡♡ 10箇所修正 (新カテゴリ全域)
+- ero_dialogue_pool: 男性観察型「～だな」残存3箇所修正 (dirty/teacher)
+- ero_dialogue_pool: oneesan「余裕」過多2箇所→別表現に差替え
+- ero_dialogue_pool: haramase類似エントリー差替え
+
 ## [9.6.2] - 2026-03-02
 
 ### Changed (品質改善Phase 1: APIコスト$0の即効性施策3件)
