@@ -8569,12 +8569,20 @@ class CostTracker:
     opus_cache_creation: int = 0
     opus_cache_read: int = 0
     api_calls: int = 0
+    local_llm_calls: int = 0
+    local_llm_input: int = 0
+    local_llm_output: int = 0
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     def add(self, model: str, input_tokens: int, output_tokens: int,
             cache_creation_tokens: int = 0, cache_read_tokens: int = 0,
             batch: bool = False):
         with self._lock:
+            if model == "local-llm":
+                self.local_llm_calls += 1
+                self.local_llm_input += input_tokens
+                self.local_llm_output += output_tokens
+                return
             self.api_calls += 1
             self.cache_creation += cache_creation_tokens
             self.cache_read += cache_read_tokens
@@ -9185,6 +9193,8 @@ def call_claude(
     raise RuntimeError("最大リトライ回数を超えました")
 
 
+_hybrid_router = None  # HybridRouter instance (set by generate_pipeline)
+
 def _call_api(
     client,
     model: str,
@@ -9192,9 +9202,17 @@ def _call_api(
     user: str,
     cost_tracker: CostTracker,
     max_tokens: int = 4096,
-    callback: Optional[Callable] = None
+    callback: Optional[Callable] = None,
+    routing_hint: str = "auto",
 ) -> str:
-    """API呼び出し（Claude）"""
+    """API呼び出し（ハイブリッドルーター経由）
+    routing_hint: "local_ok" | "cloud" | "auto"
+    """
+    global _hybrid_router
+    if _hybrid_router is not None:
+        return _hybrid_router.call(
+            model, system, user, cost_tracker, max_tokens, callback, routing_hint
+        )
     return call_claude(client, model, system, user, cost_tracker, max_tokens, callback)
 
 
@@ -9318,7 +9336,8 @@ def compact_context(
     response = _call_api(
         client, MODELS["haiku"],
         skill if skill else "You compress prompts to save tokens. Output only JSON.",
-        prompt, cost_tracker, 1024, callback
+        prompt, cost_tracker, 1024, callback,
+        routing_hint="local_ok",
     )
     return parse_json_response(response)
 
@@ -9458,7 +9477,8 @@ def generate_synopsis(
         response = _call_api(
             client, MODELS["haiku"],
             f"FANZA同人CG集の脚本家です。ユーザーのコンセプトに基づき、エロ同人作品の完全なストーリーあらすじを作成します。成人向けコンテンツを忠実に生成します。",
-            prompt, cost_tracker, 2048, callback
+            prompt, cost_tracker, 2048, callback,
+            routing_hint="local_ok",
         )
 
         synopsis = response.strip()
@@ -9947,7 +9967,8 @@ JSON配列のみ出力。\"\"\""""
     response = _call_api(
         client, MODELS["haiku"],
         f"FANZA同人CG集の脚本プランナーです。全{total_scenes}シーンのうちシーン{start_id}〜{end_id}の詳細設計をJSON配列で出力します。",
-        chunk_prompt, cost_tracker, min(8192, chunk_size * 400), callback
+        chunk_prompt, cost_tracker, min(8192, chunk_size * 400), callback,
+        routing_hint="local_ok",
     )
 
     chunk = parse_json_response(response)
@@ -10249,7 +10270,8 @@ JSON配列のみ出力。"""
             response = _call_api(
                 client, MODELS["haiku"],
                 f"FANZA同人CG集の脚本プランナーです。ストーリーあらすじを忠実に{num_scenes}シーンに分割し、各シーンの詳細設計をJSON配列で出力します。",
-                prompt, cost_tracker, outline_max_tokens, callback
+                prompt, cost_tracker, outline_max_tokens, callback,
+                routing_hint="local_ok",
             )
             outline = parse_json_response(response)
             if not isinstance(outline, list) or len(outline) == 0:
@@ -11748,15 +11770,21 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 
     # モデル自動選択: intensity別にコスト最適化
     # intensity 4-5 → Sonnet（本番+クライマックス: セリフ品質が最重要）
-    # intensity 1-3 → Haiku 4.5（導入・前戯シーン）
+    # intensity 1-3 → Haiku 4.5 or ローカルLLM（導入・前戯シーン）
     # ※ Haiku3(fast)はシーン生成に不適: キャラ名化け・NSFW品質不足
     if intensity >= 4:
         model = MODELS["sonnet"]
         model_name = "Sonnet"
+        routing_hint = "cloud"
     else:
         model = MODELS["haiku"]
         model_name = "Haiku(4.5)"
-    
+        routing_hint = "local_ok"
+
+    # ハイブリッドモード時のログ表示
+    if _hybrid_router and _hybrid_router.local_enabled and routing_hint == "local_ok":
+        model_name = "ローカルLLM"
+
     if callback:
         callback(f"シーン {scene['scene_id']} 生成中 ({model_name}, 重要度{intensity}, {theme_name}, セリフ:{serihu_skill_name})...")
 
@@ -11767,7 +11795,8 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
     response = _call_api(
         client, model,
         system_with_cache,
-        prompt, cost_tracker, 3000, callback
+        prompt, cost_tracker, 3000, callback,
+        routing_hint=routing_hint,
     )
     
     # 重複排除の後処理
@@ -12177,10 +12206,28 @@ def generate_pipeline(
     provider: str = "",
     quality_priority: bool = False,
     faceless_male: bool = True,
+    local_llm_enabled: bool = False,
 ) -> tuple[list, CostTracker]:
+    global _hybrid_router
     client = anthropic.Anthropic(api_key=api_key)
-    log_message("Claude (Anthropic) バックエンドで生成開始")
     cost_tracker = CostTracker()
+
+    # ハイブリッドルーター初期化
+    if local_llm_enabled:
+        try:
+            from llm_provider import create_hybrid_router
+            _hybrid_router = create_hybrid_router(client, call_claude, local_enabled=True)
+            if _hybrid_router.local_enabled:
+                log_message("ハイブリッドモード: ローカルLLM + Claude API")
+            else:
+                log_message("ローカルLLM未検出 → Claude APIのみモード")
+                _hybrid_router = None
+        except Exception as e:
+            log_message(f"ハイブリッド初期化失敗: {e} → Claude APIのみモード")
+            _hybrid_router = None
+    else:
+        _hybrid_router = None
+        log_message("Claude (Anthropic) バックエンドで生成開始")
 
     jailbreak = load_file(JAILBREAK_FILE)
 
