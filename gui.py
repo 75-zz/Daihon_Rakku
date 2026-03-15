@@ -12114,13 +12114,50 @@ def _generate_single_scene_for_wave(
         return (scene_index, error_result, f"[シーン{scene_index+1}: エラーにより欠落]", None)
 
 
+def _prepare_wave_scene_args(scene_index, scene, roadmap_lines, story_so_far, outline):
+    """Wave内の1シーン用の共通引数（ロードマップ・前シーン情報）を準備する"""
+    # 各シーンのロードマップ（近傍±5行）
+    marked_lines = []
+    window_start = max(0, scene_index - 5)
+    window_end = min(len(roadmap_lines), scene_index + 6)
+    if window_start > 0:
+        marked_lines.append(f"  ... (シーン1〜{window_start}省略)")
+    for j in range(window_start, window_end):
+        line = roadmap_lines[j]
+        if j == scene_index:
+            marked_lines.append(f"★ {line}")
+        else:
+            marked_lines.append(f"  {line}")
+    if window_end < len(roadmap_lines):
+        marked_lines.append(f"  ... (シーン{window_end+1}〜{len(roadmap_lines)}省略)")
+    current_roadmap = "\n".join(marked_lines)
+
+    # v8.7: Wave内の前シーンアウトライン情報を注入（ストーリー一貫性向上）
+    story_so_far_augmented = story_so_far
+    if outline and scene_index > 0 and scene_index - 1 < len(outline):
+        prev = outline[scene_index - 1]
+        prev_anchor = (
+            f"\n★直前シーン{scene_index}: {prev.get('title', '')[:20]} - "
+            f"{prev.get('situation', '')[:80]}\n"
+            f"このシーンは上記の直後から始まる。\n"
+        )
+        story_so_far_augmented = story_so_far + prev_anchor
+
+    return current_roadmap, story_so_far_augmented
+
+
 def _generate_scenes_wave(
     wave_scenes, client, context, jailbreak, cost_tracker, theme, char_profiles,
     callback, story_so_far, synopsis, roadmap_lines, male_description,
     total_scenes, timestamp, max_workers=CONCURRENT_BATCH_SIZE,
     outline=None, faceless_male=True,
 ):
-    """Wave内の全シーンをThreadPoolExecutorで同時生成し、scene_index順にソートして返す。
+    """Wave内の全シーンを生成し、scene_index順にソートして返す。
+
+    ハイブリッドモード時:
+    - cloud (i>=4): ThreadPoolExecutor並列
+    - local (i<=3): 直列（GPU占有のため並列不可）
+    - cloudの実行中にlocalを直列処理（インターリーブ）
 
     戻り値: [(scene_index, result_dict, summary_string, error), ...]
     InterruptedError発生時はexecutorをシャットダウンして再送出。
@@ -12128,58 +12165,98 @@ def _generate_scenes_wave(
     """
     wave_results = []
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {}
+    # ハイブリッドモード: local/cloud分割
+    is_hybrid = _hybrid_router is not None and _hybrid_router.local_enabled
+    if is_hybrid:
+        local_scenes = []
+        cloud_scenes = []
         for scene_index, scene in wave_scenes:
-            # 各シーンのロードマップ（近傍±5行）
-            marked_lines = []
-            window_start = max(0, scene_index - 5)
-            window_end = min(len(roadmap_lines), scene_index + 6)
-            if window_start > 0:
-                marked_lines.append(f"  ... (シーン1〜{window_start}省略)")
-            for j in range(window_start, window_end):
-                line = roadmap_lines[j]
-                if j == scene_index:
-                    marked_lines.append(f"★ {line}")
-                else:
-                    marked_lines.append(f"  {line}")
-            if window_end < len(roadmap_lines):
-                marked_lines.append(f"  ... (シーン{window_end+1}〜{len(roadmap_lines)}省略)")
-            current_roadmap = "\n".join(marked_lines)
+            intensity = scene.get("intensity", 3)
+            if intensity >= 4:
+                cloud_scenes.append((scene_index, scene))
+            else:
+                local_scenes.append((scene_index, scene))
 
-            # v8.7: Wave内の前シーンアウトライン情報を注入（ストーリー一貫性向上）
-            story_so_far_augmented = story_so_far
-            if outline and scene_index > 0 and scene_index - 1 < len(outline):
-                prev = outline[scene_index - 1]
-                prev_anchor = (
-                    f"\n★直前シーン{scene_index}: {prev.get('title', '')[:20]} - "
-                    f"{prev.get('situation', '')[:80]}\n"
-                    f"このシーンは上記の直後から始まる。\n"
+        if local_scenes or cloud_scenes:
+            log_message(f"  ハイブリッドWave: ローカル{len(local_scenes)}シーン + クラウド{len(cloud_scenes)}シーン")
+
+        # Phase 1: クラウドシーンを非同期で開始
+        cloud_futures = {}
+        executor = None
+        if cloud_scenes:
+            executor = ThreadPoolExecutor(max_workers=max_workers)
+            for scene_index, scene in cloud_scenes:
+                roadmap, ssa = _prepare_wave_scene_args(
+                    scene_index, scene, roadmap_lines, story_so_far, outline
                 )
-                story_so_far_augmented = story_so_far + prev_anchor
+                future = executor.submit(
+                    _generate_single_scene_for_wave,
+                    client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
+                    callback, ssa, synopsis, roadmap, male_description,
+                    scene_index, total_scenes, timestamp, faceless_male,
+                )
+                cloud_futures[future] = scene_index
 
-            future = executor.submit(
-                _generate_single_scene_for_wave,
-                client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
-                callback, story_so_far_augmented, synopsis, current_roadmap, male_description,
-                scene_index, total_scenes, timestamp, faceless_male,
-            )
-            futures[future] = scene_index
-
-        interrupted = False
-        for future in as_completed(futures):
-            try:
-                result = future.result()
+        # Phase 2: クラウドの待ち時間中にローカルシーンを直列処理
+        try:
+            for scene_index, scene in local_scenes:
+                roadmap, ssa = _prepare_wave_scene_args(
+                    scene_index, scene, roadmap_lines, story_so_far, outline
+                )
+                result = _generate_single_scene_for_wave(
+                    client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
+                    callback, ssa, synopsis, roadmap, male_description,
+                    scene_index, total_scenes, timestamp, faceless_male,
+                )
                 wave_results.append(result)
-            except InterruptedError:
-                interrupted = True
-                # 残りのfutureをキャンセル
-                for f in futures:
-                    f.cancel()
-                break
 
-        if interrupted:
-            raise InterruptedError("ユーザーによる停止")
+            # Phase 3: クラウド結果を収集
+            interrupted = False
+            for future in as_completed(cloud_futures):
+                try:
+                    result = future.result()
+                    wave_results.append(result)
+                except InterruptedError:
+                    interrupted = True
+                    for f in cloud_futures:
+                        f.cancel()
+                    break
+
+            if interrupted:
+                raise InterruptedError("ユーザーによる停止")
+        finally:
+            if executor:
+                executor.shutdown(wait=False)
+
+    else:
+        # 従来モード: 全シーンをThreadPoolExecutor並列
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {}
+            for scene_index, scene in wave_scenes:
+                roadmap, ssa = _prepare_wave_scene_args(
+                    scene_index, scene, roadmap_lines, story_so_far, outline
+                )
+                future = executor.submit(
+                    _generate_single_scene_for_wave,
+                    client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
+                    callback, ssa, synopsis, roadmap, male_description,
+                    scene_index, total_scenes, timestamp, faceless_male,
+                )
+                futures[future] = scene_index
+
+            interrupted = False
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    wave_results.append(result)
+                except InterruptedError:
+                    interrupted = True
+                    for f in futures:
+                        f.cancel()
+                    break
+
+            if interrupted:
+                raise InterruptedError("ユーザーによる停止")
 
     # scene_index順にソート
     wave_results.sort(key=lambda x: x[0])
