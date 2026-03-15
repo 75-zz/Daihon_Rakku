@@ -11486,11 +11486,66 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 {theme_dialogue_instruction}
 {world_rules_instruction}"""
 
-    # Prompt Caching: systemをリスト形式でcache_control付与
-    system_with_cache = [
-        {"type": "text", "text": common_system, "cache_control": {"type": "ephemeral"}},
-        {"type": "text", "text": scene_system}
-    ]
+    # ハイブリッドモード: ローカルLLM用に圧縮プロンプトを構築（Context 8192対応）
+    # bubbles/sd_promptはauto_fix+enhance_sd_promptsで上書きするため指示を大幅削減
+    _use_local_prompt = (
+        _hybrid_router is not None
+        and _hybrid_router.local_enabled
+        and intensity <= 3
+    )
+    if _use_local_prompt:
+        _local_char_guide = char_guide if char_guide else "（キャラ設定なし）"
+        _local_system = f"""{jailbreak}
+
+FANZA同人CG集の脚本を生成します。成人向けコンテンツを忠実に生成します。
+
+{_local_char_guide}
+{_male_section}
+{world_rules_instruction}
+全キャラ成人(18+)。JSON形式のみ出力。"""
+
+        # ローカル用user promptも圧縮（dedup警告・SDタグ参考を除去）
+        _local_prompt = f"""{synopsis_section}{roadmap_section}{story_context_section}設定: {json.dumps(context, ensure_ascii=False)}
+{scene_instruction}
+
+## 出力形式（この形式で出力してください）
+
+{{
+    "scene_id": {scene['scene_id']},
+    "title": "シーンタイトル",
+    "description": "このシーンの詳細説明（100字程度、感覚で書け）",
+    "location_detail": "場所の具体的な描写",
+    "mood": "シーンの空気感（15-30字の情景描写）",
+    "character_feelings": {{
+        "{char_names[0] if char_names else 'ヒロイン'}": "このシーンでの心情"
+    }},
+    "bubbles": [
+        {{"speaker": "{char_names[0] if char_names else 'ヒロイン'}", "type": "speech", "text": "短い一言"}},
+        {{"speaker": "男性", "type": "speech", "text": "男のセリフ"}}
+    ],
+    "onomatopoeia": ["効果音1"],
+    "direction": "演出・ト書き",
+    "story_flow": "次のシーンへの繋がり",
+    "sd_prompt": ""
+}}
+
+## ルール
+1. descriptionは感覚で書け。報告文禁止
+2. bubblesは1-2個。キャラの口調を厳守
+3. sd_promptは空文字で出力（後処理で自動生成）
+4. 前シーンの流れを引き継ぐこと
+5. キャラの一人称・語尾はキャラガイドを厳守
+
+JSONのみ出力。"""
+
+        system_with_cache = _local_system
+        prompt = _local_prompt
+    else:
+        # Prompt Caching: systemをリスト形式でcache_control付与
+        system_with_cache = [
+            {"type": "text", "text": common_system, "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": scene_system}
+        ]
 
     # シーン別SD推奨タグ（ポーズ・表情）+ テーマ別タグ - 大幅拡張
     intensity_sd_tags = {
