@@ -97,13 +97,18 @@ class LocalLLMProvider(LLMProvider):
                 b.get("text", "") for b in system if isinstance(b, dict) and b.get("type") == "text"
             )
             messages.append({"role": "system", "content": sys_text})
-        messages.append({"role": "user", "content": user})
+        messages.append({"role": "user", "content": user + " /no_think"})
+        # Assistant prefill: JSONの開始を強制して思考スキップ
+        messages.append({"role": "assistant", "content": "{"})
+
+        # max_tokensをローカルLLM向けに制限（context 8192、出力は1024で十分）
+        _effective_max_tokens = min(max_tokens, 2048)
 
         payload = json.dumps({
             "model": self._model,
             "messages": messages,
             "temperature": 0.9,
-            "max_tokens": max_tokens,
+            "max_tokens": _effective_max_tokens,
         }, ensure_ascii=False).encode("utf-8")
 
         url = f"{self._base_url}/chat/completions"
@@ -125,6 +130,10 @@ class LocalLLMProvider(LLMProvider):
                 content = data["choices"][0]["message"]["content"]
                 usage = data.get("usage", {})
 
+                # Assistant prefillの "{" を復元
+                if not content.startswith("{"):
+                    content = "{" + content
+
                 # Strip thinking blocks
                 content = _strip_thinking(content)
 
@@ -142,14 +151,38 @@ class LocalLLMProvider(LLMProvider):
 
                 return content
 
+            except urllib.error.HTTPError as e:
+                # HTTP 400/500等のエラー — レスポンスボディを取得
+                _err_body = ""
+                try:
+                    _err_body = e.read().decode("utf-8", errors="replace")[:500]
+                except Exception:
+                    pass
+                logger.error(f"LocalLLM HTTP {e.code} (attempt {attempt + 1}): {_err_body}")
+                if callback:
+                    callback(f"  [ローカルLLM] HTTP {e.code}: {_err_body[:100]}")
+                if attempt < LOCAL_LLM_MAX_RETRIES:
+                    time.sleep(1)
+                    continue
+                raise ConnectionError(f"ローカルLLM HTTP {e.code}: {_err_body[:200]}") from e
             except urllib.error.URLError as e:
                 logger.error(f"LocalLLM connection error (attempt {attempt + 1}): {e}")
+                if callback:
+                    callback(f"  [ローカルLLM] 接続エラー: {e}")
                 if attempt < LOCAL_LLM_MAX_RETRIES:
                     time.sleep(2)
                     continue
                 raise ConnectionError(f"ローカルLLMに接続できません: {e}") from e
             except (KeyError, IndexError, json.JSONDecodeError) as e:
-                logger.error(f"LocalLLM response parse error: {e}")
+                # レスポンスの中身をログに残す（デバッグ用）
+                _raw = ""
+                try:
+                    _raw = str(data)[:300] if 'data' in dir() else "no data"
+                except Exception:
+                    _raw = "could not read data"
+                logger.error(f"LocalLLM parse error (attempt {attempt + 1}): {e} | raw: {_raw}")
+                if callback:
+                    callback(f"  [ローカルLLM] パースエラー: {e}")
                 if attempt < LOCAL_LLM_MAX_RETRIES:
                     time.sleep(1)
                     continue
@@ -195,7 +228,7 @@ class HybridRouter:
         self.local = local_provider
         self._local_enabled = local_provider is not None
         self._local_failures = 0
-        self._max_local_failures = 5  # 連続失敗でローカル無効化
+        self._max_local_failures = 10  # 連続失敗でローカル無効化（フォールバック込みで余裕を持たせる）
 
     @property
     def local_enabled(self) -> bool:
@@ -263,17 +296,91 @@ class HybridRouter:
 # ============================================================
 
 def _strip_thinking(text: str) -> str:
-    """Qwen3.5の<think>ブロックを除去"""
+    """Qwen3.5の<think>ブロックを除去（インラインthinking含む）"""
     result = _THINK_RE.sub("", text).strip()
-    # thinkタグなしでもThinking Process:で始まる場合がある
-    if result.startswith("Thinking Process:") or result.startswith("Thinking:"):
-        # JSONの開始位置を探す
-        for marker in ["{", "["]:
-            idx = result.find(marker)
-            if idx > 0:
-                result = result[idx:]
-                break
+
+    # <think>タグなしのインラインthinkingを処理
+    # パターン: 最後の有効なJSONブロックを探す（thinkingの後に最終回答JSONが来る）
+    # まず "```json" fenced block を探す
+    fence_matches = list(re.finditer(r"```(?:json)?\s*([\s\S]*?)```", result))
+    if fence_matches:
+        # 最後のfenced blockを使う
+        candidate = fence_matches[-1].group(1).strip()
+        try:
+            json.loads(candidate)
+            return candidate
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # Thinking Process: / Thinking: プレフィックスを探す
+    for prefix in ["Thinking Process:", "Thinking:", "**Thinking"]:
+        if prefix in result:
+            # thinkingの後にあるJSON部分を探す
+            pass
+
+    # 最後の完全なJSON objectを探す（thinkingの後に来る最終回答）
+    last_json = _find_last_complete_json(result)
+    if last_json:
+        return last_json
+
+    # フォールバック: 最初のJSON部分
+    for marker in ["{", "["]:
+        idx = result.find(marker)
+        if idx > 0:
+            result = result[idx:]
+            break
     return result
+
+
+def _find_last_complete_json(text: str) -> Optional[str]:
+    """テキストから最も大きい完全なJSONオブジェクトを抽出
+    シーンJSONは scene_id/description 等のキーを含む大きなオブジェクト。
+    小さい内部オブジェクト（bubbleなど）を誤って拾わないよう、最大サイズを優先する。
+    """
+    candidates = []
+
+    # 全ての } 位置から逆方向に対応する { を探す
+    i = len(text) - 1
+    while i >= 0:
+        if text[i] == "}":
+            close_pos = i
+            depth = 0
+            for j in range(close_pos, -1, -1):
+                if text[j] == "}":
+                    depth += 1
+                elif text[j] == "{":
+                    depth -= 1
+                    if depth == 0:
+                        candidate = text[j : close_pos + 1]
+                        try:
+                            parsed = json.loads(candidate)
+                            if isinstance(parsed, dict):
+                                candidates.append(candidate)
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                        break
+        i -= 1
+
+    if not candidates:
+        return None
+
+    # 最大のJSONを優先（シーンJSONは内部のbubbleオブジェクトより大きい）
+    # さらに scene_id キーを持つものを最優先
+    best = None
+    for c in candidates:
+        try:
+            parsed = json.loads(c)
+            if isinstance(parsed, dict) and "scene_id" in parsed:
+                if best is None or len(c) > len(best):
+                    best = c
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    if best:
+        return best
+
+    # scene_idが無い場合は最大のJSONを返す
+    return max(candidates, key=len)
 
 
 def extract_json_from_response(text: str) -> str:

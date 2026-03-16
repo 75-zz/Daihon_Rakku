@@ -1358,7 +1358,7 @@ _FLUID_STATE_TAGS = {
 
 _EXPRESSION_STATE_TAGS = {
     "ahegao", "blush", "crying", "tears", "panting", "drooling",
-    "tongue_out", "rolling_eyes", "trembling", "heart_pupils",
+    "tongue_out", "rolling_eyes", "trembling", "heart-shaped_pupils",
     "torogao", "half-closed_eyes", "clenched_teeth", "open_mouth",
 }
 
@@ -1549,7 +1549,7 @@ _TAG_ALIAS_MAP = {
     # 誤タグ → 正規タグ
     "cowgirl": "cowgirl_position",
     "reverse_cowgirl": "reverse_cowgirl",
-    "heart_pupils": "heart-shaped_pupils",
+    "heart-shaped_pupils": "heart-shaped_pupils",
     "cum_overflow": "overflow",
     "gentle_smile": "smile",
     "crying_face": "crying",
@@ -1575,7 +1575,7 @@ _TAG_ALIAS_MAP = {
 _NON_DANBOORU_TAGS = {
     "passionate", "intense_sex", "gentle_sex", "emotional", "loving",
     "aggressive", "desperate", "tender", "intimate", "sensual", "erotic",
-    "cowgirl", "heart_pupils", "cum_overflow", "gentle_smile",
+    "cowgirl", "heart-shaped_pupils", "cum_overflow", "gentle_smile",
     "crying_face", "scared_expression", "laying_down", "laying",
     "cum_inside", "vaginal_sex", "anal_sex", "breast_squeeze",
     "breast_press", "eye_contact", "teary_eyes", "blushing",
@@ -1726,7 +1726,7 @@ _TAG_ORDER_GROUPS = {
     }),
     "expression": (4, {
         "ahegao", "blush", "crying", "tears", "panting", "drooling",
-        "tongue_out", "rolling_eyes", "trembling", "heart_pupils",
+        "tongue_out", "rolling_eyes", "trembling", "heart-shaped_pupils",
         "torogao", "half-closed_eyes", "clenched_teeth", "open_mouth",
         "smile", "embarrassed", "scared", "fearful", "dazed",
         "looking_away", "closed_eyes", "wide-eyed", "lip_biting",
@@ -2232,13 +2232,8 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         if sd and not (sd_tags_set & bg_tags):
             problems.append("sd_promptに背景/場所タグが無い")
 
-        # --- sd_prompt: v9.0 品質/スタイルタグ混入検出 ---
-        if sd:
-            _found_quality = sd_tags_set & _QUALITY_TAGS_TO_REMOVE
-            if _found_quality:
-                problems.append(f"sd_promptに品質タグ混入: {', '.join(list(_found_quality)[:3])}")
-            if "<lora:" in sd.lower():
-                problems.append("sd_promptにLoRAタグ混入")
+        # --- sd_prompt: 品質/LoRAタグはユーザー設定(sd_prefix/sd_quality)由来のため検出スキップ ---
+        # ※ ultra-HD, 8k, best_quality, <lora:...> 等はユーザーが意図的に設定したもの
 
         if problems:
             scene_issues[scene_id] = problems
@@ -3741,6 +3736,65 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
 
     # テキストフィールド一覧
     text_fields = ["description", "location_detail", "direction", "story_flow", "title"]
+
+    # === Step 0: ローカルLLM生成シーンのbubbles再構築 ===
+    # ローカルLLMのbubbles品質が低いため、既存プールで完全上書き
+    _local_scenes = [s for s in results if s.get("_generated_by") == "local"]
+    if _local_scenes:
+        try:
+            from ero_dialogue_pool import (
+                get_moan_pool, get_speech_pool, pick_replacement,
+                infer_phase, SPEECH_MALE_POOL, get_male_speech_pool_for_theme
+            )
+            _used_moan = set()
+            _used_speech = set()
+            _used_thought = set()
+            _used_male = set()
+
+            for scene in _local_scenes:
+                _intensity = scene.get("intensity", 3)
+                _sid = scene.get("scene_id", 0)
+                _phase = infer_phase(_intensity, _sid, _total_scenes)
+
+                new_bubbles = []
+                _char_name = correct_names[0] if correct_names else "ヒロイン"
+
+                if _intensity >= 3:
+                    # i≥3: moan + speech/thought
+                    _moan_pool = get_moan_pool(_intensity)
+                    _moan = pick_replacement(_moan_pool, _used_moan)
+                    if _moan:
+                        new_bubbles.append({"speaker": _char_name, "type": "moan", "text": _moan})
+
+                    _speech_pool = get_speech_pool("speech", theme, _intensity, phase=_phase)
+                    _speech = pick_replacement(_speech_pool, _used_speech)
+                    if _speech:
+                        new_bubbles.append({"speaker": _char_name, "type": "speech", "text": _speech})
+                else:
+                    # i≤2: speech + thought
+                    _speech_pool = get_speech_pool("speech", theme, _intensity, phase=_phase)
+                    _speech = pick_replacement(_speech_pool, _used_speech)
+                    if _speech:
+                        new_bubbles.append({"speaker": _char_name, "type": "speech", "text": _speech})
+
+                    _thought_pool = get_speech_pool("thought", theme, _intensity, phase=_phase)
+                    _thought = pick_replacement(_thought_pool, _used_thought)
+                    if _thought:
+                        new_bubbles.append({"speaker": _char_name, "type": "thought", "text": _thought})
+
+                # 男性セリフ（30%の確率で追加）
+                if _rng.random() < 0.3 and _intensity >= 2:
+                    _male_pool = get_male_speech_pool_for_theme(theme) if theme else list(SPEECH_MALE_POOL.get("general", []))
+                    _male = pick_replacement(_male_pool, _used_male)
+                    if _male:
+                        new_bubbles.append({"speaker": "男性", "type": "speech", "text": _male})
+
+                if new_bubbles:
+                    scene["bubbles"] = new_bubbles
+                    log_message(f"  Step 0: シーン{_sid} bubbles再構築 ({len(new_bubbles)}個)")
+        except Exception as e:
+            log_message(f"  Step 0 エラー（続行）: {e}")
+            _step_errors.append(("Step 0 bubbles再構築", str(e)))
 
     _progress("Step 1-4 基本修正")
     for scene in results:
@@ -7297,7 +7351,7 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         5: ["ahegao", "rolling_eyes", "tongue_out", "drooling", "head_back",
             "arched_back", "toes_curling", "full_body_arch", "tears",
             "sweat_drops", "sweaty_body", "sweat_glistening", "skin_glistening",
-            "heart_pupils", "cross-eyed", "saliva_drip", "fucked_silly",
+            "heart-shaped_pupils", "cross-eyed", "saliva_drip", "fucked_silly",
             "vacant_eyes", "steam", "trembling_legs",
             "eye_roll", "slack_jaw", "convulsing"],
     }
@@ -7395,7 +7449,36 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
     for scene in results:
         sd = scene.get("sd_prompt", "")
         if not sd:
-            continue
+            # ローカルLLM生成シーン用: description/location/intensityからsd_promptを自動生成
+            _intensity = scene.get("intensity", 3)
+            _loc = scene.get("location_detail", scene.get("location", "indoor"))
+            _desc = scene.get("description", "")
+
+            # 基本タグ: キャラ外見 + 場所
+            _auto_tags = list(char_danbooru[:5]) if char_danbooru else []
+
+            # intensity別ポーズ/行為タグ
+            _int_tags = {
+                1: ["standing, looking_at_viewer, smile"],
+                2: ["sitting, blush, eye_contact, hand_holding"],
+                3: ["kiss, undressing, groping, blush, nervous"],
+                4: ["sex, nude, spread_legs, moaning, sweat"],
+                5: ["ahegao, orgasm, cum, trembling, tears"],
+            }
+            _auto_tags.extend(_int_tags.get(_intensity, _int_tags[3]))
+
+            # 場所タグ
+            _loc_lower = _loc.lower() if _loc else ""
+            if any(k in _loc_lower for k in ["寝室", "ベッド", "bed"]):
+                _auto_tags.append("bedroom, bed, on_bed")
+            elif any(k in _loc_lower for k in ["教室", "school"]):
+                _auto_tags.append("classroom, school")
+            else:
+                _auto_tags.append("indoors")
+
+            sd = ", ".join(_auto_tags)
+            scene["sd_prompt"] = sd
+            log_message(f"  enhance_sd: シーン{scene.get('scene_id','?')} sd_prompt自動生成")
 
         tags = [t.strip() for t in sd.split(",") if t.strip()]
         sd_lower = sd.lower()
@@ -7788,7 +7871,7 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             "trembling": ["怖", "震", "ビクビク", "ゾクゾク"],
             "blush": ["恥ず", "は、恥", "見ないで", "やだ"],
             "crying": ["泣き", "涙", "うっ…"],
-            "heart_pupils": ["好き", "もっと", "気持ちい", "離さないで"],
+            "heart-shaped_pupils": ["好き", "もっと", "気持ちい", "離さないで"],
             "dazed": ["頭", "ぼんやり", "真っ白", "何も考え"],
         }
         _BUBBLE_SPEECH_SD = {
@@ -9968,7 +10051,7 @@ JSON配列のみ出力。\"\"\""""
         client, MODELS["haiku"],
         f"FANZA同人CG集の脚本プランナーです。全{total_scenes}シーンのうちシーン{start_id}〜{end_id}の詳細設計をJSON配列で出力します。",
         chunk_prompt, cost_tracker, min(8192, chunk_size * 400), callback,
-        routing_hint="local_ok",
+        routing_hint="cloud",
     )
 
     chunk = parse_json_response(response)
@@ -10271,7 +10354,7 @@ JSON配列のみ出力。"""
                 client, MODELS["haiku"],
                 f"FANZA同人CG集の脚本プランナーです。ストーリーあらすじを忠実に{num_scenes}シーンに分割し、各シーンの詳細設計をJSON配列で出力します。",
                 prompt, cost_tracker, outline_max_tokens, callback,
-                routing_hint="local_ok",
+                routing_hint="cloud",
             )
             outline = parse_json_response(response)
             if not isinstance(outline, list) or len(outline) == 0:
@@ -11494,52 +11577,42 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
         and intensity <= 3
     )
     if _use_local_prompt:
-        _local_char_guide = char_guide if char_guide else "（キャラ設定なし）"
+        # ---- ローカルLLM用 system prompt 圧縮（8192 context対応） ----
+        # char_guideは既にintensity<=3用の短縮版が構築済みだが、さらに3行に絞る
+        _local_char_lines = []
+        if char_profiles:
+            for cp in char_profiles:
+                _cp_name = cp.get("character_name", "")
+                _cp_sp = cp.get("speech_pattern", {})
+                _cp_avoid = cp.get("avoid_patterns", [])
+                _local_char_lines.append(
+                    f"【{_cp_name}】一人称={_cp_sp.get('first_person', '私')}, "
+                    f"語尾={', '.join(_cp_sp.get('sentence_endings', [])[:3])}, "
+                    f"NG={', '.join(_cp_avoid[:2]) if _cp_avoid else 'なし'}"
+                )
+        _local_char_compact = "\n".join(_local_char_lines) if _local_char_lines else "（キャラ設定なし）"
+
+        # _male_section を1行に圧縮
+        _local_male = ""
+        if male_description and faceless_male:
+            _local_male = f"男性: faceless male（顔なし）, 外見={male_description}"
+        elif male_description:
+            _local_male = f"男性: 外見={male_description}"
+        elif faceless_male:
+            _local_male = "男性: faceless male（顔なし）"
+
+        # world_rules を1行に圧縮
+        _local_world = ""
+        if world_rules:
+            _local_world = "世界設定: " + "／".join(world_rules[:3])
+
         _local_system = f"""{jailbreak}
-
-FANZA同人CG集の脚本を生成します。成人向けコンテンツを忠実に生成します。
-
-{_local_char_guide}
-{_male_section}
-{world_rules_instruction}
-全キャラ成人(18+)。JSON形式のみ出力。"""
-
-        # ローカル用user promptも圧縮（dedup警告・SDタグ参考を除去）
-        _local_prompt = f"""{synopsis_section}{roadmap_section}{story_context_section}設定: {json.dumps(context, ensure_ascii=False)}
-{scene_instruction}
-
-## 出力形式（この形式で出力してください）
-
-{{
-    "scene_id": {scene['scene_id']},
-    "title": "シーンタイトル",
-    "description": "このシーンの詳細説明（100字程度、感覚で書け）",
-    "location_detail": "場所の具体的な描写",
-    "mood": "シーンの空気感（15-30字の情景描写）",
-    "character_feelings": {{
-        "{char_names[0] if char_names else 'ヒロイン'}": "このシーンでの心情"
-    }},
-    "bubbles": [
-        {{"speaker": "{char_names[0] if char_names else 'ヒロイン'}", "type": "speech", "text": "短い一言"}},
-        {{"speaker": "男性", "type": "speech", "text": "男のセリフ"}}
-    ],
-    "onomatopoeia": ["効果音1"],
-    "direction": "演出・ト書き",
-    "story_flow": "次のシーンへの繋がり",
-    "sd_prompt": ""
-}}
-
-## ルール
-1. descriptionは感覚で書け。報告文禁止
-2. bubblesは1-2個。キャラの口調を厳守
-3. sd_promptは空文字で出力（後処理で自動生成）
-4. 前シーンの流れを引き継ぐこと
-5. キャラの一人称・語尾はキャラガイドを厳守
-
-JSONのみ出力。"""
-
-        system_with_cache = _local_system
-        prompt = _local_prompt
+同人CG集脚本生成。成人向け。全キャラ18+。JSON形式のみ出力。
+{_local_char_compact}
+{_local_male}
+{_local_world}""".strip()
+        # _local_prompt は synopsis_section 等の定義後に構築（後述）
+        pass
     else:
         # Prompt Caching: systemをリスト形式でcache_control付与
         system_with_cache = [
@@ -11743,7 +11816,41 @@ JSONのみ出力。"""
 ⚠️ 上記の「状況」「感情推移」「展開ビート」に忠実にシーンを生成せよ。
 特にdescriptionは「状況」の内容を具体的に膨らませること。"""
 
-    prompt = f"""{synopsis_section}{roadmap_section}{story_context_section}設定: {json.dumps(context, ensure_ascii=False)}
+    # ハイブリッドモード: ローカル用promptを圧縮構築（8192 context対応）
+    if _use_local_prompt:
+        # synopsis: 完全除去（シーン指示だけで十分）
+        # roadmap: 完全除去（ローカルLLMには不要）
+        # story_context: 直前1シーンの1行要約のみ
+        _local_story_ctx = ""
+        if story_so_far:
+            # story_so_farの最後のシーン概要だけ抽出（1行）
+            _so_far_lines = [l.strip() for l in story_so_far.strip().split("\n") if l.strip()]
+            # 最後のシーン要約行を探す（「シーンN:」形式）
+            _last_summary = ""
+            for _sfl in reversed(_so_far_lines):
+                if _sfl.startswith("シーン") and ":" in _sfl:
+                    _last_summary = _sfl
+                    break
+            if _last_summary:
+                _local_story_ctx = f"前シーン: {_last_summary}\n"
+
+        # context（設定）も必要最小限のキーのみ
+        _local_ctx_keys = {}
+        for _ck in ("theme", "setting", "heroine_name"):
+            if _ck in context:
+                _local_ctx_keys[_ck] = context[_ck]
+
+        _local_prompt = f"""{_local_story_ctx}{scene_instruction}
+
+出力JSON:
+{{"scene_id":{scene['scene_id']},"title":"行為や状況の短いフレーズ(20字以内/moodやdescriptionの内容を入れない)","description":"100字の詳細説明","location_detail":"場所描写","mood":"空気感15-30字","character_feelings":{{"{char_names[0] if char_names else 'ヒロイン'}":"心情"}},"bubbles":[{{"speaker":"{char_names[0] if char_names else 'ヒロイン'}","type":"speech","text":"一言"}},{{"speaker":"男性","type":"speech","text":"セリフ"}}],"onomatopoeia":["効果音"],"direction":"演出","story_flow":"次への繋がり","sd_prompt":""}}
+
+ルール: descriptionは感覚で書け/bubblesは1-2個/sd_promptは空文字/口調厳守/JSONのみ出力。"""
+        system_with_cache = _local_system
+        prompt = _local_prompt
+
+    if not _use_local_prompt:
+        prompt = f"""{synopsis_section}{roadmap_section}{story_context_section}設定: {json.dumps(context, ensure_ascii=False)}
 {scene_instruction}
 
 ## 出力形式（この形式で出力してください）
@@ -11795,10 +11902,10 @@ JSONのみ出力。"""
 15. **視点**: descriptionは女性キャラ視点で書くこと。男性を「主人公」と呼ばない。男性は「彼」「相手の男」「男性」と表記
 16. **お嬢様口調のintensity対応**: intensity 4-5ではお嬢様口調（ですの/ですわ等）は崩壊させること。理性が飛んだ状態で丁寧語は不自然。「ですの」→「…の…♡」「ですわ」→「…♡」に崩す"""
 
-    # 重複禁止の最終警告（user promptの末尾に配置 = モデルが最も注目する位置）
-    dedup_warning = ""
-    if story_so_far:
-        dedup_warning = f"""
+        # 重複禁止の最終警告（user promptの末尾に配置 = モデルが最も注目する位置）
+        dedup_warning = ""
+        if story_so_far:
+            dedup_warning = f"""
 
 ## ⚠️⚠️⚠️ 最終チェック（出力前に必ず確認） ⚠️⚠️⚠️
 
@@ -11821,7 +11928,7 @@ JSONのみ出力。"""
 - descriptionの体位・行為が前シーンと同じ → 別の体位・行為に変えろ（正常位/後背位/騎乗位/立ちバック/側位/座位等をローテーション）
 - titleが前シーンと同じキーワード（「膣奥」「理性」等）を含んでいる → 別のキーワードに変えろ"""
 
-    prompt = prompt + dedup_warning + "\n\nJSONのみ出力。"
+        prompt = prompt + dedup_warning + "\n\nJSONのみ出力。"
 
     # モデル自動選択: intensity別にコスト最適化
     # intensity 4-5 → Sonnet（本番+クライマックス: セリフ品質が最重要）
@@ -11867,6 +11974,11 @@ JSONのみ出力。"""
 
     if isinstance(result, dict) and result.get("sd_prompt"):
         result["sd_prompt"] = deduplicate_sd_tags(result["sd_prompt"])
+
+    # ローカルLLM生成フラグ（auto_fixでbubbles再構築に使用）
+    if isinstance(result, dict) and _use_local_prompt:
+        result["_generated_by"] = "local"
+
     return result
 
 
@@ -12937,7 +13049,8 @@ def generate_pipeline(
     log_message(f"パイプライン完了: {success_count}/{len(results)}シーン成功")
 
     if callback:
-        callback(f"[DONE]生成完了: {success_count}シーン成功（品質: {validation['score']}/100）")
+        _final_score = post_validation.get("score", validation.get("score", 0))
+        callback(f"[DONE]生成完了: {success_count}シーン成功（品質: {_final_score}/100）")
 
     # メタデータを構築（エクスポート用）
     char_names = [cp.get("character_name", "") for cp in char_profiles] if char_profiles else []
@@ -12949,7 +13062,7 @@ def generate_pipeline(
         "characters": char_names,
         "story_structure": story_structure,
         "cost": cost_tracker.summary(),
-        "quality_score": validation.get("score", 0),
+        "quality_score": post_validation.get("score", validation.get("score", 0)),
         "provider": provider,
         "model_versions": (
             {"haiku": MODELS["haiku"], "sonnet": MODELS["sonnet"], "opus": MODELS["opus"]}
@@ -16772,6 +16885,7 @@ class App(ctk.CTk):
                 provider=PROVIDER_CLAUDE,
                 quality_priority=_quality_priority,
                 faceless_male=_faceless_male,
+                local_llm_enabled=True,  # TODO: GUIチェックボックスから取得
             )
 
             if self.stop_requested:
