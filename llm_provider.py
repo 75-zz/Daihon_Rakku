@@ -25,6 +25,10 @@ LOCAL_LLM_MODEL = "qwen3.5-35b-a3b-uncensored-hauhaucs-aggressive"
 LOCAL_LLM_TIMEOUT = 300  # seconds
 LOCAL_LLM_MAX_RETRIES = 2
 
+# RunPod Serverless (cloud-hosted local LLM)
+# URL format: https://api.runpod.ai/v2/{ENDPOINT_ID}/openai/v1
+RUNPOD_TIMEOUT = 600  # RunPodはコールドスタートがあるため長め
+
 # Thinking block regex (Qwen3.5 outputs <think>...</think>)
 _THINK_RE = re.compile(r"<think>[\s\S]*?</think>", re.DOTALL)
 
@@ -79,12 +83,17 @@ class ClaudeProvider(LLMProvider):
 # ============================================================
 
 class LocalLLMProvider(LLMProvider):
-    """ローカルLLM (llama-server / LM Studio) 用プロバイダー"""
+    """ローカルLLM (llama-server / LM Studio / RunPod Serverless) 用プロバイダー"""
 
-    def __init__(self, base_url: str = LOCAL_LLM_BASE_URL, model: str = LOCAL_LLM_MODEL):
+    def __init__(self, base_url: str = LOCAL_LLM_BASE_URL, model: str = LOCAL_LLM_MODEL,
+                 api_key: Optional[str] = None):
         self._base_url = base_url.rstrip("/")
         self._model = model
+        self._api_key = api_key  # RunPod認証用（ローカルはNone）
         self._available = None  # lazy check
+        # RunPodはコールドスタートがあるためタイムアウトを延長
+        self._is_runpod = "runpod.ai" in base_url
+        self._timeout = RUNPOD_TIMEOUT if self._is_runpod else LOCAL_LLM_TIMEOUT
 
     def call(self, model, system, user, cost_tracker, max_tokens=4096, callback=None):
         import urllib.request
@@ -115,16 +124,20 @@ class LocalLLMProvider(LLMProvider):
 
         for attempt in range(LOCAL_LLM_MAX_RETRIES + 1):
             try:
+                _label = "RunPod" if self._is_runpod else "ローカルLLM"
                 if callback:
-                    callback(f"  [ローカルLLM] 生成中... (attempt {attempt + 1})")
+                    callback(f"  [{_label}] 生成中... (attempt {attempt + 1})")
 
+                headers = {"Content-Type": "application/json; charset=utf-8"}
+                if self._api_key:
+                    headers["Authorization"] = f"Bearer {self._api_key}"
                 req = urllib.request.Request(
                     url,
                     data=payload,
-                    headers={"Content-Type": "application/json; charset=utf-8"},
+                    headers=headers,
                     method="POST",
                 )
-                with urllib.request.urlopen(req, timeout=LOCAL_LLM_TIMEOUT) as resp:
+                with urllib.request.urlopen(req, timeout=self._timeout) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
 
                 content = data["choices"][0]["message"]["content"]
@@ -152,54 +165,58 @@ class LocalLLMProvider(LLMProvider):
                 return content
 
             except urllib.error.HTTPError as e:
-                # HTTP 400/500等のエラー — レスポンスボディを取得
                 _err_body = ""
                 try:
                     _err_body = e.read().decode("utf-8", errors="replace")[:500]
                 except Exception:
                     pass
-                logger.error(f"LocalLLM HTTP {e.code} (attempt {attempt + 1}): {_err_body}")
+                logger.error(f"{_label} HTTP {e.code} (attempt {attempt + 1}): {_err_body}")
                 if callback:
-                    callback(f"  [ローカルLLM] HTTP {e.code}: {_err_body[:100]}")
+                    callback(f"  [{_label}] HTTP {e.code}: {_err_body[:100]}")
                 if attempt < LOCAL_LLM_MAX_RETRIES:
-                    time.sleep(1)
+                    time.sleep(2 if self._is_runpod else 1)
                     continue
-                raise ConnectionError(f"ローカルLLM HTTP {e.code}: {_err_body[:200]}") from e
+                raise ConnectionError(f"{_label} HTTP {e.code}: {_err_body[:200]}") from e
             except urllib.error.URLError as e:
-                logger.error(f"LocalLLM connection error (attempt {attempt + 1}): {e}")
+                logger.error(f"{_label} connection error (attempt {attempt + 1}): {e}")
                 if callback:
-                    callback(f"  [ローカルLLM] 接続エラー: {e}")
+                    callback(f"  [{_label}] 接続エラー: {e}")
                 if attempt < LOCAL_LLM_MAX_RETRIES:
-                    time.sleep(2)
+                    time.sleep(3 if self._is_runpod else 2)
                     continue
-                raise ConnectionError(f"ローカルLLMに接続できません: {e}") from e
+                raise ConnectionError(f"{_label}に接続できません: {e}") from e
             except (KeyError, IndexError, json.JSONDecodeError) as e:
-                # レスポンスの中身をログに残す（デバッグ用）
                 _raw = ""
                 try:
                     _raw = str(data)[:300] if 'data' in dir() else "no data"
                 except Exception:
                     _raw = "could not read data"
-                logger.error(f"LocalLLM parse error (attempt {attempt + 1}): {e} | raw: {_raw}")
+                logger.error(f"{_label} parse error (attempt {attempt + 1}): {e} | raw: {_raw}")
                 if callback:
-                    callback(f"  [ローカルLLM] パースエラー: {e}")
+                    callback(f"  [{_label}] パースエラー: {e}")
                 if attempt < LOCAL_LLM_MAX_RETRIES:
                     time.sleep(1)
                     continue
-                raise ValueError(f"ローカルLLMの応答が不正です: {e}") from e
+                raise ValueError(f"{_label}の応答が不正です: {e}") from e
 
     def is_available(self) -> bool:
-        """ローカルLLMサーバーが起動しているか確認"""
+        """LLMサーバーが起動しているか確認（ローカル/RunPod共用）"""
         if self._available is not None:
             return self._available
         import urllib.request
         import urllib.error
         try:
+            headers = {}
+            if self._api_key:
+                headers["Authorization"] = f"Bearer {self._api_key}"
             req = urllib.request.Request(
                 f"{self._base_url}/models",
                 method="GET",
+                headers=headers,
             )
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            # RunPodはコールドスタートがあるので長めのタイムアウト
+            _check_timeout = 30 if self._is_runpod else 5
+            with urllib.request.urlopen(req, timeout=_check_timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 self._available = len(data.get("data", [])) > 0
         except (urllib.error.URLError, Exception):
@@ -420,17 +437,25 @@ def create_hybrid_router(
     call_claude_func,
     local_enabled: bool = False,
     local_base_url: str = LOCAL_LLM_BASE_URL,
+    local_api_key: Optional[str] = None,
 ) -> HybridRouter:
-    """HybridRouterのファクトリ関数"""
+    """HybridRouterのファクトリ関数
+
+    Args:
+        local_base_url: ローカルLLMのURL。RunPodの場合は
+            https://api.runpod.ai/v2/{ENDPOINT_ID}/openai/v1
+        local_api_key: RunPod API Key（ローカルLM Studioの場合はNone）
+    """
     cloud = ClaudeProvider(client, call_claude_func)
 
     local = None
     if local_enabled:
-        local = LocalLLMProvider(base_url=local_base_url)
+        local = LocalLLMProvider(base_url=local_base_url, api_key=local_api_key)
+        _label = "RunPod" if "runpod.ai" in local_base_url else "ローカルLLM"
         if local.is_available():
-            logger.info(f"ローカルLLM検出: {local_base_url}")
+            logger.info(f"{_label}検出: {local_base_url}")
         else:
-            logger.warning(f"ローカルLLMが応答しません: {local_base_url} → クラウドのみモード")
+            logger.warning(f"{_label}が応答しません: {local_base_url} → クラウドのみモード")
             local = None
 
     return HybridRouter(cloud, local)

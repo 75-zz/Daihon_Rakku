@@ -12451,6 +12451,8 @@ def generate_pipeline(
     quality_priority: bool = False,
     faceless_male: bool = True,
     local_llm_enabled: bool = False,
+    local_llm_url: str = "",
+    local_llm_api_key: str = "",
 ) -> tuple[list, CostTracker]:
     global _hybrid_router
     client = anthropic.Anthropic(api_key=api_key)
@@ -12459,12 +12461,19 @@ def generate_pipeline(
     # ハイブリッドルーター初期化
     if local_llm_enabled:
         try:
-            from llm_provider import create_hybrid_router
-            _hybrid_router = create_hybrid_router(client, call_claude, local_enabled=True)
+            from llm_provider import create_hybrid_router, LOCAL_LLM_BASE_URL
+            _base_url = local_llm_url.strip() if local_llm_url.strip() else LOCAL_LLM_BASE_URL
+            _api_key = local_llm_api_key.strip() if local_llm_api_key.strip() else None
+            _hybrid_router = create_hybrid_router(
+                client, call_claude, local_enabled=True,
+                local_base_url=_base_url, local_api_key=_api_key,
+            )
+            _is_runpod = "runpod.ai" in _base_url
             if _hybrid_router.local_enabled:
-                log_message("ハイブリッドモード: ローカルLLM + Claude API")
+                _label = "RunPod" if _is_runpod else "ローカルLLM"
+                log_message(f"ハイブリッドモード: {_label} + Claude API")
             else:
-                log_message("ローカルLLM未検出 → Claude APIのみモード")
+                log_message("ローカルLLM/RunPod未検出 → Claude APIのみモード")
                 _hybrid_router = None
         except Exception as e:
             log_message(f"ハイブリッド初期化失敗: {e} → Claude APIのみモード")
@@ -15584,7 +15593,48 @@ class App(ctk.CTk):
             checkmark_color=MaterialColors.ON_PRIMARY,
             corner_radius=4
         )
-        self.quality_priority_cb.pack(anchor="w", padx=20, pady=(0, 12))
+        self.quality_priority_cb.pack(anchor="w", padx=20, pady=(0, 8))
+
+        # ローカルLLM使用チェックボックス（ハイブリッド生成）
+        self.local_llm_var = ctk.BooleanVar(value=False)
+        self.local_llm_cb = ctk.CTkCheckBox(
+            settings_card, text="ローカルLLMを使用（i≤3をローカル生成・コスト削減）",
+            variable=self.local_llm_var,
+            font=ctk.CTkFont(family=FONT_JP, size=13),
+            text_color=MaterialColors.ON_SURFACE_VARIANT,
+            fg_color=MaterialColors.PRIMARY,
+            hover_color=MaterialColors.PRIMARY_CONTAINER,
+            border_color=MaterialColors.OUTLINE,
+            checkmark_color=MaterialColors.ON_PRIMARY,
+            corner_radius=4
+        )
+        self.local_llm_cb.pack(anchor="w", padx=20, pady=(0, 4))
+
+        # ローカルLLM / RunPod設定欄（折りたたみ）
+        self.local_llm_settings_frame = ctk.CTkFrame(settings_card, fg_color="transparent")
+        self.local_llm_settings_frame.pack(fill="x", padx=24, pady=(0, 8))
+
+        # URL
+        url_row = ctk.CTkFrame(self.local_llm_settings_frame, fg_color="transparent")
+        url_row.pack(fill="x", pady=(0, 2))
+        ctk.CTkLabel(url_row, text="URL:", font=ctk.CTkFont(family=FONT_JP, size=11),
+                     width=60, anchor="e").pack(side="left")
+        self.local_llm_url_entry = ctk.CTkEntry(
+            url_row, placeholder_text="空欄=localhost:1234 / RunPod: https://api.runpod.ai/v2/{ID}/openai/v1",
+            font=ctk.CTkFont(size=11), height=28,
+        )
+        self.local_llm_url_entry.pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+        # API Key
+        key_row = ctk.CTkFrame(self.local_llm_settings_frame, fg_color="transparent")
+        key_row.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(key_row, text="API Key:", font=ctk.CTkFont(family=FONT_JP, size=11),
+                     width=60, anchor="e").pack(side="left")
+        self.local_llm_key_entry = ctk.CTkEntry(
+            key_row, placeholder_text="RunPod API Key（ローカルの場合は空欄）",
+            font=ctk.CTkFont(size=11), height=28, show="*",
+        )
+        self.local_llm_key_entry.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
         # ══════════════════════════════════════════════════════════════
         # 6. 生成セクション
@@ -15947,6 +15997,18 @@ class App(ctk.CTk):
                 self.male_custom_field.insert(0, _mc)
         if "male_faceless" in self.config_data and hasattr(self, 'male_faceless_var'):
             self.male_faceless_var.set(self.config_data["male_faceless"])
+        if "local_llm_enabled" in self.config_data and hasattr(self, 'local_llm_var'):
+            self.local_llm_var.set(self.config_data["local_llm_enabled"])
+        if "local_llm_url" in self.config_data and hasattr(self, 'local_llm_url_entry'):
+            _url = self.config_data["local_llm_url"]
+            if _url:
+                self.local_llm_url_entry.delete(0, "end")
+                self.local_llm_url_entry.insert(0, _url)
+        if "local_llm_api_key" in self.config_data and hasattr(self, 'local_llm_key_entry'):
+            _key = self.config_data["local_llm_api_key"]
+            if _key:
+                self.local_llm_key_entry.delete(0, "end")
+                self.local_llm_key_entry.insert(0, _key)
         if "male_hair_style" in self.config_data and hasattr(self, 'male_hair_style_combo'):
             self.male_hair_style_combo.set(self.config_data["male_hair_style"])
         if "male_hair_color" in self.config_data and hasattr(self, 'male_hair_color_combo'):
@@ -16388,6 +16450,9 @@ class App(ctk.CTk):
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
             "quality_priority": self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False,
+            "local_llm_enabled": self.local_llm_var.get() if hasattr(self, 'local_llm_var') else False,
+            "local_llm_url": self.local_llm_url_entry.get() if hasattr(self, 'local_llm_url_entry') else "",
+            "local_llm_api_key": self.local_llm_key_entry.get() if hasattr(self, 'local_llm_key_entry') else "",
         }
         save_config(self.config_data)
         self.snackbar.show("設定を保存しました", type="success")
@@ -16420,6 +16485,9 @@ class App(ctk.CTk):
             "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
+            "local_llm_enabled": self.local_llm_var.get() if hasattr(self, 'local_llm_var') else False,
+            "local_llm_url": self.local_llm_url_entry.get() if hasattr(self, 'local_llm_url_entry') else "",
+            "local_llm_api_key": self.local_llm_key_entry.get() if hasattr(self, 'local_llm_key_entry') else "",
         }
 
     def apply_config(self, config: dict):
@@ -16885,7 +16953,9 @@ class App(ctk.CTk):
                 provider=PROVIDER_CLAUDE,
                 quality_priority=_quality_priority,
                 faceless_male=_faceless_male,
-                local_llm_enabled=True,  # TODO: GUIチェックボックスから取得
+                local_llm_enabled=self.local_llm_var.get() if hasattr(self, 'local_llm_var') else False,
+                local_llm_url=self.local_llm_url_entry.get() if hasattr(self, 'local_llm_url_entry') else "",
+                local_llm_api_key=self.local_llm_key_entry.get() if hasattr(self, 'local_llm_key_entry') else "",
             )
 
             if self.stop_requested:
