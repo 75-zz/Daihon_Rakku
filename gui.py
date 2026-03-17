@@ -3751,16 +3751,38 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             _used_thought = set()
             _used_male = set()
 
+            # description/moodからシーン状況を推定するキーワードマップ
+            _DESC_PHASE_KW = {
+                "afterglow": ["余韻", "別れ", "終わり", "朝", "目覚め", "事後", "帰る", "また会", "リピート", "眠り", "約束", "リピーター", "次に会", "一夜を終え", "時間が終わ", "寂しさ", "ときめき", "芽生え"],
+                "climax": ["絶頂", "イク", "射精", "中出し", "果て", "限界", "堕ち", "崩壊"],
+                "penetration": ["挿入", "結合", "ピストン", "突", "奥", "腰を", "体位", "騎乗", "正常位", "後背"],
+                "foreplay": ["愛撫", "キス", "舐", "触", "胸", "指", "口", "フェラ", "サービス", "世話"],
+                "approach": ["近づ", "見つめ", "触れ", "距離", "照れ", "ドキドキ", "期待", "緊張"],
+                "intro": ["出会", "初対面", "交渉", "契約", "対峙", "挨拶", "到着", "訪問"],
+            }
+
+            def _infer_phase_from_desc(desc: str, mood: str, intensity: int, sid: int) -> str:
+                """descriptionとmoodからセリフのフェーズを推定"""
+                _text = (desc + " " + mood).lower()
+                for phase, keywords in _DESC_PHASE_KW.items():
+                    if any(kw in _text for kw in keywords):
+                        return phase
+                # キーワードマッチなし → intensity/位置ベースのフォールバック
+                return infer_phase(intensity, sid, _total_scenes)
+
             for scene in _local_scenes:
                 _intensity = scene.get("intensity", 3)
                 _sid = scene.get("scene_id", 0)
-                _phase = infer_phase(_intensity, _sid, _total_scenes)
+                _desc = scene.get("description", "")
+                _mood = scene.get("mood", "")
+                # descriptionベースのフェーズ推定（intensityベースより正確）
+                _phase = _infer_phase_from_desc(_desc, _mood, _intensity, _sid)
 
                 new_bubbles = []
                 _char_name = correct_names[0] if correct_names else "ヒロイン"
 
-                if _intensity >= 3:
-                    # i≥3: moan + speech/thought
+                if _intensity >= 3 and _phase not in ("intro", "approach"):
+                    # i≥3かつ性的フェーズ: moan + speech
                     _moan_pool = get_moan_pool(_intensity)
                     _moan = pick_replacement(_moan_pool, _used_moan)
                     if _moan:
@@ -3770,8 +3792,19 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                     _speech = pick_replacement(_speech_pool, _used_speech)
                     if _speech:
                         new_bubbles.append({"speaker": _char_name, "type": "speech", "text": _speech})
+                elif _phase in ("afterglow",):
+                    # 事後シーン: afterglow専用
+                    from ero_dialogue_pool import SPEECH_FEMALE_POOL as _SFP, THOUGHT_POOL as _TP
+                    _af_speech = list(_SFP.get("afterglow", []))
+                    _speech = pick_replacement(_af_speech, _used_speech) if _af_speech else None
+                    if _speech:
+                        new_bubbles.append({"speaker": _char_name, "type": "speech", "text": _speech})
+                    _af_thought = list(_TP.get("general", []))
+                    _thought = pick_replacement(_af_thought, _used_thought) if _af_thought else None
+                    if _thought:
+                        new_bubbles.append({"speaker": _char_name, "type": "thought", "text": _thought})
                 else:
-                    # i≤2: speech + thought
+                    # i≤2 or intro/approach: speech + thought（穏やかなもの）
                     _speech_pool = get_speech_pool("speech", theme, _intensity, phase=_phase)
                     _speech = pick_replacement(_speech_pool, _used_speech)
                     if _speech:
@@ -3784,7 +3817,16 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
 
                 # 男性セリフ（30%の確率で追加）
                 if _rng.random() < 0.3 and _intensity >= 2:
-                    _male_pool = get_male_speech_pool_for_theme(theme) if theme else list(SPEECH_MALE_POOL.get("general", []))
+                    if _intensity <= 2:
+                        # i≤2: gentle/praiseのみ＋15字以内（脅迫調・長文を排除）
+                        _male_pool = [s for s in SPEECH_MALE_POOL.get("gentle", []) if len(s) <= 15]
+                        _male_pool.extend(s for s in SPEECH_MALE_POOL.get("praise", []) if len(s) <= 15)
+                    elif _intensity == 3:
+                        # i=3: テーマベース＋15字以内
+                        _male_pool_raw = get_male_speech_pool_for_theme(theme) if theme else list(SPEECH_MALE_POOL.get("general", []))
+                        _male_pool = [s for s in _male_pool_raw if len(s) <= 15]
+                    else:
+                        _male_pool = get_male_speech_pool_for_theme(theme) if theme else list(SPEECH_MALE_POOL.get("general", []))
                     _male = pick_replacement(_male_pool, _used_male)
                     if _male:
                         new_bubbles.append({"speaker": "男性", "type": "speech", "text": _male})
@@ -5672,6 +5714,47 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                         desc = new_desc  # 更新後の値で次のキャラ名をチェック
     if _name_trunc_count > 0:
         log_message(f"  キャラ名途切れ修復: {_name_trunc_count}件（フルネーム→姓に置換）")
+
+    # === Step 11c: ローカルLLMのキャラ名+助詞欠落修復 ===
+    # パターン: 「ルーシィ照れながら」→「ルーシィは照れながら」
+    _particle_fix_count = 0
+    _VALID_AFTER = set("がをのはにとでもへやより、。！？）)」』】…♡ \n\r\t")
+    _all_names = set()
+    for _cn in correct_names:
+        _all_names.add(_cn)
+        for _sep in ["・", " ", "＝", "　"]:
+            _idx = _cn.find(_sep)
+            if _idx > 0:
+                _all_names.add(_cn[:_idx])
+                break
+    for scene in results:
+        if scene.get("_generated_by") != "local":
+            continue
+        for field in ["description", "story_flow", "mood", "direction"]:
+            _text = scene.get(field, "")
+            if not _text:
+                continue
+            _modified = False
+            for _name in sorted(_all_names, key=len, reverse=True):
+                _pos = 0
+                while True:
+                    _pos = _text.find(_name, _pos)
+                    if _pos < 0:
+                        break
+                    _after_pos = _pos + len(_name)
+                    if _after_pos < len(_text):
+                        _after_char = _text[_after_pos]
+                        if _after_char not in _VALID_AFTER and _after_char != "・":
+                            _text = _text[:_after_pos] + "は" + _text[_after_pos:]
+                            _modified = True
+                            _particle_fix_count += 1
+                    elif _after_pos == len(_text) or (_after_pos < len(_text) and _text[_after_pos] == "。"):
+                        pass  # Name at end or Name。 — skip
+                    _pos = _after_pos + 1
+            if _modified:
+                scene[field] = _text
+    if _particle_fix_count > 0:
+        log_message(f"  Step 11c: キャラ名助詞補完: {_particle_fix_count}件")
 
     _progress("Step 12-20 description/title/感情修正")
     # 12. description先頭15字重複修正（全既出シーンと比較、最初の句点後に状況挿入）
@@ -8388,6 +8471,335 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         if changed:
             scene["sd_prompt"] = ", ".join(new_tags)
         _prev_pos_f = _cur_pos_f
+
+    # === SD最終クリーンアップ ===
+
+    # 1. SDに無意味な抽象タグを除去
+    _ABSTRACT_TAGS_REMOVE = {
+        "pleasure", "gentle", "intense", "nervous", "secretive",
+        "professional", "seductive", "calculating", "competitive",
+        "friendly", "clinical", "vulnerable", "thrilled", "excited",
+        "peeking", "stage_smile", "gap_moe", "trying_to_be_quiet",
+        "forbidden_pleasure", "professional_facade", "genuine_pleasure",
+        "conflicted", "loving", "passionate", "romantic", "consensual",
+    }
+    # 2. desc→SDタグ自動注入マッピング
+    _DESC_TO_SD_MAP = {
+        # === 体位 (30) ===
+        "正常位": "missionary", "騎乗位": "cowgirl_position", "後背位": "doggy_style",
+        "立位": "standing_sex", "座位": "sitting", "側位": "spooning",
+        "四つん這い": "all_fours", "押し倒": "on_back", "膝立ち": "kneeling",
+        "背面座位": "reverse_cowgirl", "対面座位": "straddling", "縦抱き": "carrying",
+        "立ちバック": "standing_sex, from_behind", "寝バック": "prone_bone, on_stomach",
+        "種付けプレス": "mating_press, legs_up", "うつ伏せ": "on_stomach, prone",
+        "仰向け": "on_back, lying", "開脚": "spread_legs",
+        "足を持ち上げ": "legs_up", "脚を絡め": "leg_lock",
+        "跨": "straddling, girl_on_top", "密着": "close-up, hug",
+        "対面": "face_to_face", "背面": "from_behind",
+        "前屈み": "bent_over, leaning_forward", "しゃがみ": "squatting",
+        "顔面騎乗": "sitting_on_face", "パイルドライバー": "upside-down, legs_up",
+        "壁に押し付け": "against_wall, pinned", "ガラス": "against_glass",
+        # === 行為 (25) ===
+        "挿入": "vaginal, penetration", "結合": "vaginal, sex",
+        "ピストン": "thrusting, sex", "突かれ": "thrusting",
+        "突き上げ": "thrusting, from_below", "腰を振": "hip_thrust",
+        "フェラ": "fellatio, oral", "ディープスロート": "deepthroat",
+        "クンニ": "cunnilingus, oral", "手マン": "fingering",
+        "パイズリ": "paizuri", "足コキ": "footjob",
+        "素股": "grinding, intercrural", "中出し": "cum_in_pussy, creampie",
+        "射精": "ejaculation, cum", "連続射精": "multiple_ejaculation",
+        "絶頂": "orgasm", "連続絶頂": "multiple_orgasm",
+        "イク": "orgasm", "アナル": "anal",
+        "乳首": "nipple_stimulation", "二穴": "double_penetration",
+        "着衣": "clothed_sex", "咥え": "oral, fellatio",
+        "舐め": "licking",
+        # === 身体接触 (15) ===
+        "胸を掴": "grabbing_breasts, breast_grab", "尻を掴": "ass_grab",
+        "髪を掴": "hair_pull", "腰を掴": "hip_grab",
+        "手首を掴": "wrist_grab", "首を掴": "neck_grab",
+        "キス": "kiss", "ディープキス": "french_kiss",
+        "噛み": "biting", "スパンキング": "spanking",
+        "手を繋": "holding_hands", "抱きしめ": "hug",
+        "顎クイ": "chin_grab", "押さえつけ": "pinned_down",
+        "シーツを掴": "gripping_sheets",
+        # === 場所・家具 (15) ===
+        "壁際": "against_wall", "窓際": "window", "窓": "window",
+        "机": "desk", "椅子": "chair", "ソファ": "couch",
+        "床": "on_floor", "絨毯": "carpet", "ベッド": "bed, on_bed",
+        "浴槽": "bathtub", "シャワー": "shower",
+        "鏡": "mirror", "カーテン": "curtains",
+        "階段": "stairs", "テーブル": "table",
+        # === 表情 (15) ===
+        "アヘ顔": "ahegao, rolling_eyes, tongue_out",
+        "白目": "rolling_eyes", "トロ顔": "half-closed_eyes",
+        "舌出し": "tongue_out", "涙": "tears, crying",
+        "歯を食いしばる": "clenched_teeth", "唇を噛む": "biting_lip",
+        "目を閉じ": "closed_eyes", "ハート目": "heart-shaped_pupils",
+        "虚ろ": "empty_eyes", "驚": "surprised",
+        "恍惚": "half-closed_eyes", "苦悶": "pained_expression",
+        "背中を反ら": "arched_back", "つま先を丸め": "curled_toes",
+        # === 体液 (10) ===
+        "精液": "cum", "顔射": "cum_on_face", "ぶっかけ": "bukkake",
+        "汗だく": "sweaty_body, sweat", "よだれ": "drooling",
+        "愛液": "pussy_juice", "唾液": "saliva, saliva_trail",
+        "溢れ": "overflow", "垂れ": "cum_drip",
+        "体液": "body_fluids",
+        # === 視覚演出 (8) ===
+        "断面": "x-ray, cross-section", "湯気": "steam",
+        "逆光": "backlighting", "シルエット": "silhouette",
+        "ハート": "heart", "モーション": "motion_blur",
+        "被写界深度": "depth_of_field", "残像": "afterimage",
+        # === 体勢の詳細 (25) ===
+        "脚を広げ": "spread_legs", "膝を抱え": "knees_up, legs_up",
+        "足を上げ": "legs_up", "腕を掴まれ": "wrist_grab, restrained",
+        "覆いかぶさ": "on_top, hovering", "のしかか": "on_top, pinned_down",
+        "持ち上げ": "carrying, lifted", "吊り": "suspension, bound, arms_up",
+        "横たわ": "lying, on_back", "もたれ": "leaning, leaning_back",
+        "腰を突き出": "presenting, ass_up", "尻を突き出": "ass_up, presenting",
+        "這いつくば": "on_floor, all_fours, crawling", "組み敷": "pinned_down, straddling",
+        "M字開脚": "m_legs, spread_legs", "片足上げ": "leg_up",
+        "のけぞ": "arched_back, head_back", "反り返": "arched_back, head_back",
+        "身を乗り出": "leaning_forward", "寄りかか": "leaning_back",
+        "体を預け": "leaning, leaning_back", "寝バック": "prone_bone, on_stomach",
+        "種付けプレス": "mating_press, legs_up", "脚を絡め": "leg_lock",
+        "馬乗り": "straddling, girl_on_top",
+        # === 服装状態 (30) ===
+        "脱がされ": "undressing, clothes_removed", "剥がされ": "torn_clothes",
+        "捲り上げ": "clothes_lift, skirt_lift", "ずらされ": "panties_aside",
+        "引き下ろ": "clothes_pull", "はだけ": "open_clothes, unbuttoned",
+        "乱れ": "disheveled_clothes", "半脱ぎ": "partially_undressed",
+        "制服": "school_uniform", "体操服": "gym_uniform, buruma",
+        "ブルマ": "buruma", "スク水": "school_swimsuit",
+        "メイド服": "maid, maid_headdress", "ナース服": "nurse, nurse_cap",
+        "バニー": "bunny_girl, bunnysuit", "レオタード": "leotard",
+        "チャイナ": "china_dress", "競泳水着": "competition_swimsuit",
+        "裸エプロン": "naked_apron", "ガーターベルト": "garter_belt, thighhighs",
+        "ニーソ": "thighhighs", "タイツ": "pantyhose",
+        "ストッキング": "stockings", "Tバック": "thong",
+        "セーラー服": "serafuku", "浴衣": "yukata",
+        "着物": "kimono, japanese_clothes", "ビキニ": "bikini",
+        "白衣": "lab_coat", "巫女": "miko, hakama",
+        # === 身体部位 (20) ===
+        "おっぱい": "breasts, large_breasts", "乳房": "breasts",
+        "お尻": "ass, ass_focus", "太もも": "thighs, thick_thighs",
+        "うなじ": "nape", "首筋": "neck", "脇": "armpits",
+        "へそ": "navel", "鎖骨": "collarbone", "谷間": "cleavage",
+        "足裏": "soles, feet", "乳輪": "areolae",
+        "くびれ": "narrow_waist", "陰毛": "pubic_hair",
+        "お腹": "stomach, belly", "肩": "shoulder",
+        "舌": "tongue, tongue_out", "耳": "ear",
+        "指": "fingers", "唇": "lips",
+        # === BDSM・道具 (18) ===
+        "縛り": "bondage, bound, rope", "拘束": "restraints, bound",
+        "目隠し": "blindfold", "猿轡": "ball_gag, gagged",
+        "首輪": "collar, leash", "手錠": "handcuffs",
+        "緊縛": "shibari, bondage, rope", "鎖": "chains",
+        "鞭": "whip", "蝋": "wax, candle_wax",
+        "電マ": "vibrator", "バイブ": "vibrator, dildo",
+        "ローター": "vibrator", "ディルド": "dildo",
+        "三角木馬": "wooden_horse", "口枷": "gag, gagged",
+        "潮吹き": "squirting", "腹ボコ": "stomach_bulge",
+        # === 動作・状態 (12) ===
+        "ガクガク": "trembling, shaking", "ピクピク": "twitching",
+        "朦朧": "dazed, half-closed_eyes", "半覚醒": "drowsy, half-closed_eyes",
+        "気絶": "unconscious, closed_eyes", "失神": "unconscious, limp",
+        "引っ掻": "scratch_marks", "孕ませ": "impregnation",
+        "子宮": "x-ray, uterus", "腹ボテ": "pregnant",
+        "失禁": "peeing", "窒息": "choking, hand_on_neck",
+        # === 雰囲気・照明 (12) ===
+        "薄暗い": "dimly_lit, dark", "月明かり": "moonlight, night",
+        "夕暮れ": "sunset, dusk", "朝日": "sunrise, morning",
+        "蝋燭": "candle, candlelight", "ネオン": "neon_lights",
+        "雨": "rain, wet", "霧": "fog, mist",
+        "星空": "starry_sky, night_sky", "夜景": "city_lights, night",
+        "雪": "snow, winter", "桜": "cherry_blossoms, petals",
+        # === 場所追加 (20) ===
+        "教室": "classroom", "保健室": "infirmary",
+        "体育倉庫": "storage_room", "部室": "clubroom",
+        "屋上": "rooftop", "更衣室": "locker_room, changing_room",
+        "路地裏": "alley, narrow_street", "電車": "train_interior",
+        "満員電車": "train_interior, crowd", "車内": "car_interior",
+        "プール": "pool, poolside", "温泉": "onsen, hot_spring, steam",
+        "和室": "tatami, japanese_room", "ホテル": "hotel_room",
+        "森": "forest, trees", "花畑": "flower_field, flowers",
+        "廊下": "hallway, corridor", "キッチン": "kitchen",
+        "バルコニー": "balcony", "地下室": "basement, dark",
+        # === 髪の状態 (14) ===
+        "髪を振り乱": "messy_hair, hair_spread_out",
+        "髪が顔に張り付": "wet_hair, hair_over_face",
+        "汗で髪が": "wet_hair, sweaty",
+        "ポニーテールが揺れ": "ponytail, hair_flip",
+        "ツインテールを掴": "twintails, hair_pull",
+        "髪が散らば": "hair_spread_out, lying",
+        "前髪が乱れ": "messy_hair, hair_over_eyes",
+        "おさげ": "braid, single_braid", "三つ編み": "braid, braided_hair",
+        "髪を束ね": "ponytail, hair_tie", "ほどけた髪": "hair_down",
+        "ロングヘアが広が": "very_long_hair, hair_spread_out",
+        "サイドテール": "side_ponytail", "お団子": "hair_bun",
+        # === 肌の描写 (12) ===
+        "肌が紅潮": "blush, full-body_blush", "歯形": "bite_mark",
+        "キスマーク": "hickey", "縄跡": "rope_marks",
+        "日焼け跡": "tan, tanlines", "上気": "blush, flushed",
+        "鳥肌": "goosebumps", "汗ばんだ肌": "shiny_skin, sweat",
+        "爪跡": "scratch_marks", "乳首が勃起": "erect_nipples",
+        "ミミズ腫れ": "welts, whip_marks", "赤い頬": "blush, red_face",
+        # === 視線・目 (12) ===
+        "目が合": "eye_contact", "見つめ合": "eye_contact, face_to_face",
+        "上目遣い": "looking_up, from_below", "目を逸ら": "looking_away",
+        "涙目": "teary_eyes, watery_eyes", "うるんだ": "watery_eyes",
+        "焦点が合わない": "empty_eyes, unfocused_eyes",
+        "瞳孔が開": "dilated_pupils", "流し目": "bedroom_eyes",
+        "目を見開": "wide_eyes, surprised",
+        "片目を閉じ": "one_eye_closed, wink", "ジト目": "half-closed_eyes",
+        # === 口元 (12) ===
+        "唾液の糸": "saliva_trail", "口を塞が": "hand_over_mouth",
+        "口をこじ開け": "forced_oral, open_mouth",
+        "舌を絡め": "french_kiss, intertwined_tongues",
+        "喉奥": "deepthroat, irrumatio",
+        "飲み込": "swallowing, cum_in_mouth",
+        "口元を隠": "hand_over_mouth", "舌なめずり": "licking_lips",
+        "歯を見せ": "teeth, grin",
+        "口内": "oral, in_mouth", "吐き出": "drooling",
+        "舌を出": "tongue_out, long_tongue",
+        # === 手指 (13) ===
+        "指を絡め": "interlocked_fingers, holding_hands",
+        "爪を立て": "scratching, nails", "指を咥え": "finger_in_mouth",
+        "手を伸ば": "reaching, outstretched_arm",
+        "握りしめ": "clenched_hands, gripping", "拳を握": "clenched_fist",
+        "手で覆": "covering, hand_on_face",
+        "手で隠": "covering_crotch, covering_breasts",
+        "ダブルピース": "double_v, peace_sign",
+        "手を後ろに": "arms_behind_back", "万歳": "arms_up",
+        "手を壁に": "hand_on_wall", "手を膝に": "hands_on_knees",
+        # === 音の視覚化 (10) ===
+        "叫び": "screaming, open_mouth", "悲鳴": "screaming, scared",
+        "嬌声": "moaning, open_mouth, blush",
+        "喘ぎ声": "moaning, open_mouth",
+        "息を呑": "gasp, surprised", "吐息": "exhaling",
+        "声を殺": "biting_lip, hand_over_mouth",
+        "声を漏ら": "open_mouth, blush",
+        "囁": "whispering, close-up", "鳴咽": "sobbing, tears",
+        # === 感覚の視覚化 (10) ===
+        "奥に当た": "x-ray, deep_penetration", "子宮口": "x-ray, cervix",
+        "膣壁": "x-ray, internal", "締め付け": "tight, gripping",
+        "圧迫": "pressed, squished",
+        "ヌルヌル": "wet, slimy, lotion", "ネバネバ": "sticky, cum_string",
+        "ボコッ": "stomach_bulge", "痺れ": "trembling, weak_knees",
+        "摩擦": "grinding, rubbing",
+        # === 事後・余韻 (13) ===
+        "ぐったり": "exhausted, limp, lying", "放心": "blank_stare, empty_eyes",
+        "汗まみれ": "sweaty, sweaty_body, wet",
+        "精液まみれ": "cum, cum_on_body", "乱れた髪": "messy_hair",
+        "乱れたシーツ": "messy_bed", "服が散乱": "clothes_on_floor",
+        "涙の跡": "dried_tears", "精液が垂れ": "cum_drip",
+        "精液が溢れ": "cum_overflow, creampie",
+        "事後": "after_sex, lying, nude", "まどろみ": "sleeping, closed_eyes",
+        "抱き合って眠": "cuddling, sleeping",
+        # === 複数キャラ (12) ===
+        "取り囲": "surrounded, multiple_boys", "二人がかり": "threesome",
+        "両側から": "sandwiched, double_penetration",
+        "挟まれ": "sandwiched", "見せつけ": "exhibitionism",
+        "見られながら": "voyeurism, exhibitionism",
+        "観客": "audience", "撮影": "recording, camera",
+        "輪姦": "gangbang, group_sex, multiple_boys",
+        "3P": "threesome, group_sex", "乱交": "orgy, group_sex",
+        "ハーレム": "harem, multiple_girls", "百合": "yuri",
+        # === 構図・技法 (8) ===
+        "アオリ": "from_below, low_angle", "俯瞰": "from_above",
+        "横顔": "profile, from_side", "見下ろし": "looking_down, from_above",
+        "覗き込み": "peeping, voyeurism", "反射": "reflection, mirror",
+        "フレーム外": "out_of_frame", "複数アングル": "multiple_views",
+    }
+    # 3. panting/moaning重複除去
+    _DEDUP_GROUPS = [
+        {"panting", "(panting:1.2)", "heavy_breathing"},
+        {"moaning", "screaming"},
+    ]
+
+    for scene in results:
+        sd = scene.get("sd_prompt", "")
+        if not sd:
+            continue
+        tags = [t.strip() for t in sd.split(",") if t.strip()]
+        desc = scene.get("description", "") + " " + scene.get("title", "")
+        _modified = False
+
+        # 抽象タグ除去
+        _before = len(tags)
+        tags = [t for t in tags if t.lower().replace("_", " ").strip() not in _ABSTRACT_TAGS_REMOVE]
+        if len(tags) < _before:
+            _modified = True
+
+        # desc→SDタグ注入（欠落分のみ）
+        _existing_lower = {t.lower().replace("(", "").replace(")", "").split(":")[0].strip() for t in tags}
+        _inject_before_break = []
+        for jp_kw, en_tag in _DESC_TO_SD_MAP.items():
+            if jp_kw in desc:
+                for _et in en_tag.split(","):
+                    _et = _et.strip()
+                    if _et.lower() not in _existing_lower:
+                        _inject_before_break.append(_et)
+                        _modified = True
+        if _inject_before_break:
+            # BREAKの前に挿入
+            _break_idx = None
+            for _bi, _bt in enumerate(tags):
+                if _bt.strip() == "BREAK":
+                    _break_idx = _bi
+                    break
+            if _break_idx is not None:
+                for _inj in _inject_before_break:
+                    tags.insert(_break_idx, _inj)
+                    _break_idx += 1
+            else:
+                tags.extend(_inject_before_break)
+
+        # 重複グループ内で1つだけ残す
+        for group in _DEDUP_GROUPS:
+            found = [t for t in tags if t.lower().strip("() ").split(":")[0] in group]
+            if len(found) > 1:
+                # 最初のものだけ残す
+                _kept = False
+                _new_tags = []
+                for t in tags:
+                    _key = t.lower().strip("() ").split(":")[0]
+                    if _key in group:
+                        if not _kept:
+                            _new_tags.append(t)
+                            _kept = True
+                        else:
+                            _modified = True
+                    else:
+                        _new_tags.append(t)
+                tags = _new_tags
+
+        # タグ上限: 45超えたら末尾（BREAK/LoRA除く）から削る
+        _MAX_TAGS = 45
+        if len(tags) > _MAX_TAGS:
+            # BREAK, LoRA, 品質タグ, キャラタグは保護
+            _protected = set()
+            for _ti, _tv in enumerate(tags):
+                _tl = _tv.lower().strip()
+                if _tl in ("break", "") or _tl.startswith("<lora:") or _tl.startswith("ultra") or _tl.startswith("8k"):
+                    _protected.add(_ti)
+                # キャラ固有タグも保護（最初の10個）
+                if _ti < 10:
+                    _protected.add(_ti)
+            # 後ろから削除
+            while len(tags) > _MAX_TAGS:
+                _del_idx = None
+                for _di in range(len(tags) - 1, -1, -1):
+                    if _di not in _protected:
+                        _del_idx = _di
+                        break
+                if _del_idx is not None:
+                    tags.pop(_del_idx)
+                    _modified = True
+                else:
+                    break
+
+        if _modified:
+            scene["sd_prompt"] = ", ".join(tags)
 
     return results
 
@@ -13042,6 +13454,58 @@ def generate_pipeline(
             callback(f"⚠️ 自動修正クラッシュ: {type(_autofix_err).__name__}: {str(_autofix_err)[:80]}")
     if callback:
         callback("🔧 自動修正完了")
+
+    # 5-3.5: Haiku検品パス — bubblesの文脈整合チェック（ハイブリッド時のみ）
+    _local_scene_ids = [s.get("scene_id") for s in results if s.get("_generated_by") == "local"]
+    if _local_scene_ids and len(_local_scene_ids) >= 3:
+        try:
+            if callback:
+                callback("🔍 セリフ文脈チェック中...")
+            _check_scenes = []
+            for s in results:
+                if s.get("_generated_by") == "local":
+                    _bubbles_text = " / ".join(
+                        f'{b.get("type","")}: {b.get("text","")}' for b in s.get("bubbles", [])
+                    )
+                    _check_scenes.append(
+                        f'Scene{s.get("scene_id",0)}(i={s.get("intensity",0)},mood={s.get("mood","")[:20]}): {_bubbles_text}'
+                    )
+            _check_prompt = (
+                f"テーマ「{theme}」のCG集台本です。以下のシーンのセリフが、テーマ・mood・intensityと矛盾していないかチェックしてください。\n"
+                f"矛盾があるシーンのみ、JSON配列で返してください: [{{\"scene_id\": N, \"問題\": \"理由\", \"修正案\": \"代替セリフ\"}}]\n"
+                f"矛盾がなければ空配列 [] を返してください。\n\n"
+                + "\n".join(_check_scenes)
+            )
+            _check_result = call_claude(
+                client, MODELS["haiku"], "", _check_prompt, cost_tracker, 1024, callback
+            )
+            # 結果をパース
+            import re as _re_b
+            _json_match = _re_b.search(r'\[[\s\S]*?\]', _check_result)
+            if _json_match:
+                _fixes = json.loads(_json_match.group())
+                if _fixes and isinstance(_fixes, list):
+                    _fix_count = 0
+                    for fix in _fixes:
+                        _target_id = fix.get("scene_id")
+                        _alt_text = fix.get("修正案", "")
+                        if _target_id and _alt_text:
+                            for s in results:
+                                if s.get("scene_id") == _target_id and s.get("_generated_by") == "local":
+                                    # speech bubblesのうち最初のものを差替え
+                                    for b in s.get("bubbles", []):
+                                        if b.get("type") == "speech" and b.get("speaker") != "男性":
+                                            b["text"] = _alt_text
+                                            _fix_count += 1
+                                            break
+                                    break
+                    log_message(f"Haiku検品: {len(_fixes)}件検出, {_fix_count}件修正")
+                else:
+                    log_message("Haiku検品: 問題なし")
+            else:
+                log_message("Haiku検品: パース不可（スキップ）")
+        except Exception as _haiku_err:
+            log_message(f"Haiku検品エラー（スキップ）: {_haiku_err}")
 
     # 5-4: dedup後の再検証（文字数超過・男性セリフ数の最終チェック）
     try:
