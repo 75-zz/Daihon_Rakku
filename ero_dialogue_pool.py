@@ -9323,7 +9323,7 @@ def get_male_speech_pool_for_theme(theme: str = "", intensity: int = 3) -> list:
         pool.extend(SPEECH_MALE_POOL.get("command", []))
     elif any(k in t for k in ["睡眠", "夜這い", "sleep", "添い寝"]):
         pool.extend(SPEECH_MALE_POOL.get("gentle", []))
-        pool.extend(SPEECH_MALE_POOL.get("command", []))
+        pool.extend(SPEECH_MALE_POOL.get("praise", []))
     elif any(k in t for k in ["輪姦", "集団", "gangbang", "複数", "乱交"]):
         pool.extend(SPEECH_MALE_POOL.get("command", []))
         pool.extend(SPEECH_MALE_POOL.get("dirty", []))

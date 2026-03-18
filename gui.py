@@ -1358,7 +1358,7 @@ _FLUID_STATE_TAGS = {
 
 _EXPRESSION_STATE_TAGS = {
     "ahegao", "blush", "crying", "tears", "panting", "drooling",
-    "tongue_out", "rolling_eyes", "trembling", "heart_pupils",
+    "tongue_out", "rolling_eyes", "trembling", "heart-shaped_pupils",
     "torogao", "half-closed_eyes", "clenched_teeth", "open_mouth",
 }
 
@@ -1549,7 +1549,7 @@ _TAG_ALIAS_MAP = {
     # 誤タグ → 正規タグ
     "cowgirl": "cowgirl_position",
     "reverse_cowgirl": "reverse_cowgirl",
-    "heart_pupils": "heart-shaped_pupils",
+    "heart-shaped_pupils": "heart-shaped_pupils",
     "cum_overflow": "overflow",
     "gentle_smile": "smile",
     "crying_face": "crying",
@@ -1575,7 +1575,7 @@ _TAG_ALIAS_MAP = {
 _NON_DANBOORU_TAGS = {
     "passionate", "intense_sex", "gentle_sex", "emotional", "loving",
     "aggressive", "desperate", "tender", "intimate", "sensual", "erotic",
-    "cowgirl", "heart_pupils", "cum_overflow", "gentle_smile",
+    "cowgirl", "heart-shaped_pupils", "cum_overflow", "gentle_smile",
     "crying_face", "scared_expression", "laying_down", "laying",
     "cum_inside", "vaginal_sex", "anal_sex", "breast_squeeze",
     "breast_press", "eye_contact", "teary_eyes", "blushing",
@@ -1726,7 +1726,7 @@ _TAG_ORDER_GROUPS = {
     }),
     "expression": (4, {
         "ahegao", "blush", "crying", "tears", "panting", "drooling",
-        "tongue_out", "rolling_eyes", "trembling", "heart_pupils",
+        "tongue_out", "rolling_eyes", "trembling", "heart-shaped_pupils",
         "torogao", "half-closed_eyes", "clenched_teeth", "open_mouth",
         "smile", "embarrassed", "scared", "fearful", "dazed",
         "looking_away", "closed_eyes", "wide-eyed", "lip_biting",
@@ -2232,13 +2232,8 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
         if sd and not (sd_tags_set & bg_tags):
             problems.append("sd_promptに背景/場所タグが無い")
 
-        # --- sd_prompt: v9.0 品質/スタイルタグ混入検出 ---
-        if sd:
-            _found_quality = sd_tags_set & _QUALITY_TAGS_TO_REMOVE
-            if _found_quality:
-                problems.append(f"sd_promptに品質タグ混入: {', '.join(list(_found_quality)[:3])}")
-            if "<lora:" in sd.lower():
-                problems.append("sd_promptにLoRAタグ混入")
+        # --- sd_prompt: 品質/LoRAタグはユーザー設定(sd_prefix/sd_quality)由来のため検出スキップ ---
+        # ※ ultra-HD, 8k, best_quality, <lora:...> 等はユーザーが意図的に設定したもの
 
         if problems:
             scene_issues[scene_id] = problems
@@ -7297,7 +7292,7 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         5: ["ahegao", "rolling_eyes", "tongue_out", "drooling", "head_back",
             "arched_back", "toes_curling", "full_body_arch", "tears",
             "sweat_drops", "sweaty_body", "sweat_glistening", "skin_glistening",
-            "heart_pupils", "cross-eyed", "saliva_drip", "fucked_silly",
+            "heart-shaped_pupils", "cross-eyed", "saliva_drip", "fucked_silly",
             "vacant_eyes", "steam", "trembling_legs",
             "eye_roll", "slack_jaw", "convulsing"],
     }
@@ -7395,7 +7390,36 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
     for scene in results:
         sd = scene.get("sd_prompt", "")
         if not sd:
-            continue
+            # ローカルLLM生成シーン用: description/location/intensityからsd_promptを自動生成
+            _intensity = scene.get("intensity", 3)
+            _loc = scene.get("location_detail", scene.get("location", "indoor"))
+            _desc = scene.get("description", "")
+
+            # 基本タグ: キャラ外見 + 場所
+            _auto_tags = list(char_danbooru[:5]) if char_danbooru else []
+
+            # intensity別ポーズ/行為タグ
+            _int_tags = {
+                1: ["standing, looking_at_viewer, smile"],
+                2: ["sitting, blush, eye_contact, hand_holding"],
+                3: ["kiss, undressing, groping, blush, nervous"],
+                4: ["sex, nude, spread_legs, moaning, sweat"],
+                5: ["ahegao, orgasm, cum, trembling, tears"],
+            }
+            _auto_tags.extend(_int_tags.get(_intensity, _int_tags[3]))
+
+            # 場所タグ
+            _loc_lower = _loc.lower() if _loc else ""
+            if any(k in _loc_lower for k in ["寝室", "ベッド", "bed"]):
+                _auto_tags.append("bedroom, bed, on_bed")
+            elif any(k in _loc_lower for k in ["教室", "school"]):
+                _auto_tags.append("classroom, school")
+            else:
+                _auto_tags.append("indoors")
+
+            sd = ", ".join(_auto_tags)
+            scene["sd_prompt"] = sd
+            log_message(f"  enhance_sd: シーン{scene.get('scene_id','?')} sd_prompt自動生成")
 
         tags = [t.strip() for t in sd.split(",") if t.strip()]
         sd_lower = sd.lower()
@@ -7788,7 +7812,7 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             "trembling": ["怖", "震", "ビクビク", "ゾクゾク"],
             "blush": ["恥ず", "は、恥", "見ないで", "やだ"],
             "crying": ["泣き", "涙", "うっ…"],
-            "heart_pupils": ["好き", "もっと", "気持ちい", "離さないで"],
+            "heart-shaped_pupils": ["好き", "もっと", "気持ちい", "離さないで"],
             "dazed": ["頭", "ぼんやり", "真っ白", "何も考え"],
         }
         _BUBBLE_SPEECH_SD = {
@@ -8306,6 +8330,335 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             scene["sd_prompt"] = ", ".join(new_tags)
         _prev_pos_f = _cur_pos_f
 
+    # === SD最終クリーンアップ ===
+
+    # 1. SDに無意味な抽象タグを除去
+    _ABSTRACT_TAGS_REMOVE = {
+        "pleasure", "gentle", "intense", "nervous", "secretive",
+        "professional", "seductive", "calculating", "competitive",
+        "friendly", "clinical", "vulnerable", "thrilled", "excited",
+        "peeking", "stage_smile", "gap_moe", "trying_to_be_quiet",
+        "forbidden_pleasure", "professional_facade", "genuine_pleasure",
+        "conflicted", "loving", "passionate", "romantic", "consensual",
+    }
+    # 2. desc→SDタグ自動注入マッピング
+    _DESC_TO_SD_MAP = {
+        # === 体位 (30) ===
+        "正常位": "missionary", "騎乗位": "cowgirl_position", "後背位": "doggy_style",
+        "立位": "standing_sex", "座位": "sitting", "側位": "spooning",
+        "四つん這い": "all_fours", "押し倒": "on_back", "膝立ち": "kneeling",
+        "背面座位": "reverse_cowgirl", "対面座位": "straddling", "縦抱き": "carrying",
+        "立ちバック": "standing_sex, from_behind", "寝バック": "prone_bone, on_stomach",
+        "種付けプレス": "mating_press, legs_up", "うつ伏せ": "on_stomach, prone",
+        "仰向け": "on_back, lying", "開脚": "spread_legs",
+        "足を持ち上げ": "legs_up", "脚を絡め": "leg_lock",
+        "跨": "straddling, girl_on_top", "密着": "close-up, hug",
+        "対面": "face_to_face", "背面": "from_behind",
+        "前屈み": "bent_over, leaning_forward", "しゃがみ": "squatting",
+        "顔面騎乗": "sitting_on_face", "パイルドライバー": "upside-down, legs_up",
+        "壁に押し付け": "against_wall, pinned", "ガラス": "against_glass",
+        # === 行為 (25) ===
+        "挿入": "vaginal, penetration", "結合": "vaginal, sex",
+        "ピストン": "thrusting, sex", "突かれ": "thrusting",
+        "突き上げ": "thrusting, from_below", "腰を振": "hip_thrust",
+        "フェラ": "fellatio, oral", "ディープスロート": "deepthroat",
+        "クンニ": "cunnilingus, oral", "手マン": "fingering",
+        "パイズリ": "paizuri", "足コキ": "footjob",
+        "素股": "grinding, intercrural", "中出し": "cum_in_pussy, creampie",
+        "射精": "ejaculation, cum", "連続射精": "multiple_ejaculation",
+        "絶頂": "orgasm", "連続絶頂": "multiple_orgasm",
+        "イク": "orgasm", "アナル": "anal",
+        "乳首": "nipple_stimulation", "二穴": "double_penetration",
+        "着衣": "clothed_sex", "咥え": "oral, fellatio",
+        "舐め": "licking",
+        # === 身体接触 (15) ===
+        "胸を掴": "grabbing_breasts, breast_grab", "尻を掴": "ass_grab",
+        "髪を掴": "hair_pull", "腰を掴": "hip_grab",
+        "手首を掴": "wrist_grab", "首を掴": "neck_grab",
+        "キス": "kiss", "ディープキス": "french_kiss",
+        "噛み": "biting", "スパンキング": "spanking",
+        "手を繋": "holding_hands", "抱きしめ": "hug",
+        "顎クイ": "chin_grab", "押さえつけ": "pinned_down",
+        "シーツを掴": "gripping_sheets",
+        # === 場所・家具 (15) ===
+        "壁際": "against_wall", "窓際": "window", "窓": "window",
+        "机": "desk", "椅子": "chair", "ソファ": "couch",
+        "床": "on_floor", "絨毯": "carpet", "ベッド": "bed, on_bed",
+        "浴槽": "bathtub", "シャワー": "shower",
+        "鏡": "mirror", "カーテン": "curtains",
+        "階段": "stairs", "テーブル": "table",
+        # === 表情 (15) ===
+        "アヘ顔": "ahegao, rolling_eyes, tongue_out",
+        "白目": "rolling_eyes", "トロ顔": "half-closed_eyes",
+        "舌出し": "tongue_out", "涙": "tears, crying",
+        "歯を食いしばる": "clenched_teeth", "唇を噛む": "biting_lip",
+        "目を閉じ": "closed_eyes", "ハート目": "heart-shaped_pupils",
+        "虚ろ": "empty_eyes", "驚": "surprised",
+        "恍惚": "half-closed_eyes", "苦悶": "pained_expression",
+        "背中を反ら": "arched_back", "つま先を丸め": "curled_toes",
+        # === 体液 (10) ===
+        "精液": "cum", "顔射": "cum_on_face", "ぶっかけ": "bukkake",
+        "汗だく": "sweaty_body, sweat", "よだれ": "drooling",
+        "愛液": "pussy_juice", "唾液": "saliva, saliva_trail",
+        "溢れ": "overflow", "垂れ": "cum_drip",
+        "体液": "body_fluids",
+        # === 視覚演出 (8) ===
+        "断面": "x-ray, cross-section", "湯気": "steam",
+        "逆光": "backlighting", "シルエット": "silhouette",
+        "ハート": "heart", "モーション": "motion_blur",
+        "被写界深度": "depth_of_field", "残像": "afterimage",
+        # === 体勢の詳細 (25) ===
+        "脚を広げ": "spread_legs", "膝を抱え": "knees_up, legs_up",
+        "足を上げ": "legs_up", "腕を掴まれ": "wrist_grab, restrained",
+        "覆いかぶさ": "on_top, hovering", "のしかか": "on_top, pinned_down",
+        "持ち上げ": "carrying, lifted", "吊り": "suspension, bound, arms_up",
+        "横たわ": "lying, on_back", "もたれ": "leaning, leaning_back",
+        "腰を突き出": "presenting, ass_up", "尻を突き出": "ass_up, presenting",
+        "這いつくば": "on_floor, all_fours, crawling", "組み敷": "pinned_down, straddling",
+        "M字開脚": "m_legs, spread_legs", "片足上げ": "leg_up",
+        "のけぞ": "arched_back, head_back", "反り返": "arched_back, head_back",
+        "身を乗り出": "leaning_forward", "寄りかか": "leaning_back",
+        "体を預け": "leaning, leaning_back", "寝バック": "prone_bone, on_stomach",
+        "種付けプレス": "mating_press, legs_up", "脚を絡め": "leg_lock",
+        "馬乗り": "straddling, girl_on_top",
+        # === 服装状態 (30) ===
+        "脱がされ": "undressing, clothes_removed", "剥がされ": "torn_clothes",
+        "捲り上げ": "clothes_lift, skirt_lift", "ずらされ": "panties_aside",
+        "引き下ろ": "clothes_pull", "はだけ": "open_clothes, unbuttoned",
+        "乱れ": "disheveled_clothes", "半脱ぎ": "partially_undressed",
+        "制服": "school_uniform", "体操服": "gym_uniform, buruma",
+        "ブルマ": "buruma", "スク水": "school_swimsuit",
+        "メイド服": "maid, maid_headdress", "ナース服": "nurse, nurse_cap",
+        "バニー": "bunny_girl, bunnysuit", "レオタード": "leotard",
+        "チャイナ": "china_dress", "競泳水着": "competition_swimsuit",
+        "裸エプロン": "naked_apron", "ガーターベルト": "garter_belt, thighhighs",
+        "ニーソ": "thighhighs", "タイツ": "pantyhose",
+        "ストッキング": "stockings", "Tバック": "thong",
+        "セーラー服": "serafuku", "浴衣": "yukata",
+        "着物": "kimono, japanese_clothes", "ビキニ": "bikini",
+        "白衣": "lab_coat", "巫女": "miko, hakama",
+        # === 身体部位 (20) ===
+        "おっぱい": "breasts, large_breasts", "乳房": "breasts",
+        "お尻": "ass, ass_focus", "太もも": "thighs, thick_thighs",
+        "うなじ": "nape", "首筋": "neck", "脇": "armpits",
+        "へそ": "navel", "鎖骨": "collarbone", "谷間": "cleavage",
+        "足裏": "soles, feet", "乳輪": "areolae",
+        "くびれ": "narrow_waist", "陰毛": "pubic_hair",
+        "お腹": "stomach, belly", "肩": "shoulder",
+        "舌": "tongue, tongue_out", "耳": "ear",
+        "指": "fingers", "唇": "lips",
+        # === BDSM・道具 (18) ===
+        "縛り": "bondage, bound, rope", "拘束": "restraints, bound",
+        "目隠し": "blindfold", "猿轡": "ball_gag, gagged",
+        "首輪": "collar, leash", "手錠": "handcuffs",
+        "緊縛": "shibari, bondage, rope", "鎖": "chains",
+        "鞭": "whip", "蝋": "wax, candle_wax",
+        "電マ": "vibrator", "バイブ": "vibrator, dildo",
+        "ローター": "vibrator", "ディルド": "dildo",
+        "三角木馬": "wooden_horse", "口枷": "gag, gagged",
+        "潮吹き": "squirting", "腹ボコ": "stomach_bulge",
+        # === 動作・状態 (12) ===
+        "ガクガク": "trembling, shaking", "ピクピク": "twitching",
+        "朦朧": "dazed, half-closed_eyes", "半覚醒": "drowsy, half-closed_eyes",
+        "気絶": "unconscious, closed_eyes", "失神": "unconscious, limp",
+        "引っ掻": "scratch_marks", "孕ませ": "impregnation",
+        "子宮": "x-ray, uterus", "腹ボテ": "pregnant",
+        "失禁": "peeing", "窒息": "choking, hand_on_neck",
+        # === 雰囲気・照明 (12) ===
+        "薄暗い": "dimly_lit, dark", "月明かり": "moonlight, night",
+        "夕暮れ": "sunset, dusk", "朝日": "sunrise, morning",
+        "蝋燭": "candle, candlelight", "ネオン": "neon_lights",
+        "雨": "rain, wet", "霧": "fog, mist",
+        "星空": "starry_sky, night_sky", "夜景": "city_lights, night",
+        "雪": "snow, winter", "桜": "cherry_blossoms, petals",
+        # === 場所追加 (20) ===
+        "教室": "classroom", "保健室": "infirmary",
+        "体育倉庫": "storage_room", "部室": "clubroom",
+        "屋上": "rooftop", "更衣室": "locker_room, changing_room",
+        "路地裏": "alley, narrow_street", "電車": "train_interior",
+        "満員電車": "train_interior, crowd", "車内": "car_interior",
+        "プール": "pool, poolside", "温泉": "onsen, hot_spring, steam",
+        "和室": "tatami, japanese_room", "ホテル": "hotel_room",
+        "森": "forest, trees", "花畑": "flower_field, flowers",
+        "廊下": "hallway, corridor", "キッチン": "kitchen",
+        "バルコニー": "balcony", "地下室": "basement, dark",
+        # === 髪の状態 (14) ===
+        "髪を振り乱": "messy_hair, hair_spread_out",
+        "髪が顔に張り付": "wet_hair, hair_over_face",
+        "汗で髪が": "wet_hair, sweaty",
+        "ポニーテールが揺れ": "ponytail, hair_flip",
+        "ツインテールを掴": "twintails, hair_pull",
+        "髪が散らば": "hair_spread_out, lying",
+        "前髪が乱れ": "messy_hair, hair_over_eyes",
+        "おさげ": "braid, single_braid", "三つ編み": "braid, braided_hair",
+        "髪を束ね": "ponytail, hair_tie", "ほどけた髪": "hair_down",
+        "ロングヘアが広が": "very_long_hair, hair_spread_out",
+        "サイドテール": "side_ponytail", "お団子": "hair_bun",
+        # === 肌の描写 (12) ===
+        "肌が紅潮": "blush, full-body_blush", "歯形": "bite_mark",
+        "キスマーク": "hickey", "縄跡": "rope_marks",
+        "日焼け跡": "tan, tanlines", "上気": "blush, flushed",
+        "鳥肌": "goosebumps", "汗ばんだ肌": "shiny_skin, sweat",
+        "爪跡": "scratch_marks", "乳首が勃起": "erect_nipples",
+        "ミミズ腫れ": "welts, whip_marks", "赤い頬": "blush, red_face",
+        # === 視線・目 (12) ===
+        "目が合": "eye_contact", "見つめ合": "eye_contact, face_to_face",
+        "上目遣い": "looking_up, from_below", "目を逸ら": "looking_away",
+        "涙目": "teary_eyes, watery_eyes", "うるんだ": "watery_eyes",
+        "焦点が合わない": "empty_eyes, unfocused_eyes",
+        "瞳孔が開": "dilated_pupils", "流し目": "bedroom_eyes",
+        "目を見開": "wide_eyes, surprised",
+        "片目を閉じ": "one_eye_closed, wink", "ジト目": "half-closed_eyes",
+        # === 口元 (12) ===
+        "唾液の糸": "saliva_trail", "口を塞が": "hand_over_mouth",
+        "口をこじ開け": "forced_oral, open_mouth",
+        "舌を絡め": "french_kiss, intertwined_tongues",
+        "喉奥": "deepthroat, irrumatio",
+        "飲み込": "swallowing, cum_in_mouth",
+        "口元を隠": "hand_over_mouth", "舌なめずり": "licking_lips",
+        "歯を見せ": "teeth, grin",
+        "口内": "oral, in_mouth", "吐き出": "drooling",
+        "舌を出": "tongue_out, long_tongue",
+        # === 手指 (13) ===
+        "指を絡め": "interlocked_fingers, holding_hands",
+        "爪を立て": "scratching, nails", "指を咥え": "finger_in_mouth",
+        "手を伸ば": "reaching, outstretched_arm",
+        "握りしめ": "clenched_hands, gripping", "拳を握": "clenched_fist",
+        "手で覆": "covering, hand_on_face",
+        "手で隠": "covering_crotch, covering_breasts",
+        "ダブルピース": "double_v, peace_sign",
+        "手を後ろに": "arms_behind_back", "万歳": "arms_up",
+        "手を壁に": "hand_on_wall", "手を膝に": "hands_on_knees",
+        # === 音の視覚化 (10) ===
+        "叫び": "screaming, open_mouth", "悲鳴": "screaming, scared",
+        "嬌声": "moaning, open_mouth, blush",
+        "喘ぎ声": "moaning, open_mouth",
+        "息を呑": "gasp, surprised", "吐息": "exhaling",
+        "声を殺": "biting_lip, hand_over_mouth",
+        "声を漏ら": "open_mouth, blush",
+        "囁": "whispering, close-up", "鳴咽": "sobbing, tears",
+        # === 感覚の視覚化 (10) ===
+        "奥に当た": "x-ray, deep_penetration", "子宮口": "x-ray, cervix",
+        "膣壁": "x-ray, internal", "締め付け": "tight, gripping",
+        "圧迫": "pressed, squished",
+        "ヌルヌル": "wet, slimy, lotion", "ネバネバ": "sticky, cum_string",
+        "ボコッ": "stomach_bulge", "痺れ": "trembling, weak_knees",
+        "摩擦": "grinding, rubbing",
+        # === 事後・余韻 (13) ===
+        "ぐったり": "exhausted, limp, lying", "放心": "blank_stare, empty_eyes",
+        "汗まみれ": "sweaty, sweaty_body, wet",
+        "精液まみれ": "cum, cum_on_body", "乱れた髪": "messy_hair",
+        "乱れたシーツ": "messy_bed", "服が散乱": "clothes_on_floor",
+        "涙の跡": "dried_tears", "精液が垂れ": "cum_drip",
+        "精液が溢れ": "cum_overflow, creampie",
+        "事後": "after_sex, lying, nude", "まどろみ": "sleeping, closed_eyes",
+        "抱き合って眠": "cuddling, sleeping",
+        # === 複数キャラ (12) ===
+        "取り囲": "surrounded, multiple_boys", "二人がかり": "threesome",
+        "両側から": "sandwiched, double_penetration",
+        "挟まれ": "sandwiched", "見せつけ": "exhibitionism",
+        "見られながら": "voyeurism, exhibitionism",
+        "観客": "audience", "撮影": "recording, camera",
+        "輪姦": "gangbang, group_sex, multiple_boys",
+        "3P": "threesome, group_sex", "乱交": "orgy, group_sex",
+        "ハーレム": "harem, multiple_girls", "百合": "yuri",
+        # === 構図・技法 (8) ===
+        "アオリ": "from_below, low_angle", "俯瞰": "from_above",
+        "横顔": "profile, from_side", "見下ろし": "looking_down, from_above",
+        "覗き込み": "peeping, voyeurism", "反射": "reflection, mirror",
+        "フレーム外": "out_of_frame", "複数アングル": "multiple_views",
+    }
+    # 3. panting/moaning重複除去
+    _DEDUP_GROUPS = [
+        {"panting", "(panting:1.2)", "heavy_breathing"},
+        {"moaning", "screaming"},
+    ]
+
+    for scene in results:
+        sd = scene.get("sd_prompt", "")
+        if not sd:
+            continue
+        tags = [t.strip() for t in sd.split(",") if t.strip()]
+        desc = scene.get("description", "") + " " + scene.get("title", "")
+        _modified = False
+
+        # 抽象タグ除去
+        _before = len(tags)
+        tags = [t for t in tags if t.lower().replace("_", " ").strip() not in _ABSTRACT_TAGS_REMOVE]
+        if len(tags) < _before:
+            _modified = True
+
+        # desc→SDタグ注入（欠落分のみ）
+        _existing_lower = {t.lower().replace("(", "").replace(")", "").split(":")[0].strip() for t in tags}
+        _inject_before_break = []
+        for jp_kw, en_tag in _DESC_TO_SD_MAP.items():
+            if jp_kw in desc:
+                for _et in en_tag.split(","):
+                    _et = _et.strip()
+                    if _et.lower() not in _existing_lower:
+                        _inject_before_break.append(_et)
+                        _modified = True
+        if _inject_before_break:
+            # BREAKの前に挿入
+            _break_idx = None
+            for _bi, _bt in enumerate(tags):
+                if _bt.strip() == "BREAK":
+                    _break_idx = _bi
+                    break
+            if _break_idx is not None:
+                for _inj in _inject_before_break:
+                    tags.insert(_break_idx, _inj)
+                    _break_idx += 1
+            else:
+                tags.extend(_inject_before_break)
+
+        # 重複グループ内で1つだけ残す
+        for group in _DEDUP_GROUPS:
+            found = [t for t in tags if t.lower().strip("() ").split(":")[0] in group]
+            if len(found) > 1:
+                # 最初のものだけ残す
+                _kept = False
+                _new_tags = []
+                for t in tags:
+                    _key = t.lower().strip("() ").split(":")[0]
+                    if _key in group:
+                        if not _kept:
+                            _new_tags.append(t)
+                            _kept = True
+                        else:
+                            _modified = True
+                    else:
+                        _new_tags.append(t)
+                tags = _new_tags
+
+        # タグ上限: 45超えたら末尾（BREAK/LoRA除く）から削る
+        _MAX_TAGS = 45
+        if len(tags) > _MAX_TAGS:
+            # BREAK, LoRA, 品質タグ, キャラタグは保護
+            _protected = set()
+            for _ti, _tv in enumerate(tags):
+                _tl = _tv.lower().strip()
+                if _tl in ("break", "") or _tl.startswith("<lora:") or _tl.startswith("ultra") or _tl.startswith("8k"):
+                    _protected.add(_ti)
+                # キャラ固有タグも保護（最初の10個）
+                if _ti < 10:
+                    _protected.add(_ti)
+            # 後ろから削除
+            while len(tags) > _MAX_TAGS:
+                _del_idx = None
+                for _di in range(len(tags) - 1, -1, -1):
+                    if _di not in _protected:
+                        _del_idx = _di
+                        break
+                if _del_idx is not None:
+                    tags.pop(_del_idx)
+                    _modified = True
+                else:
+                    break
+
+        if _modified:
+            scene["sd_prompt"] = ", ".join(tags)
+
     return results
 
 # タグDB（キャッシュ）
@@ -8569,12 +8922,20 @@ class CostTracker:
     opus_cache_creation: int = 0
     opus_cache_read: int = 0
     api_calls: int = 0
+    local_llm_calls: int = 0
+    local_llm_input: int = 0
+    local_llm_output: int = 0
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     def add(self, model: str, input_tokens: int, output_tokens: int,
             cache_creation_tokens: int = 0, cache_read_tokens: int = 0,
             batch: bool = False):
         with self._lock:
+            if model == "local-llm":
+                self.local_llm_calls += 1
+                self.local_llm_input += input_tokens
+                self.local_llm_output += output_tokens
+                return
             self.api_calls += 1
             self.cache_creation += cache_creation_tokens
             self.cache_read += cache_read_tokens
@@ -9185,6 +9546,8 @@ def call_claude(
     raise RuntimeError("最大リトライ回数を超えました")
 
 
+_hybrid_router = None  # HybridRouter instance (set by generate_pipeline)
+
 def _call_api(
     client,
     model: str,
@@ -9192,9 +9555,17 @@ def _call_api(
     user: str,
     cost_tracker: CostTracker,
     max_tokens: int = 4096,
-    callback: Optional[Callable] = None
+    callback: Optional[Callable] = None,
+    routing_hint: str = "auto",
 ) -> str:
-    """API呼び出し（Claude）"""
+    """API呼び出し（ハイブリッドルーター経由）
+    routing_hint: "local_ok" | "cloud" | "auto"
+    """
+    global _hybrid_router
+    if _hybrid_router is not None:
+        return _hybrid_router.call(
+            model, system, user, cost_tracker, max_tokens, callback, routing_hint
+        )
     return call_claude(client, model, system, user, cost_tracker, max_tokens, callback)
 
 
@@ -9318,7 +9689,8 @@ def compact_context(
     response = _call_api(
         client, MODELS["haiku"],
         skill if skill else "You compress prompts to save tokens. Output only JSON.",
-        prompt, cost_tracker, 1024, callback
+        prompt, cost_tracker, 1024, callback,
+        routing_hint="local_ok",
     )
     return parse_json_response(response)
 
@@ -9458,7 +9830,8 @@ def generate_synopsis(
         response = _call_api(
             client, MODELS["haiku"],
             f"FANZA同人CG集の脚本家です。ユーザーのコンセプトに基づき、エロ同人作品の完全なストーリーあらすじを作成します。成人向けコンテンツを忠実に生成します。",
-            prompt, cost_tracker, 2048, callback
+            prompt, cost_tracker, 2048, callback,
+            routing_hint="local_ok",
         )
 
         synopsis = response.strip()
@@ -9947,7 +10320,8 @@ JSON配列のみ出力。\"\"\""""
     response = _call_api(
         client, MODELS["haiku"],
         f"FANZA同人CG集の脚本プランナーです。全{total_scenes}シーンのうちシーン{start_id}〜{end_id}の詳細設計をJSON配列で出力します。",
-        chunk_prompt, cost_tracker, min(8192, chunk_size * 400), callback
+        chunk_prompt, cost_tracker, min(8192, chunk_size * 400), callback,
+        routing_hint="cloud",
     )
 
     chunk = parse_json_response(response)
@@ -10249,7 +10623,8 @@ JSON配列のみ出力。"""
             response = _call_api(
                 client, MODELS["haiku"],
                 f"FANZA同人CG集の脚本プランナーです。ストーリーあらすじを忠実に{num_scenes}シーンに分割し、各シーンの詳細設計をJSON配列で出力します。",
-                prompt, cost_tracker, outline_max_tokens, callback
+                prompt, cost_tracker, outline_max_tokens, callback,
+                routing_hint="cloud",
             )
             outline = parse_json_response(response)
             if not isinstance(outline, list) or len(outline) == 0:
@@ -11464,11 +11839,56 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 {theme_dialogue_instruction}
 {world_rules_instruction}"""
 
-    # Prompt Caching: systemをリスト形式でcache_control付与
-    system_with_cache = [
-        {"type": "text", "text": common_system, "cache_control": {"type": "ephemeral"}},
-        {"type": "text", "text": scene_system}
-    ]
+    # ハイブリッドモード: ローカルLLM用に圧縮プロンプトを構築（Context 8192対応）
+    # bubbles/sd_promptはauto_fix+enhance_sd_promptsで上書きするため指示を大幅削減
+    _use_local_prompt = (
+        _hybrid_router is not None
+        and _hybrid_router.local_enabled
+        and intensity <= 3
+    )
+    if _use_local_prompt:
+        # ---- ローカルLLM用 system prompt 圧縮（8192 context対応） ----
+        # char_guideは既にintensity<=3用の短縮版が構築済みだが、さらに3行に絞る
+        _local_char_lines = []
+        if char_profiles:
+            for cp in char_profiles:
+                _cp_name = cp.get("character_name", "")
+                _cp_sp = cp.get("speech_pattern", {})
+                _cp_avoid = cp.get("avoid_patterns", [])
+                _local_char_lines.append(
+                    f"【{_cp_name}】一人称={_cp_sp.get('first_person', '私')}, "
+                    f"語尾={', '.join(_cp_sp.get('sentence_endings', [])[:3])}, "
+                    f"NG={', '.join(_cp_avoid[:2]) if _cp_avoid else 'なし'}"
+                )
+        _local_char_compact = "\n".join(_local_char_lines) if _local_char_lines else "（キャラ設定なし）"
+
+        # _male_section を1行に圧縮
+        _local_male = ""
+        if male_description and faceless_male:
+            _local_male = f"男性: faceless male（顔なし）, 外見={male_description}"
+        elif male_description:
+            _local_male = f"男性: 外見={male_description}"
+        elif faceless_male:
+            _local_male = "男性: faceless male（顔なし）"
+
+        # world_rules を1行に圧縮
+        _local_world = ""
+        if world_rules:
+            _local_world = "世界設定: " + "／".join(world_rules[:3])
+
+        _local_system = f"""{jailbreak}
+同人CG集脚本生成。成人向け。全キャラ18+。JSON形式のみ出力。
+{_local_char_compact}
+{_local_male}
+{_local_world}""".strip()
+        # _local_prompt は synopsis_section 等の定義後に構築（後述）
+        pass
+    else:
+        # Prompt Caching: systemをリスト形式でcache_control付与
+        system_with_cache = [
+            {"type": "text", "text": common_system, "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": scene_system}
+        ]
 
     # シーン別SD推奨タグ（ポーズ・表情）+ テーマ別タグ - 大幅拡張
     intensity_sd_tags = {
@@ -11666,7 +12086,41 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 ⚠️ 上記の「状況」「感情推移」「展開ビート」に忠実にシーンを生成せよ。
 特にdescriptionは「状況」の内容を具体的に膨らませること。"""
 
-    prompt = f"""{synopsis_section}{roadmap_section}{story_context_section}設定: {json.dumps(context, ensure_ascii=False)}
+    # ハイブリッドモード: ローカル用promptを圧縮構築（8192 context対応）
+    if _use_local_prompt:
+        # synopsis: 完全除去（シーン指示だけで十分）
+        # roadmap: 完全除去（ローカルLLMには不要）
+        # story_context: 直前1シーンの1行要約のみ
+        _local_story_ctx = ""
+        if story_so_far:
+            # story_so_farの最後のシーン概要だけ抽出（1行）
+            _so_far_lines = [l.strip() for l in story_so_far.strip().split("\n") if l.strip()]
+            # 最後のシーン要約行を探す（「シーンN:」形式）
+            _last_summary = ""
+            for _sfl in reversed(_so_far_lines):
+                if _sfl.startswith("シーン") and ":" in _sfl:
+                    _last_summary = _sfl
+                    break
+            if _last_summary:
+                _local_story_ctx = f"前シーン: {_last_summary}\n"
+
+        # context（設定）も必要最小限のキーのみ
+        _local_ctx_keys = {}
+        for _ck in ("theme", "setting", "heroine_name"):
+            if _ck in context:
+                _local_ctx_keys[_ck] = context[_ck]
+
+        _local_prompt = f"""{_local_story_ctx}{scene_instruction}
+
+出力JSON:
+{{"scene_id":{scene['scene_id']},"title":"行為や状況の短いフレーズ(20字以内/moodやdescriptionの内容を入れない)","description":"100字の詳細説明","location_detail":"場所描写","mood":"空気感15-30字","character_feelings":{{"{char_names[0] if char_names else 'ヒロイン'}":"心情"}},"bubbles":[{{"speaker":"{char_names[0] if char_names else 'ヒロイン'}","type":"speech","text":"一言"}},{{"speaker":"男性","type":"speech","text":"セリフ"}}],"onomatopoeia":["効果音"],"direction":"演出","story_flow":"次への繋がり","sd_prompt":""}}
+
+ルール: descriptionは感覚で書け/bubblesは1-2個/sd_promptは空文字/口調厳守/JSONのみ出力。"""
+        system_with_cache = _local_system
+        prompt = _local_prompt
+
+    if not _use_local_prompt:
+        prompt = f"""{synopsis_section}{roadmap_section}{story_context_section}設定: {json.dumps(context, ensure_ascii=False)}
 {scene_instruction}
 
 ## 出力形式（この形式で出力してください）
@@ -11718,10 +12172,10 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 15. **視点**: descriptionは女性キャラ視点で書くこと。男性を「主人公」と呼ばない。男性は「彼」「相手の男」「男性」と表記
 16. **お嬢様口調のintensity対応**: intensity 4-5ではお嬢様口調（ですの/ですわ等）は崩壊させること。理性が飛んだ状態で丁寧語は不自然。「ですの」→「…の…♡」「ですわ」→「…♡」に崩す"""
 
-    # 重複禁止の最終警告（user promptの末尾に配置 = モデルが最も注目する位置）
-    dedup_warning = ""
-    if story_so_far:
-        dedup_warning = f"""
+        # 重複禁止の最終警告（user promptの末尾に配置 = モデルが最も注目する位置）
+        dedup_warning = ""
+        if story_so_far:
+            dedup_warning = f"""
 
 ## ⚠️⚠️⚠️ 最終チェック（出力前に必ず確認） ⚠️⚠️⚠️
 
@@ -11744,19 +12198,25 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 - descriptionの体位・行為が前シーンと同じ → 別の体位・行為に変えろ（正常位/後背位/騎乗位/立ちバック/側位/座位等をローテーション）
 - titleが前シーンと同じキーワード（「膣奥」「理性」等）を含んでいる → 別のキーワードに変えろ"""
 
-    prompt = prompt + dedup_warning + "\n\nJSONのみ出力。"
+        prompt = prompt + dedup_warning + "\n\nJSONのみ出力。"
 
     # モデル自動選択: intensity別にコスト最適化
     # intensity 4-5 → Sonnet（本番+クライマックス: セリフ品質が最重要）
-    # intensity 1-3 → Haiku 4.5（導入・前戯シーン）
+    # intensity 1-3 → Haiku 4.5 or ローカルLLM（導入・前戯シーン）
     # ※ Haiku3(fast)はシーン生成に不適: キャラ名化け・NSFW品質不足
     if intensity >= 4:
         model = MODELS["sonnet"]
         model_name = "Sonnet"
+        routing_hint = "cloud"
     else:
         model = MODELS["haiku"]
         model_name = "Haiku(4.5)"
-    
+        routing_hint = "local_ok"
+
+    # ハイブリッドモード時のログ表示
+    if _hybrid_router and _hybrid_router.local_enabled and routing_hint == "local_ok":
+        model_name = "ローカルLLM"
+
     if callback:
         callback(f"シーン {scene['scene_id']} 生成中 ({model_name}, 重要度{intensity}, {theme_name}, セリフ:{serihu_skill_name})...")
 
@@ -11767,7 +12227,8 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
     response = _call_api(
         client, model,
         system_with_cache,
-        prompt, cost_tracker, 3000, callback
+        prompt, cost_tracker, 3000, callback,
+        routing_hint=routing_hint,
     )
     
     # 重複排除の後処理
@@ -11783,6 +12244,11 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 
     if isinstance(result, dict) and result.get("sd_prompt"):
         result["sd_prompt"] = deduplicate_sd_tags(result["sd_prompt"])
+
+    # ローカルLLM生成フラグ（auto_fixでbubbles再構築に使用）
+    if isinstance(result, dict) and _use_local_prompt:
+        result["_generated_by"] = "local"
+
     return result
 
 
@@ -12085,13 +12551,50 @@ def _generate_single_scene_for_wave(
         return (scene_index, error_result, f"[シーン{scene_index+1}: エラーにより欠落]", None)
 
 
+def _prepare_wave_scene_args(scene_index, scene, roadmap_lines, story_so_far, outline):
+    """Wave内の1シーン用の共通引数（ロードマップ・前シーン情報）を準備する"""
+    # 各シーンのロードマップ（近傍±5行）
+    marked_lines = []
+    window_start = max(0, scene_index - 5)
+    window_end = min(len(roadmap_lines), scene_index + 6)
+    if window_start > 0:
+        marked_lines.append(f"  ... (シーン1〜{window_start}省略)")
+    for j in range(window_start, window_end):
+        line = roadmap_lines[j]
+        if j == scene_index:
+            marked_lines.append(f"★ {line}")
+        else:
+            marked_lines.append(f"  {line}")
+    if window_end < len(roadmap_lines):
+        marked_lines.append(f"  ... (シーン{window_end+1}〜{len(roadmap_lines)}省略)")
+    current_roadmap = "\n".join(marked_lines)
+
+    # v8.7: Wave内の前シーンアウトライン情報を注入（ストーリー一貫性向上）
+    story_so_far_augmented = story_so_far
+    if outline and scene_index > 0 and scene_index - 1 < len(outline):
+        prev = outline[scene_index - 1]
+        prev_anchor = (
+            f"\n★直前シーン{scene_index}: {prev.get('title', '')[:20]} - "
+            f"{prev.get('situation', '')[:80]}\n"
+            f"このシーンは上記の直後から始まる。\n"
+        )
+        story_so_far_augmented = story_so_far + prev_anchor
+
+    return current_roadmap, story_so_far_augmented
+
+
 def _generate_scenes_wave(
     wave_scenes, client, context, jailbreak, cost_tracker, theme, char_profiles,
     callback, story_so_far, synopsis, roadmap_lines, male_description,
     total_scenes, timestamp, max_workers=CONCURRENT_BATCH_SIZE,
     outline=None, faceless_male=True,
 ):
-    """Wave内の全シーンをThreadPoolExecutorで同時生成し、scene_index順にソートして返す。
+    """Wave内の全シーンを生成し、scene_index順にソートして返す。
+
+    ハイブリッドモード時:
+    - cloud (i>=4): ThreadPoolExecutor並列
+    - local (i<=3): 直列（GPU占有のため並列不可）
+    - cloudの実行中にlocalを直列処理（インターリーブ）
 
     戻り値: [(scene_index, result_dict, summary_string, error), ...]
     InterruptedError発生時はexecutorをシャットダウンして再送出。
@@ -12099,58 +12602,98 @@ def _generate_scenes_wave(
     """
     wave_results = []
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {}
+    # ハイブリッドモード: local/cloud分割
+    is_hybrid = _hybrid_router is not None and _hybrid_router.local_enabled
+    if is_hybrid:
+        local_scenes = []
+        cloud_scenes = []
         for scene_index, scene in wave_scenes:
-            # 各シーンのロードマップ（近傍±5行）
-            marked_lines = []
-            window_start = max(0, scene_index - 5)
-            window_end = min(len(roadmap_lines), scene_index + 6)
-            if window_start > 0:
-                marked_lines.append(f"  ... (シーン1〜{window_start}省略)")
-            for j in range(window_start, window_end):
-                line = roadmap_lines[j]
-                if j == scene_index:
-                    marked_lines.append(f"★ {line}")
-                else:
-                    marked_lines.append(f"  {line}")
-            if window_end < len(roadmap_lines):
-                marked_lines.append(f"  ... (シーン{window_end+1}〜{len(roadmap_lines)}省略)")
-            current_roadmap = "\n".join(marked_lines)
+            intensity = scene.get("intensity", 3)
+            if intensity >= 4:
+                cloud_scenes.append((scene_index, scene))
+            else:
+                local_scenes.append((scene_index, scene))
 
-            # v8.7: Wave内の前シーンアウトライン情報を注入（ストーリー一貫性向上）
-            story_so_far_augmented = story_so_far
-            if outline and scene_index > 0 and scene_index - 1 < len(outline):
-                prev = outline[scene_index - 1]
-                prev_anchor = (
-                    f"\n★直前シーン{scene_index}: {prev.get('title', '')[:20]} - "
-                    f"{prev.get('situation', '')[:80]}\n"
-                    f"このシーンは上記の直後から始まる。\n"
+        if local_scenes or cloud_scenes:
+            log_message(f"  ハイブリッドWave: ローカル{len(local_scenes)}シーン + クラウド{len(cloud_scenes)}シーン")
+
+        # Phase 1: クラウドシーンを非同期で開始
+        cloud_futures = {}
+        executor = None
+        if cloud_scenes:
+            executor = ThreadPoolExecutor(max_workers=max_workers)
+            for scene_index, scene in cloud_scenes:
+                roadmap, ssa = _prepare_wave_scene_args(
+                    scene_index, scene, roadmap_lines, story_so_far, outline
                 )
-                story_so_far_augmented = story_so_far + prev_anchor
+                future = executor.submit(
+                    _generate_single_scene_for_wave,
+                    client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
+                    callback, ssa, synopsis, roadmap, male_description,
+                    scene_index, total_scenes, timestamp, faceless_male,
+                )
+                cloud_futures[future] = scene_index
 
-            future = executor.submit(
-                _generate_single_scene_for_wave,
-                client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
-                callback, story_so_far_augmented, synopsis, current_roadmap, male_description,
-                scene_index, total_scenes, timestamp, faceless_male,
-            )
-            futures[future] = scene_index
-
-        interrupted = False
-        for future in as_completed(futures):
-            try:
-                result = future.result()
+        # Phase 2: クラウドの待ち時間中にローカルシーンを直列処理
+        try:
+            for scene_index, scene in local_scenes:
+                roadmap, ssa = _prepare_wave_scene_args(
+                    scene_index, scene, roadmap_lines, story_so_far, outline
+                )
+                result = _generate_single_scene_for_wave(
+                    client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
+                    callback, ssa, synopsis, roadmap, male_description,
+                    scene_index, total_scenes, timestamp, faceless_male,
+                )
                 wave_results.append(result)
-            except InterruptedError:
-                interrupted = True
-                # 残りのfutureをキャンセル
-                for f in futures:
-                    f.cancel()
-                break
 
-        if interrupted:
-            raise InterruptedError("ユーザーによる停止")
+            # Phase 3: クラウド結果を収集
+            interrupted = False
+            for future in as_completed(cloud_futures):
+                try:
+                    result = future.result()
+                    wave_results.append(result)
+                except InterruptedError:
+                    interrupted = True
+                    for f in cloud_futures:
+                        f.cancel()
+                    break
+
+            if interrupted:
+                raise InterruptedError("ユーザーによる停止")
+        finally:
+            if executor:
+                executor.shutdown(wait=False)
+
+    else:
+        # 従来モード: 全シーンをThreadPoolExecutor並列
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {}
+            for scene_index, scene in wave_scenes:
+                roadmap, ssa = _prepare_wave_scene_args(
+                    scene_index, scene, roadmap_lines, story_so_far, outline
+                )
+                future = executor.submit(
+                    _generate_single_scene_for_wave,
+                    client, context, scene, jailbreak, cost_tracker, theme, char_profiles,
+                    callback, ssa, synopsis, roadmap, male_description,
+                    scene_index, total_scenes, timestamp, faceless_male,
+                )
+                futures[future] = scene_index
+
+            interrupted = False
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    wave_results.append(result)
+                except InterruptedError:
+                    interrupted = True
+                    for f in futures:
+                        f.cancel()
+                    break
+
+            if interrupted:
+                raise InterruptedError("ユーザーによる停止")
 
     # scene_index順にソート
     wave_results.sort(key=lambda x: x[0])
@@ -12177,10 +12720,37 @@ def generate_pipeline(
     provider: str = "",
     quality_priority: bool = False,
     faceless_male: bool = True,
+    local_llm_enabled: bool = False,
+    local_llm_url: str = "",
+    local_llm_api_key: str = "",
 ) -> tuple[list, CostTracker]:
+    global _hybrid_router
     client = anthropic.Anthropic(api_key=api_key)
-    log_message("Claude (Anthropic) バックエンドで生成開始")
     cost_tracker = CostTracker()
+
+    # ハイブリッドルーター初期化
+    if local_llm_enabled:
+        try:
+            from llm_provider import create_hybrid_router, LOCAL_LLM_BASE_URL
+            _base_url = local_llm_url.strip() if local_llm_url.strip() else LOCAL_LLM_BASE_URL
+            _api_key = local_llm_api_key.strip() if local_llm_api_key.strip() else None
+            _hybrid_router = create_hybrid_router(
+                client, call_claude, local_enabled=True,
+                local_base_url=_base_url, local_api_key=_api_key,
+            )
+            _is_runpod = "runpod.ai" in _base_url
+            if _hybrid_router.local_enabled:
+                _label = "RunPod" if _is_runpod else "ローカルLLM"
+                log_message(f"ハイブリッドモード: {_label} + Claude API")
+            else:
+                log_message("ローカルLLM/RunPod未検出 → Claude APIのみモード")
+                _hybrid_router = None
+        except Exception as e:
+            log_message(f"ハイブリッド初期化失敗: {e} → Claude APIのみモード")
+            _hybrid_router = None
+    else:
+        _hybrid_router = None
+        log_message("Claude (Anthropic) バックエンドで生成開始")
 
     jailbreak = load_file(JAILBREAK_FILE)
 
@@ -12758,7 +13328,8 @@ def generate_pipeline(
     log_message(f"パイプライン完了: {success_count}/{len(results)}シーン成功")
 
     if callback:
-        callback(f"[DONE]生成完了: {success_count}シーン成功（品質: {validation['score']}/100）")
+        _final_score = post_validation.get("score", validation.get("score", 0))
+        callback(f"[DONE]生成完了: {success_count}シーン成功（品質: {_final_score}/100）")
 
     # メタデータを構築（エクスポート用）
     char_names = [cp.get("character_name", "") for cp in char_profiles] if char_profiles else []
@@ -12770,7 +13341,7 @@ def generate_pipeline(
         "characters": char_names,
         "story_structure": story_structure,
         "cost": cost_tracker.summary(),
-        "quality_score": validation.get("score", 0),
+        "quality_score": post_validation.get("score", validation.get("score", 0)),
         "provider": provider,
         "model_versions": (
             {"haiku": MODELS["haiku"], "sonnet": MODELS["sonnet"], "opus": MODELS["opus"]}
@@ -15292,7 +15863,48 @@ class App(ctk.CTk):
             checkmark_color=MaterialColors.ON_PRIMARY,
             corner_radius=4
         )
-        self.quality_priority_cb.pack(anchor="w", padx=20, pady=(0, 12))
+        self.quality_priority_cb.pack(anchor="w", padx=20, pady=(0, 8))
+
+        # ローカルLLM使用チェックボックス（ハイブリッド生成）
+        self.local_llm_var = ctk.BooleanVar(value=False)
+        self.local_llm_cb = ctk.CTkCheckBox(
+            settings_card, text="ローカルLLMを使用（i≤3をローカル生成・コスト削減）",
+            variable=self.local_llm_var,
+            font=ctk.CTkFont(family=FONT_JP, size=13),
+            text_color=MaterialColors.ON_SURFACE_VARIANT,
+            fg_color=MaterialColors.PRIMARY,
+            hover_color=MaterialColors.PRIMARY_CONTAINER,
+            border_color=MaterialColors.OUTLINE,
+            checkmark_color=MaterialColors.ON_PRIMARY,
+            corner_radius=4
+        )
+        self.local_llm_cb.pack(anchor="w", padx=20, pady=(0, 4))
+
+        # ローカルLLM / RunPod設定欄（折りたたみ）
+        self.local_llm_settings_frame = ctk.CTkFrame(settings_card, fg_color="transparent")
+        self.local_llm_settings_frame.pack(fill="x", padx=24, pady=(0, 8))
+
+        # URL
+        url_row = ctk.CTkFrame(self.local_llm_settings_frame, fg_color="transparent")
+        url_row.pack(fill="x", pady=(0, 2))
+        ctk.CTkLabel(url_row, text="URL:", font=ctk.CTkFont(family=FONT_JP, size=11),
+                     width=60, anchor="e").pack(side="left")
+        self.local_llm_url_entry = ctk.CTkEntry(
+            url_row, placeholder_text="空欄=localhost:1234 / RunPod: https://api.runpod.ai/v2/{ID}/openai/v1",
+            font=ctk.CTkFont(size=11), height=28,
+        )
+        self.local_llm_url_entry.pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+        # API Key
+        key_row = ctk.CTkFrame(self.local_llm_settings_frame, fg_color="transparent")
+        key_row.pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(key_row, text="API Key:", font=ctk.CTkFont(family=FONT_JP, size=11),
+                     width=60, anchor="e").pack(side="left")
+        self.local_llm_key_entry = ctk.CTkEntry(
+            key_row, placeholder_text="RunPod API Key（ローカルの場合は空欄）",
+            font=ctk.CTkFont(size=11), height=28, show="*",
+        )
+        self.local_llm_key_entry.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
         # ══════════════════════════════════════════════════════════════
         # 6. 生成セクション
@@ -15655,6 +16267,18 @@ class App(ctk.CTk):
                 self.male_custom_field.insert(0, _mc)
         if "male_faceless" in self.config_data and hasattr(self, 'male_faceless_var'):
             self.male_faceless_var.set(self.config_data["male_faceless"])
+        if "local_llm_enabled" in self.config_data and hasattr(self, 'local_llm_var'):
+            self.local_llm_var.set(self.config_data["local_llm_enabled"])
+        if "local_llm_url" in self.config_data and hasattr(self, 'local_llm_url_entry'):
+            _url = self.config_data["local_llm_url"]
+            if _url:
+                self.local_llm_url_entry.delete(0, "end")
+                self.local_llm_url_entry.insert(0, _url)
+        if "local_llm_api_key" in self.config_data and hasattr(self, 'local_llm_key_entry'):
+            _key = self.config_data["local_llm_api_key"]
+            if _key:
+                self.local_llm_key_entry.delete(0, "end")
+                self.local_llm_key_entry.insert(0, _key)
         if "male_hair_style" in self.config_data and hasattr(self, 'male_hair_style_combo'):
             self.male_hair_style_combo.set(self.config_data["male_hair_style"])
         if "male_hair_color" in self.config_data and hasattr(self, 'male_hair_color_combo'):
@@ -16096,6 +16720,9 @@ class App(ctk.CTk):
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
             "quality_priority": self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False,
+            "local_llm_enabled": self.local_llm_var.get() if hasattr(self, 'local_llm_var') else False,
+            "local_llm_url": self.local_llm_url_entry.get() if hasattr(self, 'local_llm_url_entry') else "",
+            "local_llm_api_key": self.local_llm_key_entry.get() if hasattr(self, 'local_llm_key_entry') else "",
         }
         save_config(self.config_data)
         self.snackbar.show("設定を保存しました", type="success")
@@ -16128,6 +16755,9 @@ class App(ctk.CTk):
             "sd_quality_custom": (self.sd_quality_custom_entry.get() if self.sd_quality_mode_var.get() == "manual" else "") if hasattr(self, 'sd_quality_custom_entry') else "",
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
+            "local_llm_enabled": self.local_llm_var.get() if hasattr(self, 'local_llm_var') else False,
+            "local_llm_url": self.local_llm_url_entry.get() if hasattr(self, 'local_llm_url_entry') else "",
+            "local_llm_api_key": self.local_llm_key_entry.get() if hasattr(self, 'local_llm_key_entry') else "",
         }
 
     def apply_config(self, config: dict):
@@ -16593,6 +17223,9 @@ class App(ctk.CTk):
                 provider=PROVIDER_CLAUDE,
                 quality_priority=_quality_priority,
                 faceless_male=_faceless_male,
+                local_llm_enabled=self.local_llm_var.get() if hasattr(self, 'local_llm_var') else False,
+                local_llm_url=self.local_llm_url_entry.get() if hasattr(self, 'local_llm_url_entry') else "",
+                local_llm_api_key=self.local_llm_key_entry.get() if hasattr(self, 'local_llm_key_entry') else "",
             )
 
             if self.stop_requested:
