@@ -28,6 +28,19 @@ from pathlib import Path
 
 _INPUT_RE = re.compile(r"^scene_(\d+)\.txt$")
 
+_THINKING_PREFIX_RE = re.compile(
+    r"^\s*\d+\s*s?\s*(?:考えました|秒\s*考えました|思考しました|考え中)\s*",
+    re.IGNORECASE,
+)
+
+
+def _clean_response(text: str) -> str:
+    """Grok の thinking time UI 文字列 (例: '5s 考えました') を冒頭から除去。"""
+    if not text:
+        return text
+    cleaned = _THINKING_PREFIX_RE.sub("", text, count=1)
+    return cleaned.lstrip()
+
 
 def _input_dir(work_dir: Path) -> Path:
     return work_dir / "grok_inputs"
@@ -86,10 +99,18 @@ def cmd_read(work_dir: Path, scene_id: int) -> int:
 
 
 def cmd_save_response(work_dir: Path, scene_id: int, response_text: str) -> int:
+    cleaned = _clean_response(response_text)
     out = _response_dir(work_dir) / f"scene_{scene_id:03d}_response.txt"
-    out.write_text(response_text, encoding="utf-8")
-    _record_progress(work_dir, scene_id, "success", len(response_text))
-    print(json.dumps({"saved": str(out), "bytes": len(response_text.encode("utf-8"))}, ensure_ascii=False))
+    out.write_text(cleaned, encoding="utf-8")
+    _record_progress(work_dir, scene_id, "success", len(cleaned))
+    print(json.dumps(
+        {
+            "saved": str(out),
+            "bytes": len(cleaned.encode("utf-8")),
+            "stripped_thinking_prefix": cleaned != response_text.lstrip(),
+        },
+        ensure_ascii=False,
+    ))
     return 0
 
 

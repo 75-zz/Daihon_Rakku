@@ -1,0 +1,174 @@
+{
+  "5": {
+    "inputs": {
+      "width": 896,
+      "height": 1152,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空の潜在画像"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "worst quality, low quality, score_1, score_2, score_3, blurry, jpeg artifacts, sepia, bad anatomy",
+      "clip": [
+        "69",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIPテキストエンコード（プロンプト）"
+    }
+  },
+  "17": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "VAEを読み込む"
+    }
+  },
+  "65": {
+    "inputs": {
+      "width": 1152,
+      "height": 896,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空の潜在画像"
+    }
+  },
+  "69": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "102",
+        0
+      ],
+      "clip": [
+        "103",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "70": {
+    "inputs": {
+      "prompt": "masterpiece, best quality, amazing quality, very aesthetic, absurdres\n\n1girl, orange hair, bobcut, air bangs, green eyes, large breasts, white frilled headband, white frilled bib apron, white collar, black blouse, long sleeves, black bowtie, black classic maid skirt\n\nwhite background, upper body, leaning forward, :D, index finger raised, dutch angle",
+      "opt_model": [
+        "69",
+        0
+      ],
+      "opt_clip": [
+        "69",
+        1
+      ]
+    },
+    "class_type": "Power Prompt (rgthree)",
+    "_meta": {
+      "title": "Power Prompt (rgthree)"
+    }
+  },
+  "102": {
+    "inputs": {
+      "unet_name": "anima-preview3-base.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "拡散モデルを読み込む"
+    }
+  },
+  "103": {
+    "inputs": {
+      "clip_name": "qwen_3_06b_base.safetensors",
+      "type": "stable_diffusion",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "CLIPを読み込む"
+    }
+  },
+  "104": {
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空の潜在画像"
+    }
+  },
+  "105": {
+    "inputs": {
+      "samples": [
+        "107",
+        0
+      ],
+      "vae": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAEデコード"
+    }
+  },
+  "106": {
+    "inputs": {
+      "filename_prefix": "Anima",
+      "images": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "画像を保存"
+    }
+  },
+  "107": {
+    "inputs": {
+      "seed": 979263915739613,
+      "steps": 30,
+      "cfg": 4,
+      "sampler_name": "er_sde",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "70",
+        1
+      ],
+      "positive": [
+        "70",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "104",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "Kサンプラー"
+    }
+  }
+}

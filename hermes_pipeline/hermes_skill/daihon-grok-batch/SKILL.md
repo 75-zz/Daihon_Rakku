@@ -30,18 +30,22 @@ metadata:
 
 - 本スキルは Hermes Agent 内部の LLM を **DOM 判定・応答抽出のたびに呼ぶ**。
   100シーン処理で 推定 $1〜$10 程度の LLM 課金が発生する見込み。
-- 実行前に必ず処理対象シーン数とコスト感をユーザーに提示し、明示的合意を取ること。
-- 連続 3 シーン失敗したら即停止し、ユーザー判断を仰ぐこと。暴走防止。
+- **ユーザー確認は Step 1 の 1 回のみ**。Step 1 でコスト提示し、yes と返ってきたら
+  以降の Step 2〜5 は確認なしで自動進行する。シーンごとの「次に進んでいいか」
+  「保存していいか」等の逐次確認は禁止（user 操作を最小化する設計）。
+- 例外: 連続 3 シーン失敗したら即停止し、ユーザー判断を仰ぐ。暴走防止。
 - grok.com の利用規約遵守はユーザー責任。SuperGrok サブスク前提。
 
 ## Procedure
 
-### Step 1: 事前確認
+### Step 1: 事前確認（**確認はここ1回のみ**）
 
 1. `${HERMES_SKILL_DIR}/scripts/orchestrator.py list <work_dir>` を terminal ツールで実行
-   - 例: `python ${HERMES_SKILL_DIR}/scripts/orchestrator.py list "F:/作業/AI開発/Daihon_Rakku/outputs/hermes_pipeline/中野一花..._export_20260506014006" --limit 5`
+   - 例: `python3 ${HERMES_SKILL_DIR}/scripts/orchestrator.py list "/mnt/f/作業/AI開発/Daihon_Rakku/outputs/hermes_pipeline/中野一花..._export_20260506014006" --limit 5`
 2. 返ってきた JSON の `pending` 配列を確認
-3. ユーザーに「対象 N シーン処理する。推定コスト $X。続行?」と確認
+3. ユーザーに **1 回だけ**「対象 N シーン処理する。推定コスト $X。続行?」と確認
+4. yes を得たら **以降の Step 2〜5 は user 確認なしで連続実行する**
+   （シーン処理途中で「次のシーンに進んでいい?」「保存していい?」は聞かない）
 
 ### Step 2: ブラウザ準備
 
@@ -63,9 +67,11 @@ grok.com の UI は変化するため、ハードコードしない。最初の�
 3. 特定できなかったら `browser_console(expression="...")` で `document.querySelector` を試して洗い出す
 4. 確定したセレクタ情報は本セッション内で記憶（ファイルには書かない）
 
-### Step 4: 各シーンのループ処理
+### Step 4: 各シーンのループ処理（自動進行・確認なし）
 
-`pending` 配列の各 scene_id に対して順次実行:
+`pending` 配列の各 scene_id に対して順次実行する。
+各サブステップは自動で進める。「次に進んでいいか」を user に聞いてはいけない。
+失敗時挙動は 4h を参照。
 
 #### 4a. 入力読み出し
 ```
@@ -96,9 +102,13 @@ python ${HERMES_SKILL_DIR}/scripts/orchestrator.py read <work_dir> <scene_id>
 
 #### 4g. 保存
 ```
-echo "<response>" | python ${HERMES_SKILL_DIR}/scripts/orchestrator.py save-response <work_dir> <scene_id>
+echo "<response>" | python3 ${HERMES_SKILL_DIR}/scripts/orchestrator.py save-response <work_dir> <scene_id>
 ```
 （実際は `terminal` ツールの stdin パイプ機能で `<response>` を渡す）
+
+orchestrator は保存時に Grok の thinking time プレフィックス
+（例: `5s 考えました`）を自動除去する。応答抽出時にこの文字列を含めて
+渡しても、ファイルには綺麗な本文だけが残る。
 
 #### 4h. 失敗時
 - DOM 抽出失敗 / 期待形式と違う / タイムアウト → リトライ最大 2 回
@@ -115,10 +125,15 @@ JSON サマリを user に提示。
 
 ## Pitfalls
 
+- **逐次確認の罠**: モデル特性によっては「次に進んでいい?」を毎シーン聞きたがる。
+  これは絶対にやらない。Step 1 で 1 回 yes を得たら、Step 4 の全シーンを止めずに進める。
+  user 操作を増やすことが本スキル最大のアンチパターン。
 - **DOM 構造変化**: grok.com の UI 更新で selector が壊れることがある。
   必ず Step 3 の動的調査を毎セッション最初に行う。
 - **応答途中での抽出**: ストリーミング応答が完了していない状態で抽出するとテキストが切れる。
   応答完了シグナル（送信ボタン再活性 等）を必ず待つ。
+- **thinking time UI の混入**: Grok の応答抽出時に "5s 考えました" 等のメタ表示が
+  巻き込まれることがある。orchestrator が自動除去するので気にせず raw を渡してよい。
 - **長文の type が遅い**: 4KB のテキストを `browser_type` で1文字ずつ打つと遅い・失敗しやすい。
   `browser_console` で `value` プロパティに直接代入 + `input` イベント発火 が確実。
 - **レート制限**: SuperGrok でも連続投げで一時的に制限される可能性。60秒バックオフを入れる。
