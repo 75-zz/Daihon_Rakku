@@ -59,10 +59,36 @@ _QUOTED_LINE_JP_RE = re.compile(
     re.MULTILINE,
 )
 
+# 本文中に埋め込まれた引用符付き擬音/セリフを除去するパターン。
+# Anima が引用符内テキストを画像に文字として描画する事故を防ぐ。
+# 例: '...with a dizzy "fading…" sensation.' → '...with a dizzy  sensation.'
+#     '...after saying "It\'s okay, keep your eyes open."' → '...after saying .'
+# 200 文字以下の短い引用符ペアのみ対象 (長すぎる引用は安全策で除外)。
+_QUOTED_INLINE_RE = re.compile(r'"[^"\n]{0,200}"')
+_QUOTED_INLINE_JP_RE = re.compile(r'[「『][^「『」』\n]{0,200}[」』]')
+
 _RESPONSE_NAME_RE = re.compile(r"^scene_(\d+)_response\.txt$")
 
-# Anima 推奨品質タグ + アニメ志向強化キーワード
-# CG ガイド §06 ベース + 西洋寄り作画になる問題への対策
+# Grok 英文中の "Clothing state:" ブロックを除去するパターン。
+# キャラクターごとに 1 ブロック存在し、次のセクション見出しまでを削除する。
+# 想定する2つの形式:
+#   形式A (見出しの直後に改行+本文):
+#       Clothing state:
+#       White blouse with one button undone...
+#       Immediate aftermath:
+#   形式B (見出しと本文が同一行):
+#       Clothing state: White blouse with one button undone...
+#       Immediate aftermath:
+# 次のセクション見出し = 行頭が英単語+スペース/&/+英単語*(: で終わる) OR
+#                     [Composition] 等の [...] OR Faceless Male/Nakano Ichika 等のキャラ名行
+# DOTALL + lazy で形式 A/B 両方に対応する。
+_CLOTHING_STATE_BLOCK_RE = re.compile(
+    r"^[ \t]*Clothing\s+state:.*?"
+    r"(?=\n[ \t]*(?:[A-Z][A-Za-z /&-]+:|Faceless\s+Male\b|Nakano\b|\[)|\Z)",
+    re.MULTILINE | re.DOTALL | re.IGNORECASE,
+)
+
+# Anima 推奨品質タグ + アニメ志向強化キーワード (v1 / 後方互換)
 _ANIMA_QUALITY_PREFIX = (
     "score_9, score_8_up, score_7_up, masterpiece, best quality, "
     "highres, year 2025, newest, sensitive,\n"
@@ -70,7 +96,19 @@ _ANIMA_QUALITY_PREFIX = (
     "japanese anime aesthetic, soft lighting,\n"
 )
 
-# 詳細ネガ: テキスト混入防止 + 西洋風除去 + 通常の品質ネガ
+# AnimaYume 最適化 quality prefix
+# 公式推奨ミニマル + score_X と masterpiece の併用 OK (Anima docs)
+# 非 Danbooru タグ (anime style/cel shading 等) は削除し Qwen3 TE のノイズを減らす
+_ANIMAYUME_QUALITY_PREFIX = (
+    "masterpiece, best quality, very aesthetic, score_9, score_8_up, "
+    "year 2025, newest, safe, highres,\n"
+)
+
+# キャラクター固定タグブロックは Daihon Rakku 側で確定する設計に変更 (2026-05-12)
+# work_dir/character.json から動的に読み込み build_char_block_from_json で構築する。
+# 旧 hardcoded テンプレは LLM のハルシネーション (orange_hair / long_hair 等) を含んでいたため廃止。
+
+# 詳細ネガ: テキスト混入防止 + 西洋風除去 + 通常の品質ネガ (v1 / 後方互換)
 _DEFAULT_NEGATIVE = (
     "text, speech bubble, dialogue, subtitle, watermark, signature, "
     "english text, letters, caption, words, logo, font, "
@@ -80,12 +118,35 @@ _DEFAULT_NEGATIVE = (
     "deformed, blurry, jpeg artifacts, extra digit, missing fingers"
 )
 
+# AnimaYume 公式推奨 negative (最小版) + テキスト/吹き出し系完全除外
+# - SD1.5 時代の anatomy ネガは Anima のスコア蒸留モデルで逆効果になり得るため除外
+# - speech_bubble / dialogue / talking 系は CG集台本 (1P1枚) では完全に不要
+#   (CLAUDE.md「SDプロンプトに吹き出し/擬音/ネガティブを入れない」ポリシーは画面内テキスト除去)
+_ANIMAYUME_NEGATIVE_MIN = (
+    "worst quality, low quality, score_1, score_2, score_3, artist name, "
+    "text, watermark, signature, "
+    "speech_bubble, dialogue, speech, talking, comic, caption, onomatopoeia, sound_effect, "
+    "english_text, japanese_text, kanji, hiragana, katakana, "
+    "letters, words, sign, character_name, manga_panel, manga, 4koma, "
+    "comic_panel, page_number, copyright_name"
+)
+
+_QUALITY_PRESETS: dict[str, str] = {
+    "current": _ANIMA_QUALITY_PREFIX,
+    "animayume_min": _ANIMAYUME_QUALITY_PREFIX,
+}
+_NEGATIVE_PRESETS: dict[str, str] = {
+    "current": _DEFAULT_NEGATIVE,
+    "animayume_min": _ANIMAYUME_NEGATIVE_MIN,
+}
+
 
 def clean_for_anima(text: str) -> str:
     """English version 本文から Anima 投入に不適な部分を除去。
 
     - `Dialogue:` `Sound effects:` 見出し以降を切り捨て (Anima が文字を描画するため)
-    - 残った引用符付き行を除去
+    - 引用符付き行を除去 (行全体)
+    - 本文中に埋め込まれた引用符ペア (擬音 / セリフ片) を除去
     - 連続改行を整理
     """
     if not text:
@@ -94,10 +155,15 @@ def clean_for_anima(text: str) -> str:
     m = _DIALOGUE_HEADING_RE.search(text)
     if m:
         text = text[: m.start()]
-    # Step 2: 引用符付き行を除去 (英語 "..." と 日本語 「...」)
+    # Step 2: 引用符付き行を除去 (英語 "..." と 日本語 「...」 — 行全体型)
     text = _QUOTED_LINE_RE.sub("", text)
     text = _QUOTED_LINE_JP_RE.sub("", text)
-    # Step 3: 3行以上連続する空行を 1 空行に
+    # Step 2.5: 本文中の引用符ペアを除去 (画面内文字化防止)
+    text = _QUOTED_INLINE_RE.sub("", text)
+    text = _QUOTED_INLINE_JP_RE.sub("", text)
+    # Step 3: 二重スペース整理 (引用符削除で空白が連続する場合)
+    text = re.sub(r" {2,}", " ", text)
+    # Step 4: 3行以上連続する空行を 1 空行に
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
@@ -118,8 +184,207 @@ def extract_english(response_text: str) -> str | None:
     return clean_for_anima(body)
 
 
-def build_positive_prompt(english_body: str) -> str:
-    return _ANIMA_QUALITY_PREFIX + english_body
+# Grok 出力本文中のキャラ・シリーズタグ行を検出するパターン
+# 例: `nakano_ichika, go-toubun_no_hanayome,`
+_GROK_CHAR_TAG_LINE_RE = re.compile(
+    r"^\s*[a-z][a-z0-9_]*(?:\s*,\s*[a-z][a-z0-9_-]*)+\s*,?\s*$",
+    re.IGNORECASE,
+)
+
+
+def load_character_json(work_dir: Path) -> dict | None:
+    """work_dir/character.json を読み込んで dict を返す。なければ None。"""
+    p = work_dir / "character.json"
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def build_char_block_from_json(character: dict) -> str:
+    """character.json から AnimaYume Qwen3 TE 最適化の char_block を構築。
+
+    AnimaYume の Qwen3 TE は自然言語に強い。タグ並列だけだとキャラ間の属性
+    (服色 / muscular 等) が混線する事故が起きるため、**キャラ別に「タグ群 +
+    自然言語帰属文」をペアで配置**し、Qwen3 TE が「これは女性のもの / これは
+    男性のもの」と確実に紐付けられる構造にする。
+
+    出力構造:
+        Line 1: (<char_tag>:<weight>), <series_tag>,
+        Line 2: 1girl, <visual_features tags...>,                       # 女性タグ群
+        Line 3: <heroine_outfit.outfit_tags>,                           # 女性衣装タグ群
+        Line 4 (自然言語): The girl is a young woman with ...           # 女性外見 (NL)
+        Line 5 (自然言語): The girl is wearing ...                      # 女性衣装 (NL帰属明示)
+        Line 6: 1boy, faceless_male, <male_companion.outfit_tags>,      # 男性タグ群
+        Line 7 (自然言語): Beside her is a faceless muscular man ...    # 男性属性+衣装 (NL帰属明示)
+
+    キャラごとに「タグ → 自然言語」と続けることで、Qwen3 TE が直前のタグ群を
+    直後の自然言語文の主語に帰属付ける。これにより `muscular` が女性に転移する
+    等の事故を防ぐ (ユーザー報告: scene_001 で一花の腕ムキムキ問題)。
+    """
+    if not character:
+        return ""
+    tags: list[str] = list(character.get("danbooru_tags") or [])
+    if not tags:
+        return ""
+    meta = character.get("anima_meta") or {}
+    char_tag = meta.get("character_tag") or ""
+    series_tag = meta.get("series_tag") or ""
+    weight = meta.get("weight") or 1.0
+    with_male = bool(meta.get("with_faceless_male"))
+
+    # 1) 識別タグ (キャラ名 + シリーズ)
+    head_parts: list[str] = []
+    if char_tag:
+        if abs(weight - 1.0) > 1e-6:
+            head_parts.append(f"({char_tag}:{weight})")
+        else:
+            head_parts.append(char_tag)
+    if series_tag:
+        head_parts.append(series_tag)
+    line_id = ", ".join(head_parts) + "," if head_parts else ""
+
+    # 2) 女性視覚特徴タグ (キャラ名/シリーズ/solo 除外)
+    visual_features = [t for t in tags if t not in {char_tag, series_tag, "solo"}]
+    line_female_tags = ", ".join(visual_features) + "," if visual_features else ""
+
+    # 3) 女性衣装タグ
+    heroine_outfit = character.get("heroine_outfit") or {}
+    heroine_outfit_tags = heroine_outfit.get("outfit_tags") or []
+    line_female_outfit = (
+        ", ".join(heroine_outfit_tags) + "," if heroine_outfit_tags else ""
+    )
+
+    # 4) 女性外見の自然言語 (任意)
+    appearance_sentence = (character.get("appearance_sentence_en") or "").strip()
+
+    # 5) 女性衣装の自然言語 (帰属明示で muscular 等の転移防止)
+    heroine_attrib = (heroine_outfit.get("attribution_sentence_en") or "").strip()
+
+    parts = [line_id, line_female_tags, line_female_outfit]
+    if appearance_sentence:
+        parts.append(appearance_sentence)
+    if heroine_attrib:
+        parts.append(heroine_attrib)
+
+    # 6+7) 男性ブロック (タグ + 自然言語帰属文)
+    # appearance_tags (体型/髪/肌) と outfit_tags (衣装) を分けて持つ。
+    # Daihon Rakku の config.json の male_preset / male_hair_style / male_hair_color /
+    # male_skin_color から派生したタグを appearance_tags に保持し、Anima に確実に伝える。
+    if with_male:
+        male_companion = character.get("male_companion") or {}
+        male_appearance = male_companion.get("appearance_tags") or []
+        male_outfit_tags = male_companion.get("outfit_tags") or []
+        male_tag_parts = (
+            ["1boy", "faceless_male"]
+            + list(male_appearance)
+            + list(male_outfit_tags)
+        )
+        parts.append(", ".join(male_tag_parts) + ",")
+        male_attrib = (male_companion.get("attribution_sentence_en") or "").strip()
+        if male_attrib:
+            parts.append(male_attrib)
+
+    return "\n".join(p for p in parts if p) + "\n"
+
+
+def build_negative_extras_from_json(character: dict) -> str:
+    """character.json の負側タグ群 (キャラ + 衣装) を ", " で連結。"""
+    if not character:
+        return ""
+    extras: list[str] = list(character.get("danbooru_tags_negative") or [])
+    heroine_outfit = character.get("heroine_outfit") or {}
+    extras.extend(heroine_outfit.get("negative_outfit_tags") or [])
+    male_companion = character.get("male_companion") or {}
+    extras.extend(male_companion.get("negative_outfit_tags") or [])
+    # 重複除去 (順序維持)
+    seen: set[str] = set()
+    uniq = []
+    for t in extras:
+        if t not in seen:
+            uniq.append(t)
+            seen.add(t)
+    return ", ".join(uniq)
+
+
+def strip_grok_char_tags(english_body: str, char_tag: str, series_tag: str) -> str:
+    """Grok 本体冒頭のキャラタグ行 (例: `nakano_ichika, go-toubun_no_hanayome,`) を除去。
+
+    char_block を別経路で前置するため、Grok 出力中の重複/ハルシネーションを抑制する。
+    """
+    if not english_body:
+        return english_body
+    lines = english_body.split("\n")
+    keep_from = 0
+    for i, line in enumerate(lines):
+        stripped = line.strip().rstrip(",").strip()
+        if not stripped:
+            continue
+        toks = [t.strip().lower() for t in stripped.split(",") if t.strip()]
+        # 行に含まれるトークンの大半が「キャラ/シリーズタグ」と「視覚特徴タグ」のみで構成
+        # されている場合のみ削除対象とする (本文への誤マッチ回避)
+        if char_tag and char_tag.lower() in toks:
+            keep_from = i + 1
+            continue
+        if series_tag and series_tag.lower() in toks:
+            keep_from = i + 1
+            continue
+        break
+    return "\n".join(lines[keep_from:]).strip()
+
+
+def strip_clothing_state_blocks(body: str) -> str:
+    """Grok 英文本体中の "Clothing state:" ブロックを全て除去する。
+
+    character.json の danbooru_tags / outfit_tags で衣装を固定するため、
+    Grok が生成した自然言語の衣装記述はノイズとして削除する。
+    "Clothing state:" 行が存在しない場合は何もしない (後方互換)。
+    """
+    cleaned = _CLOTHING_STATE_BLOCK_RE.sub("", body)
+    # 3 行以上連続する空行を 1 空行に (除去後に空白が増える場合がある)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def build_positive_prompt(
+    english_body: str,
+    char_key: str | None = None,
+    quality_preset: str = "current",
+    character: dict | None = None,
+) -> str:
+    """Quality prefix + (任意) キャラクター固定タグブロック + Grok 本体 を連結。
+
+    Args:
+        english_body: Grok から抽出した英語本文。
+        char_key: 後方互換用。指定しても character 引数があれば character が優先。
+        quality_preset: "current" / "animayume_min"。
+        character: work_dir/character.json から読んだ dict。指定時はこの内容で
+            char_block を動的構築し、Grok 本体先頭のキャラタグ行は削除する。
+    """
+    prefix = _QUALITY_PRESETS.get(quality_preset, _ANIMA_QUALITY_PREFIX)
+    char_block = ""
+    body = english_body
+    if character:
+        char_block = build_char_block_from_json(character)
+        meta = character.get("anima_meta") or {}
+        body = strip_grok_char_tags(
+            body,
+            char_tag=meta.get("character_tag") or "",
+            series_tag=meta.get("series_tag") or "",
+        )
+    # 後方互換: character が無いときだけ char_key の旧パスを試す (現在は空辞書)
+    return prefix + char_block + body
+
+
+def build_negative_prompt(preset: str = "current", character: dict | None = None) -> str:
+    base = _NEGATIVE_PRESETS.get(preset, _DEFAULT_NEGATIVE)
+    if character:
+        extras = build_negative_extras_from_json(character)
+        if extras:
+            return base + ", " + extras
+    return base
 
 
 def _output_dir(work_dir: Path) -> Path:
@@ -140,17 +405,34 @@ def _list_response_scene_ids(work_dir: Path) -> list[int]:
     return sorted(ids)
 
 
-def process_scene(response_path: Path, output_dir: Path, scene_id: int) -> dict:
+def process_scene(
+    response_path: Path, output_dir: Path, scene_id: int,
+    char_key: str | None = None,
+    quality_preset: str = "current",
+    neg_preset: str = "current",
+    character: dict | None = None,
+) -> dict:
     raw = response_path.read_text(encoding="utf-8")
     english = extract_english(raw)
     if english is None:
         return {"scene_id": scene_id, "ok": False, "error": "english_section_not_found"}
-    positive = build_positive_prompt(english)
+    # character.json が提供されている場合、Grok の自然言語 Clothing state ブロックを除去。
+    # danbooru outfit_tags で衣装を制御するため、Grok 記述との矛盾を排除する。
+    if character:
+        english = strip_clothing_state_blocks(english)
+    positive = build_positive_prompt(
+        english, char_key=char_key, quality_preset=quality_preset, character=character,
+    )
+    negative = build_negative_prompt(neg_preset, character=character)
     payload = {
         "scene_id": scene_id,
         "positive": positive,
-        "negative": _DEFAULT_NEGATIVE,
+        "negative": negative,
         "source": str(response_path),
+        "char_key": char_key,
+        "quality_preset": quality_preset,
+        "neg_preset": neg_preset,
+        "character_source": (character or {}).get("char_id") or "none",
     }
     out = output_dir / f"scene_{scene_id:03d}_prompt.json"
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -163,9 +445,17 @@ def process_scene(response_path: Path, output_dir: Path, scene_id: int) -> dict:
     }
 
 
-def cmd_extract(work_dir: Path, scene_id: int | None, limit: int | None) -> int:
+def cmd_extract(
+    work_dir: Path, scene_id: int | None, limit: int | None,
+    char_key: str | None = None,
+    quality_preset: str = "current",
+    neg_preset: str = "current",
+) -> int:
     response_dir = work_dir / "grok_responses"
     output_dir = _output_dir(work_dir)
+
+    # work_dir/character.json があれば自動で読み込む (Daihon Rakku 提供データ駆動)
+    character = load_character_json(work_dir)
 
     if scene_id is not None:
         targets = [scene_id]
@@ -180,12 +470,25 @@ def cmd_extract(work_dir: Path, scene_id: int | None, limit: int | None) -> int:
         if not rp.exists():
             results.append({"scene_id": sid, "ok": False, "error": "response_not_found"})
             continue
-        results.append(process_scene(rp, output_dir, sid))
+        results.append(process_scene(
+            rp, output_dir, sid,
+            char_key=char_key,
+            quality_preset=quality_preset,
+            neg_preset=neg_preset,
+            character=character,
+        ))
 
-    print(json.dumps(
-        {"results": results, "count": len(results), "ok_count": sum(1 for r in results if r["ok"])},
-        ensure_ascii=False, indent=2,
-    ))
+    summary: dict = {
+        "results": results,
+        "count": len(results),
+        "ok_count": sum(1 for r in results if r["ok"]),
+    }
+    if character:
+        summary["character_loaded"] = {
+            "char_id": character.get("char_id"),
+            "tag_count": len(character.get("danbooru_tags") or []),
+        }
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0 if all(r["ok"] for r in results) else 1
 
 
@@ -217,6 +520,15 @@ def main(argv: list[str] | None = None) -> int:
     p_ex.add_argument("work_dir")
     p_ex.add_argument("--scene-id", type=int, default=None)
     p_ex.add_argument("--limit", type=int, default=None)
+    p_ex.add_argument("--char-key", default=None,
+                      help='[非推奨] 旧 _CHAR_TAG_TEMPLATES 用キー。'
+                           '現在は work_dir/character.json から自動読込のため通常不要')
+    p_ex.add_argument("--quality-preset", default="current",
+                      choices=list(_QUALITY_PRESETS.keys()),
+                      help='quality prefix プリセット')
+    p_ex.add_argument("--neg-preset", default="current",
+                      choices=list(_NEGATIVE_PRESETS.keys()),
+                      help='negative prompt プリセット')
 
     p_st = sub.add_parser("status", help="抽出進捗 JSON")
     p_st.add_argument("work_dir")
@@ -228,7 +540,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.cmd == "extract":
-        return cmd_extract(work_dir, args.scene_id, args.limit)
+        return cmd_extract(
+            work_dir, args.scene_id, args.limit,
+            char_key=args.char_key,
+            quality_preset=args.quality_preset,
+            neg_preset=args.neg_preset,
+        )
     if args.cmd == "status":
         return cmd_status(work_dir)
     return 1

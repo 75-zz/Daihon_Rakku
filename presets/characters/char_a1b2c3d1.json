@@ -54,14 +54,27 @@
     },
     "avoid_patterns": ["子供っぽい言動", "激しく怒鳴る", "暗い独白が続く", "内向的で人見知り", "不器用で要領が悪い"],
     "physical_description": {
-        "hair": "オレンジ色のショートヘア、片目にかかる前髪",
+        "hair": "明るいピンクのショートヘア、片目にかかる長めのサイドロック",
         "eyes": "青い瞳",
         "body": "五つ子の中でスレンダー寄り",
-        "chest": "普通",
-        "clothing": "ピアス、大人っぽい私服、女優志望らしいおしゃれな服装",
-        "notable": ["イヤリング", "片目にかかる前髪が色っぽい"]
+        "chest": "大きめ",
+        "clothing": "大人っぽい私服、女優志望らしいおしゃれな服装",
+        "notable": ["右側に長く垂れる非対称サイドロック", "片目にかかる前髪が色っぽい"]
     },
-    "danbooru_tags": ["nakano_ichika", "go-toubun_no_hanayome", "1girl", "short_hair", "orange_hair", "blue_eyes", "hair_over_one_eye", "earrings", "medium_breasts", "smile", "solo", "looking_at_viewer", "blush"],
+    "danbooru_tags": [
+        "nakano_ichika", "go-toubun_no_hanayome",
+        "1girl", "short_hair", "pink_hair", "bangs",
+        "hair_between_eyes", "asymmetrical_sidelocks",
+        "blue_eyes", "large_breasts"
+    ],
+    "danbooru_tags_negative": [
+        "long_hair", "orange_hair", "brown_hair", "blonde_hair"
+    ],
+    "danbooru_tags_meta": {
+        "weight": 1.2,
+        "source": "https://danbooru.donmai.us/wiki_pages/nakano_ichika",
+        "verified_date": "2026-05-12"
+    },
     "originality_guard": {
         "avoid_canonical_lines": true,
         "avoid_known_catchphrases": true,

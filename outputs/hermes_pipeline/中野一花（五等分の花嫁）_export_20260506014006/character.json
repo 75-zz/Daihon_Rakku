@@ -1,0 +1,96 @@
+{
+  "character_name": "中野一花",
+  "work_title": "五等分の花嫁",
+  "char_id": "char_a1b2c3d1",
+  "danbooru_tags": [
+    "nakano_ichika",
+    "go-toubun_no_hanayome",
+    "1girl",
+    "short_hair",
+    "pink_hair",
+    "bangs",
+    "hair_between_eyes",
+    "asymmetrical_sidelocks",
+    "blue_eyes",
+    "large_breasts"
+  ],
+  "danbooru_tags_negative": [
+    "long_hair",
+    "orange_hair",
+    "brown_hair",
+    "blonde_hair"
+  ],
+  "appearance_sentence_en": "The girl is a young woman with short pink hair, blunt bangs, hair between her eyes, asymmetrical sidelocks framing her face, blue eyes, and large breasts.",
+  "heroine_outfit": {
+    "base_description": "白ブラウス + 緑プリーツスカート + 黒パンスト",
+    "base_description_en": "white blouse and green pleated skirt with black pantyhose",
+    "attribution_sentence_en": "The girl is wearing a white blouse, a green pleated skirt, and black pantyhose.",
+    "outfit_tags": [
+      "white_shirt",
+      "green_skirt",
+      "pleated_skirt",
+      "black_pantyhose"
+    ],
+    "negative_outfit_tags": [
+      "kimono",
+      "furisode",
+      "suit",
+      "tuxedo",
+      "off_shoulder",
+      "white_sweater",
+      "camisole",
+      "denim_skirt",
+      "swimsuit",
+      "bikini",
+      "white_socks",
+      "loose_socks",
+      "no_pantyhose",
+      "thighhighs",
+      "black_thighhighs",
+      "bare_legs"
+    ]
+  },
+  "male_companion": {
+    "base_description": "筋肉質の褐色肌の青年・短髪 + 黒Tシャツ + 黒パンツ",
+    "base_description_en": "muscular tanned young man with short hair, wearing black t-shirt and black pants",
+    "attribution_sentence_en": "Beside her is a faceless muscular tanned young man with short black hair, wearing a black t-shirt with short sleeves and black pants; his face is never shown, only his body and limbs visible.",
+    "appearance_tags": [
+      "muscular_male",
+      "young_man",
+      "short_hair",
+      "black_hair",
+      "dark-skinned_male",
+      "tanned",
+      "toned_body"
+    ],
+    "outfit_tags": [
+      "black_shirt",
+      "t-shirt",
+      "short_sleeves",
+      "black_pants",
+      "muscular"
+    ],
+    "negative_outfit_tags": [
+      "suit",
+      "tuxedo",
+      "jacket",
+      "hoodie",
+      "uniform",
+      "dress_shirt",
+      "long_sleeves",
+      "blazer",
+      "necktie",
+      "loafers",
+      "school_uniform"
+    ]
+  },
+  "anima_meta": {
+    "weight": 1.2,
+    "character_tag": "nakano_ichika",
+    "series_tag": "go-toubun_no_hanayome",
+    "with_faceless_male": true,
+    "source": "https://danbooru.donmai.us/wiki_pages/nakano_ichika",
+    "verified_date": "2026-05-12",
+    "preset_source": "presets/characters/char_a1b2c3d1.json"
+  }
+}
