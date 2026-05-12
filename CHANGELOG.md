@@ -1,5 +1,138 @@
 # Changelog
 
+## [9.10.0] - 2026-05-12
+
+### Added (hermes-anima 画像生成パイプライン v9 確立 / 合言葉「エルメスアニマv9」)
+
+Daihon Rakku → Grok web → ComfyUI/AnimaYume v0.4 のキャラ一貫性パイプラインを構築。
+LLM (Grok / Claude) のキャラタグ・衣装ハルシネーションを `character.json` (Daihon Rakku 由来) と
+自然言語帰属で構造的に遮断する。デスクトップ版本体は凍結のまま、`hermes_pipeline/` 新規ディレクトリ
+配下で完結。
+
+#### Phase 3 SKILL.md 完成 (`hermes_pipeline/hermes_skill/daihon-comfyui-anima/`)
+- Hermes Agent 用 skill v0.2.0 完成 (Procedure / Pitfalls 7パターン / Verification / バージョン履歴)
+- 25 variants (V01-V25) を `compare_models_v2.py` で運用
+- AnimaYume v0.4 + masterpieces v5 LoRA (strength 0.5) + er_sde + 30steps + CFG4.0 + 1024×1024 (V08) を本番標準採用
+- `--seeds 42,7,123` で多 seed 並列生成 → シーン毎の構図ガチャ運用フロー成立
+- `--output-subdir comparison_v9` で比較画像の世代分離
+
+#### character.json 駆動アーキテクチャ
+- `outputs/hermes_pipeline/<work>/character.json` を新規スキーマで設計
+  - `danbooru_tags` / `danbooru_tags_negative` (キャラ識別)
+  - `appearance_sentence_en` (外見自然言語)
+  - `heroine_outfit.{outfit_tags, negative_outfit_tags, attribution_sentence_en}`
+  - `male_companion.{appearance_tags, outfit_tags, negative_outfit_tags, attribution_sentence_en}`
+  - `anima_meta.{weight, character_tag, series_tag, with_faceless_male}`
+- Daihon Rakku `config.json` の男性キャラ設定 (`male_preset` / `male_hair_style` / `male_hair_color` /
+  `male_skin_color`) を character.json `male_companion.appearance_tags` に派生 (現状手動、Phase 2-a で自動化予定)
+
+#### prepare_prompt.py 大改修 (LLM ハルシネーション遮断パイプライン)
+- `load_character_json` / `build_char_block_from_json` で character.json 駆動の Prompt 構築
+- `_CLOTHING_STATE_BLOCK_RE` (IGNORECASE + DOTALL): Grok 本体の `Clothing state:` ブロックを
+  次セクション見出しまで機械除去 (大文字違い `Clothing State:` 対応 / 単行・複行両対応)
+- `_QUOTED_INLINE_RE` / `_QUOTED_INLINE_JP_RE`: 本文中の引用符ペア (`"fading…"` `"It's okay…"` 等) を
+  200文字以下対象に除去 (画面内テキスト化防止)
+- `strip_grok_char_tags`: Grok 冒頭のキャラタグ行 (`nakano_ichika, go-toubun_no_hanayome,`) を削除し、
+  強制 char_block との重複を防止
+- AnimaYume 最適化 quality prefix (`masterpiece, best quality, very aesthetic, score_9, score_8_up, ...`)
+- 27 タグ ネガティブ (`text, speech_bubble, dialogue, kanji, hiragana, katakana, manga_panel, ...`)
+- `--char-key` / `--quality-preset {current|animayume_min}` / `--neg-preset {current|animayume_min}` CLI 追加
+
+#### キャラ別タグ+自然言語のペア配置 (Qwen3 TE 最適化)
+並列タグだけでは `muscular` や `black_shirt` がキャラ間で混線する事故が起きるため、各キャラの
+タグ群直後に自然言語帰属文を配置:
+```
+1girl, short_hair, pink_hair, ..., large_breasts,
+white_shirt, green_skirt, pleated_skirt, black_pantyhose,
+The girl is a young woman with short pink hair, ... and large breasts.
+The girl is wearing a white blouse, a green pleated skirt, and black pantyhose.
+1boy, faceless_male, muscular_male, young_man, short_hair, black_hair, dark-skinned_male, ...,
+Beside her is a faceless muscular tanned young man with short black hair, wearing ...
+```
+
+#### grok_prompt_builder.py に 6 ルール追加
+1. **キャラタグ生成禁止**: `short_hair, pink_hair` 等のキャラ視覚特徴タグの出力を Grok に禁止
+   (character.json で確定済みのため)
+2. **衣装ロック**: アイテム種類変更禁止 (school_blouse → 白ブラウス変換禁止) / 状態変化は許可
+3. **Clothing state セクション省略禁止**: scene 3-5 で省略 → AI が文脈推論で誤転用する事故対策
+4. **構図ガイダンス**: `tight close-up` 多用回避、`medium close-up / medium shot / cowboy shot` 推奨
+5. **ライティング明示必須**: 毎シーン `[Composition]` 内で明記
+6. **エロ描写期待リスト**: ヒロイン (パンティずらし/半脱ぎ/胸チラ/ストッキング破れ等) +
+   男性 (勃起描写/体液描写) を**禁止リストではなく期待リスト**として明示
+
+#### Grok 本体英文の自動クリーニング
+- Dialogue / Sound effects セクション以降切り捨て (既存)
+- 行全体型引用符行削除 (既存)
+- 本文中引用符ペア除去 (新規) ← scene_004 の「言葉が生成された」問題への直接対策
+
+### Changed
+
+#### `presets/characters/char_a1b2c3d1.json` (中野一花プリセット正規化)
+Danbooru wiki (`https://danbooru.donmai.us/wiki_pages/nakano_ichika`) 公式準拠に修正:
+- `danbooru_tags`:
+  - `orange_hair` → **`pink_hair`** (公式準拠)
+  - 追加: `bangs`, `hair_between_eyes`, `asymmetrical_sidelocks`
+  - `medium_breasts` → **`large_breasts`** (公式準拠)
+  - `hair_over_one_eye`, `earrings`, `smile`, `looking_at_viewer` 削除 (シーン固有のため preset に持たない)
+- `physical_description.hair`: 「オレンジ色のショートヘア」→ 「明るいピンクのショートヘア、片目にかかる長めのサイドロック」
+- `physical_description.chest`: 「普通」→ 「大きめ」
+- `physical_description.clothing` / `notable` から「ピアス、イヤリング」削除 (原作非設定)
+- 新規フィールド: `danbooru_tags_negative` (long_hair / orange_hair / brown_hair / blonde_hair),
+  `danbooru_tags_meta` (weight 1.2 / source / verified_date)
+
+**注意**: 本変更は main ブランチには未マージ。デスクトップ版で main を使う限り影響なし。
+`feature/hermes-anima-pipeline` ブランチ checkout 時のみ Claude プロンプトの一花外見記述が変わる
+(品質改善方向)。
+
+### Validated
+
+`comparison_v9` で V08 × scene 1-5 × seeds 42/7/123 = 15枚を生成し、目視確認で:
+- ✅ キャラ識別: pink_hair / short_hair / asymmetrical_sidelocks / blue_eyes 全シーン安定
+- ✅ ヒロイン衣装: white_shirt + green_skirt + black_pantyhose 全シーン統一
+- ✅ 男性キャラ: 顔なし / muscular / short_hair + black_hair / dark-skinned 全シーン統一
+- ✅ 衣装 (男性): black t-shirt + black_pants 全シーン統一
+- ✅ 画面内テキスト混入なし
+- ✅ 絵柄ブレなし
+
+### Tech Stack
+
+- ComfyUI v0.20.1 / Python 3.14 venv / PyTorch 2.11+cu130
+- WSL2 Ubuntu / RTX 4070 Ti SUPER 16GB (`--reserve-vram 2.5` 必須)
+- AnimaYume v0.4 (Diffusion Transformer / Qwen3-0.6B TE / Qwen image VAE)
+
+### Files
+
+- 追加: `hermes_pipeline/hermes_skill/daihon-comfyui-anima/{SKILL.md, scripts/compare_models_v2.py, scripts/_wait_comfy.sh, scripts/_run_scene_batch.sh}`
+- 改修: `hermes_pipeline/grok_prompt_builder.py`, `hermes_pipeline/hermes_skill/daihon-comfyui-anima/scripts/prepare_prompt.py`
+- 改修: `presets/characters/char_a1b2c3d1.json`
+- 追加: `outputs/hermes_pipeline/<work>/character.json` (中野一花)
+- 追加: `outputs/design/` に 12 ファイル (runbook / research / design / impl)
+
+### Pitfalls 解消ログ
+
+- `dpmpp_2m_sde_gpu` 非推奨確定 (V14 で 402KB 破綻画像) → `er_sde` / `euler_ancestral` のみ採用
+- `comfy launch --background` は Python 3.14 で壊れている (asyncio 仕様変更) → `main.py` 直接起動
+- `black_t-shirt` は Danbooru 不存在 → `black_shirt, t-shirt, short_sleeves` 組合せで T シャツ感
+- `white_blouse` は Danbooru で `white_shirt` のエイリアス
+- `green_pleated_skirt` は Danbooru 不存在 → `green_skirt, pleated_skirt` 併記
+- リサーチエージェントすら一花を `long_hair, light_brown_hair, red_ribbon` と誤回答 → Danbooru wiki
+  直接 WebFetch を必須化 (LLM 経由のキャラタグは信頼しない)
+- 16GB GPU で `--reserve-vram` 無しだと scene_003 以降 VRAM 飽和ハング → 2.5GB 確保必須
+
+### Next (未実装)
+
+- Phase 2-a: `gui.py` の `_do_export` 改修 → `character_<timestamp>.json` を ZIP 自動添付
+- Phase 2-b: `parser.py` で `character.json` 読込 → `prepare_prompt.py` 連携
+- Phase 2-c: 既存 preset 全件 `danbooru_tags` 検証スクリプト (`scripts/validate_anima_tags.py`)
+- Phase 4: 他キャラ (二乃 / 三玖 / 四葉 / 五月) の preset 検証 + character.json テンプレ作成
+
+### Commit
+
+`f246a37` on `feature/hermes-anima-pipeline` — push 済 (origin)
+PR URL: https://github.com/75-zz/Daihon_Rakku/pull/new/feature/hermes-anima-pipeline
+
+---
+
 ## [9.9.0] - 2026-03-05
 
 ### Added (キャラ口調大幅拡充: dojindb月間ランキング分析ベース)
