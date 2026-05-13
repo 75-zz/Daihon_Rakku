@@ -203,7 +203,7 @@ def load_character_json(work_dir: Path) -> dict | None:
         return None
 
 
-def build_char_block_from_json(character: dict) -> str:
+def build_char_block_from_json(character: dict, progression: dict | None = None) -> str:
     """character.json から AnimaYume Qwen3 TE 最適化の char_block を構築。
 
     AnimaYume の Qwen3 TE は自然言語に強い。タグ並列だけだとキャラ間の属性
@@ -229,11 +229,12 @@ def build_char_block_from_json(character: dict) -> str:
     tags: list[str] = list(character.get("danbooru_tags") or [])
     if not tags:
         return ""
+    progression = progression or {}
     meta = character.get("anima_meta") or {}
     char_tag = meta.get("character_tag") or ""
     series_tag = meta.get("series_tag") or ""
     weight = meta.get("weight") or 1.0
-    with_male = bool(meta.get("with_faceless_male"))
+    with_male = bool(meta.get("with_faceless_male")) and not progression.get("male_absent")
 
     # 1) 識別タグ (キャラ名 + シリーズ)
     head_parts: list[str] = []
@@ -251,17 +252,37 @@ def build_char_block_from_json(character: dict) -> str:
     line_female_tags = ", ".join(visual_features) + "," if visual_features else ""
 
     # 3) 女性衣装タグ
+    # progression.effective_stage で段階別の制御 (0=dressed, 4=nude, 1-3=partial)。
+    # 段階 4: base outfit を完全裸タグに置換。
+    # 段階 1-3: base outfit を維持しつつ、段階別の追加タグ (off_shoulder, panties_aside 等) を付与。
+    # 段階 0: base outfit のみ。
+    # effective_stage は bridge_stage_jump で前シーンとのジャンプを抑制した値が入る。
     heroine_outfit = character.get("heroine_outfit") or {}
     heroine_outfit_tags = heroine_outfit.get("outfit_tags") or []
-    line_female_outfit = (
-        ", ".join(heroine_outfit_tags) + "," if heroine_outfit_tags else ""
-    )
+    effective_stage = int(progression.get("effective_stage", _STAGE_DRESSED))
+    add_tags = _STAGE_ADD_TAGS.get(effective_stage, [])
+    if effective_stage == _STAGE_NUDE:
+        line_female_outfit = _HEROINE_NUDE_TAGS + ","
+    else:
+        combined = list(heroine_outfit_tags) + list(add_tags)
+        line_female_outfit = ", ".join(combined) + "," if combined else ""
 
     # 4) 女性外見の自然言語 (任意)
     appearance_sentence = (character.get("appearance_sentence_en") or "").strip()
 
     # 5) 女性衣装の自然言語 (帰属明示で muscular 等の転移防止)
-    heroine_attrib = (heroine_outfit.get("attribution_sentence_en") or "").strip()
+    # 段階別の脱衣状態フォールバックを base 帰属文に追記。
+    base_attrib = (heroine_outfit.get("attribution_sentence_en") or "").strip()
+    if effective_stage == _STAGE_NUDE:
+        heroine_attrib = _HEROINE_NUDE_NL
+    elif effective_stage in (_STAGE_BLOUSE_OPEN, _STAGE_TOPLESS_PARTIAL, _STAGE_PANTIES_ASIDE):
+        stage_nl = _STAGE_ADD_NL.get(effective_stage, "")
+        if base_attrib and stage_nl:
+            heroine_attrib = base_attrib + " " + stage_nl
+        else:
+            heroine_attrib = base_attrib or stage_nl
+    else:
+        heroine_attrib = base_attrib
 
     parts = [line_id, line_female_tags, line_female_outfit]
     if appearance_sentence:
@@ -277,10 +298,24 @@ def build_char_block_from_json(character: dict) -> str:
         male_companion = character.get("male_companion") or {}
         male_appearance = male_companion.get("appearance_tags") or []
         male_outfit_tags = male_companion.get("outfit_tags") or []
+        # progression.male_nude の場合は male outfit_tags を完全に外す。
+        # それ以外は base outfit を保持し、進行タグ (pants_pull / shirt_lift / penis) を追記する。
+        if progression.get("male_nude"):
+            male_outfit_tags = []
+        progression_tags: list[str] = []
+        if progression.get("male_pants_down"):
+            progression_tags.append(_MALE_PANTS_DOWN_TAG)
+        if progression.get("male_shirt_up"):
+            progression_tags.append(_MALE_SHIRT_UP_TAG)
+        if progression.get("male_penis_exposed"):
+            progression_tags.append(_MALE_PENIS_TAG)
+        if progression.get("male_nude"):
+            progression_tags.append(_MALE_NUDE_TAGS)
         male_tag_parts = (
             ["1boy", "faceless_male"]
             + list(male_appearance)
             + list(male_outfit_tags)
+            + progression_tags
         )
         parts.append(", ".join(male_tag_parts) + ",")
         male_attrib = (male_companion.get("attribution_sentence_en") or "").strip()
@@ -348,11 +383,212 @@ def strip_clothing_state_blocks(body: str) -> str:
     return cleaned.strip()
 
 
+# 衣装進行の意味判定キーワード (英語版 Clothing state ブロック内をスキャン)
+# Grok 出力では heroine → male の順に Clothing state ブロックが現れる前提。
+_HEROINE_NUDE_KEYWORDS = (
+    "completely nude",
+    "fully nude",
+    "completely naked",
+    "fully naked",
+    "stark naked",
+    "all clothing has been removed",
+    "all clothing removed",
+    "all clothes removed",
+    "all clothes have been removed",
+    "no clothing on her body",
+    "nothing covering her",
+    "nothing covering her body",
+    "naked body",
+)
+_HEROINE_PARTIAL_KEYWORDS = (
+    "lifted up", "pushed up", "rolled up", "pulled aside", "pulled down",
+    "unbuttoned", "open", "rolled to", "around her waist", "around her thighs",
+    "around her ankles", "panties down", "panties pulled",
+)
+_MALE_NUDE_KEYWORDS = (
+    "completely nude", "fully nude", "completely naked", "fully naked",
+)
+_MALE_PANTS_DOWN_KEYWORDS = (
+    "pants pulled down", "pants unbuckled", "pants down",
+    "trousers down", "trousers pulled",
+    "around his thighs", "around mid-thigh", "to mid-thigh", "to his thighs",
+    "to his ankles", "around his ankles",
+)
+_MALE_SHIRT_UP_KEYWORDS = (
+    "shirt rolled up", "shirt lifted", "shirt pulled up", "shirt rolled to",
+    "t-shirt rolled up", "t-shirt lifted", "sleeves rolled",
+)
+_MALE_PENIS_EXPOSED_KEYWORDS = (
+    "penis fully exposed", "penis exposed", "erect penis", "cock exposed",
+    "erection fully exposed", "erection exposed", "exposed cock",
+)
+_MALE_ABSENT_KEYWORDS = (
+    "absent", "no longer present", "has already left", "has left",
+    "not present", "n/a", "left the scene",
+)
+
+
+def detect_clothing_progression(body: str) -> dict:
+    """Grok 英文本体の Clothing state ブロックから衣装進行フラグを抽出。
+
+    Returns dict with keys:
+      heroine_nude (bool), heroine_partial (bool),
+      male_nude (bool), male_pants_down (bool),
+      male_shirt_up (bool), male_penis_exposed (bool),
+      male_absent (bool)
+    Grok 出力では heroine → male の順に Clothing state が現れる前提。
+    """
+    result = {
+        "heroine_nude": False,
+        "heroine_partial": False,
+        "male_nude": False,
+        "male_pants_down": False,
+        "male_shirt_up": False,
+        "male_penis_exposed": False,
+        "male_absent": False,
+    }
+    if not body:
+        return result
+    matches = list(_CLOTHING_STATE_BLOCK_RE.finditer(body))
+    if matches:
+        heroine_text = matches[0].group(0).lower()
+        if any(kw in heroine_text for kw in _HEROINE_NUDE_KEYWORDS):
+            result["heroine_nude"] = True
+        elif any(kw in heroine_text for kw in _HEROINE_PARTIAL_KEYWORDS):
+            result["heroine_partial"] = True
+    if len(matches) >= 2:
+        male_text = matches[1].group(0).lower()
+        if any(kw in male_text for kw in _MALE_ABSENT_KEYWORDS):
+            result["male_absent"] = True
+        else:
+            if any(kw in male_text for kw in _MALE_NUDE_KEYWORDS):
+                result["male_nude"] = True
+            if any(kw in male_text for kw in _MALE_PANTS_DOWN_KEYWORDS):
+                result["male_pants_down"] = True
+            if any(kw in male_text for kw in _MALE_SHIRT_UP_KEYWORDS):
+                result["male_shirt_up"] = True
+            if any(kw in male_text for kw in _MALE_PENIS_EXPOSED_KEYWORDS):
+                result["male_penis_exposed"] = True
+    return result
+
+
+# 衣装進行に応じて挿入する Danbooru タグと自然言語フォールバック
+_HEROINE_NUDE_TAGS = "completely_nude, nude, no_clothing, breasts, nipples"
+_HEROINE_NUDE_NL = (
+    "The girl is completely nude, no clothing on her body, "
+    "her bare skin and breasts fully exposed."
+)
+_MALE_PANTS_DOWN_TAG = "pants_pull"
+_MALE_SHIRT_UP_TAG = "shirt_lift"
+_MALE_PENIS_TAG = "penis, erection"
+_MALE_NUDE_TAGS = "nude_male, completely_nude"
+
+
+# 衣装段階 0-4 と段階別の追加タグ・自然言語
+# CG集の脱衣演出（30-50代男性向け抜き観点）として「徐々に脱がす」連続性を担保するための
+# 中間段階タグ群。base outfit_tags は段階 0-3 では維持し、段階 4 のみで置換する。
+_STAGE_DRESSED = 0
+_STAGE_BLOUSE_OPEN = 1
+_STAGE_TOPLESS_PARTIAL = 2
+_STAGE_PANTIES_ASIDE = 3
+_STAGE_NUDE = 4
+
+_STAGE_NAMES = {
+    0: "dressed",
+    1: "blouse_open",
+    2: "topless_partial",
+    3: "panties_aside",
+    4: "completely_nude",
+}
+
+# 各段階で追加する Danbooru タグ群（段階 4 は別経路で完全置換のためここでは空）
+_STAGE_ADD_TAGS: dict[int, list[str]] = {
+    0: [],
+    1: ["unbuttoned_shirt", "open_clothes", "open_shirt"],
+    2: ["off_shoulder", "breasts_out", "topless"],
+    3: ["skirt_lift", "panties_aside", "no_panties", "pantyhose_pull"],
+    4: [],  # _HEROINE_NUDE_TAGS で置換するため
+}
+
+# 各段階の自然言語フォールバック (heroine_attrib に追記)
+_STAGE_ADD_NL: dict[int, str] = {
+    0: "",
+    1: "Her blouse is unbuttoned and open, her chest visible underneath.",
+    2: "Her blouse is slipped off her shoulders and her breasts are exposed.",
+    3: "Her skirt is lifted around her waist and her panties are pulled aside, her wet pussy exposed.",
+    4: "",  # _HEROINE_NUDE_NL で置換するため
+}
+
+# Clothing state テキストから段階を推定するキーワード（高段階優先で判定）
+_STAGE4_KEYWORDS = _HEROINE_NUDE_KEYWORDS  # 既存定義を流用 (nude / removed all 系)
+_STAGE3_KEYWORDS = (
+    "panties pulled aside", "panties aside", "panties down",
+    "panties around her thighs", "panties around her ankles",
+    "panties pulled to", "no panties", "panties removed",
+    "skirt around her waist", "skirt around the waist",
+    "skirt hiked up", "skirt lifted", "skirt pulled up",
+    "pantyhose pulled down", "pantyhose around",
+)
+_STAGE2_KEYWORDS = (
+    "breasts exposed", "breast exposed", "topless",
+    "no bra", "bra removed", "bra slipped off",
+    "blouse off her shoulders", "blouse off shoulders",
+    "blouse pushed off",
+    "shirt off her shoulders", "shirt off shoulders",
+    "off-shoulder", "off the shoulder",
+    "shoulders bare",
+)
+_STAGE1_KEYWORDS = (
+    "unbuttoned", "buttons undone", "buttons open",
+    "blouse open", "shirt open", "open blouse", "open shirt",
+    "bra visible", "bra strap",
+    "spread wide open",
+)
+
+
+def estimate_heroine_stage(body: str) -> int:
+    """Clothing state ブロック (heroine 側) から脱衣段階 0-4 を推定。
+
+    高段階優先で判定し、いずれにもマッチしなければ 0 (dressed) を返す。
+    detect_clothing_progression() と整合性を取りつつ、partial 内部の解像度を上げる。
+    """
+    if not body:
+        return _STAGE_DRESSED
+    matches = list(_CLOTHING_STATE_BLOCK_RE.finditer(body))
+    if not matches:
+        return _STAGE_DRESSED
+    heroine_text = matches[0].group(0).lower()
+    if any(kw in heroine_text for kw in _STAGE4_KEYWORDS):
+        return _STAGE_NUDE
+    if any(kw in heroine_text for kw in _STAGE3_KEYWORDS):
+        return _STAGE_PANTIES_ASIDE
+    if any(kw in heroine_text for kw in _STAGE2_KEYWORDS):
+        return _STAGE_TOPLESS_PARTIAL
+    if any(kw in heroine_text for kw in _STAGE1_KEYWORDS):
+        return _STAGE_BLOUSE_OPEN
+    return _STAGE_DRESSED
+
+
+def bridge_stage_jump(prev_stage: int, current_stage: int) -> int:
+    """前シーン段階と現シーン段階を比較し、ジャンプ (>1 段階) を 1 段階に抑制。
+
+    例: prev=1 (blouse_open) → current=4 (nude) のジャンプを 2 (topless_partial) に抑える。
+    後退は無視 (CG集の脱衣は単調増加が自然)。Grok が Clothing state を書き忘れた
+    シーン (raw=dressed) でも prev_stage を維持して連続性を担保する。
+    """
+    if current_stage <= prev_stage:
+        return prev_stage
+    if current_stage - prev_stage <= 1:
+        return current_stage
+    return prev_stage + 1
+
+
 def build_positive_prompt(
     english_body: str,
     char_key: str | None = None,
     quality_preset: str = "current",
     character: dict | None = None,
+    progression: dict | None = None,
 ) -> str:
     """Quality prefix + (任意) キャラクター固定タグブロック + Grok 本体 を連結。
 
@@ -367,7 +603,7 @@ def build_positive_prompt(
     char_block = ""
     body = english_body
     if character:
-        char_block = build_char_block_from_json(character)
+        char_block = build_char_block_from_json(character, progression=progression)
         meta = character.get("anima_meta") or {}
         body = strip_grok_char_tags(
             body,
@@ -411,17 +647,38 @@ def process_scene(
     quality_preset: str = "current",
     neg_preset: str = "current",
     character: dict | None = None,
+    prev_stage: int = _STAGE_DRESSED,
 ) -> dict:
     raw = response_path.read_text(encoding="utf-8")
     english = extract_english(raw)
     if english is None:
         return {"scene_id": scene_id, "ok": False, "error": "english_section_not_found"}
-    # character.json が提供されている場合、Grok の自然言語 Clothing state ブロックを除去。
-    # danbooru outfit_tags で衣装を制御するため、Grok 記述との矛盾を排除する。
+    # character.json が提供されている場合、Clothing state ブロックから衣装進行フラグを
+    # 抽出してから機械除去する。Tier 1: 衣装段階 0-4 をテキスト推定し、前シーン段階との
+    # ジャンプを bridge_stage_jump で 1 段階以内に抑制する。effective_stage は
+    # build_char_block_from_json に伝播し、段階別タグ・自然言語フォールバックを適用。
+    progression: dict | None = None
     if character:
+        progression = detect_clothing_progression(english)
+        # 段階推定とジャンプ抑制
+        raw_stage = estimate_heroine_stage(english)
+        eff_stage = bridge_stage_jump(prev_stage, raw_stage)
+        progression["raw_stage"] = raw_stage
+        progression["raw_stage_name"] = _STAGE_NAMES.get(raw_stage, "")
+        progression["prev_stage"] = prev_stage
+        progression["effective_stage"] = eff_stage
+        progression["effective_stage_name"] = _STAGE_NAMES.get(eff_stage, "")
+        progression["bridged"] = (raw_stage != eff_stage)
+        # heroine_nude / heroine_partial を effective_stage と整合させる
+        # (旧ロジックの build_char_block 内 path を effective_stage 優先に統一)
+        progression["heroine_nude"] = (eff_stage == _STAGE_NUDE)
+        progression["heroine_partial"] = (
+            eff_stage in (_STAGE_BLOUSE_OPEN, _STAGE_TOPLESS_PARTIAL, _STAGE_PANTIES_ASIDE)
+        )
         english = strip_clothing_state_blocks(english)
     positive = build_positive_prompt(
-        english, char_key=char_key, quality_preset=quality_preset, character=character,
+        english, char_key=char_key, quality_preset=quality_preset,
+        character=character, progression=progression,
     )
     negative = build_negative_prompt(neg_preset, character=character)
     payload = {
@@ -433,6 +690,7 @@ def process_scene(
         "quality_preset": quality_preset,
         "neg_preset": neg_preset,
         "character_source": (character or {}).get("char_id") or "none",
+        "progression": progression or {},
     }
     out = output_dir / f"scene_{scene_id:03d}_prompt.json"
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -442,6 +700,7 @@ def process_scene(
         "output": str(out),
         "positive_chars": len(positive),
         "english_body_chars": len(english),
+        "progression": progression or {},
     }
 
 
@@ -464,19 +723,41 @@ def cmd_extract(
         if limit is not None and limit > 0:
             targets = targets[:limit]
 
+    # 衣装段階のシーン間履歴 (Tier 1: ジャンプ補間)。
+    # 各シーンの effective_stage を記録し、次シーンの bridge_stage_jump に渡す。
+    # 単発シーン処理 (--scene-id 指定) でも、それ以前の prompts/scene_NNN_prompt.json
+    # に保存済みの effective_stage を読んで「前シーン段階」として使用する。
+    prev_stage: int = _STAGE_DRESSED
+    if scene_id is not None and scene_id > 1:
+        prev_path = output_dir / f"scene_{scene_id - 1:03d}_prompt.json"
+        if prev_path.exists():
+            try:
+                prev_payload = json.loads(prev_path.read_text(encoding="utf-8"))
+                prev_stage = int(
+                    (prev_payload.get("progression") or {}).get("effective_stage", _STAGE_DRESSED)
+                )
+            except (OSError, json.JSONDecodeError, ValueError):
+                prev_stage = _STAGE_DRESSED
+
     results: list[dict] = []
     for sid in targets:
         rp = response_dir / f"scene_{sid:03d}_response.txt"
         if not rp.exists():
             results.append({"scene_id": sid, "ok": False, "error": "response_not_found"})
             continue
-        results.append(process_scene(
+        result = process_scene(
             rp, output_dir, sid,
             char_key=char_key,
             quality_preset=quality_preset,
             neg_preset=neg_preset,
             character=character,
-        ))
+            prev_stage=prev_stage,
+        )
+        results.append(result)
+        # 次シーンに渡す段階を更新 (success のみ)
+        if result.get("ok"):
+            prog = result.get("progression") or {}
+            prev_stage = int(prog.get("effective_stage", prev_stage))
 
     summary: dict = {
         "results": results,
