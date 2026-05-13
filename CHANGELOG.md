@@ -1,5 +1,121 @@
 # Changelog
 
+## [9.11.0] - 2026-05-13
+
+### Added (hermes-anima 衣装段階的脱衣演出 Tier 1+2 / 合言葉「エルメスアニマv9」継続)
+
+scene N (ブラウス開け) → scene N+1 (完全裸) の衣装ジャンプを根本抑制。
+30-50代男性向け CG集 (1P1枚) の「徐々に脱がす方が抜き効果が高い」経験則に基づき、
+**3層防御** (脚本層 / Grok 層 / 後処理層) のうち実害大の 2 層を実装。Tier 3 (Grok 直前埋め込み)
+は今回見送り。
+
+#### Tier 1: prepare_prompt.py 後処理層に段階追跡 + ジャンプ補間 (+293行)
+- **5段階定義** `_STAGE_NAMES`:
+  `0=dressed / 1=blouse_open / 2=topless_partial / 3=panties_aside / 4=completely_nude`
+- **`estimate_heroine_stage(body)`**: Clothing state ブロックを段階別キーワード辞書
+  (`_STAGE1_KEYWORDS` 〜 `_STAGE4_KEYWORDS`) で照合し 0-4 の段階を推定 (高段階優先)
+- **`bridge_stage_jump(prev, current)`**: 前シーンとのジャンプを ≤1 段階に抑制、後退は無視で
+  単調増加 (Grok が Clothing state を書き忘れたシーンでも prev を維持)
+- **シーン間履歴管理 (`cmd_extract`)**: `prev_stage` を保持して `process_scene` に伝播。
+  単発処理 (`--scene-id N`) 時は `anima_prompts/scene_N-1_prompt.json` から復元
+- **段階別 add_tags + NL** (`build_char_block_from_json`): `effective_stage` に応じて
+  `off_shoulder` / `panties_aside` / `skirt_lift` 等を base outfit に追記。段階 4 のみ
+  outfit 全置換で `_HEROINE_NUDE_TAGS`
+- **観測可能化**: `payload.progression` に `raw_stage` / `effective_stage` / `bridged` を記録
+- **既知の副作用**: Grok が衣装名として `off-shoulder sweater` と書いた場合も stage 2 に
+  false positive 検出されるが、実害小なので許容
+
+#### Tier 2: gui.py 脚本層に intensity 別脱衣上限を強制 (+30行)
+- **`_INTENSITY_CLOTHING_MAX`**: intensity 1-5 と段階の対応表 (Tier 1 の `_STAGE_NAMES` 整合)
+  - `1: fully_dressed (脱衣禁止)`
+  - `2: blouse_open (ボタン 1-2 個まで)`
+  - `3: topless_partial (ブラ見える / 片乳露出)`
+  - `4: panties_aside (パンツずらし / スカートまくり)`
+  - `5: completely_nude (挿入・絶頂シーンのみ)`
+- **`physical_state_section` 拡張** (`generate_scene_draft` L12349-L12380):
+  全シーンで「今シーンの脱衣上限」「前シーンから最大 1 段階」を LLM に強制
+- **scene 1 等対応**: `story_context_section` が空でも physical_state_section を単独注入
+- **効果**: 次回 Daihon Rakku 実行から「scene N+1 で急に裸」ジャンプを根本抑制
+  (既存生成済みシーンには影響なし)
+
+#### THEME_GUIDES dialogue_tone 詳細化 (20+ テーマ)
+事前 WIP として gui.py に蓄積されていた dialogue_tone 詳細化を本リリースに統合:
+- 形式: `■核心` / `■speech変化` (序盤→中盤→終盤) / `■thought` / `■NG` 構造
+- 対象: vanilla / office / maid / monster / harem / femdom / isekai / onsen 他
+- 効果: CG集の感情・口調設計を LLM に明示伝達
+
+#### 関連メモ更新
+- `feedback_anima_prompt_design.md` に **鉄則 9: 衣装の段階遷移は前シーンから最大 1 段階** 追加
+- `project_hermes_anima_pipeline_2026-05-12.md` に v9.11 Tier 1+2 セクション追加
+
+### Fixed
+
+- **gui.py 文字化け 16 箇所** (U+FFFD = REPLACEMENT CHARACTER) を文脈推定で復元:
+  - maid テーマ (L662-666): `丁寧��と` → `丁寧さと` / `繋��る` → `繋がる` /
+    `���これも` → `「これも` / `「��主人様」` → `「ご主人様」`
+  - monster テーマ (L710-713): `恐怖���嫌悪` → `恐怖と嫌悪` / `��speech変化` → `■speech変化` /
+    `覚えちゃ��…` → `覚えちゃう…`
+  - 原因: 過去の編集セッションでの encoding round-trip 事故 (本リリースで完全解消)
+  - 検出方法: `python -c "open(...); count('\\ufffd')"` でファイル全体スキャン推奨 (次回も)
+
+### Validated
+
+中野一花 (五等分の花嫁) 20 シーン作品で実測:
+
+| バージョン | scene 6 衣装状態 | 仕組み |
+|---|---|---|
+| comparison_v9 (旧) | 服着たまま (white_shirt + green_skirt + pantyhose) | character.json 固定で nude 検出未対応 |
+| comparison_v10 | 完全裸 (raw=nude のまま) | heroine_nude 検出のみ、ジャンプ抑制なし |
+| **comparison_v11 (新)** | **パンツずらし・スカートまくり上げ・パンスト下げ** | **Tier 1 段階追跡で raw=4 → effective=3 にbridge** |
+
+`progression` フラグ移行 (全 20 シーン):
+
+| シーン | v10 (補正なし) | v11 (Tier 1 適用) |
+|---|---|---|
+| 1-2 | dressed | blouse_open → topless_partial (escalation) |
+| 3-5 | (一部 partial) | topless_partial (plateau) |
+| 6 | nude | **panties_aside (BRIDGED!)** |
+| 7-19 | nude | completely_nude (本番) |
+| 20 | nude + male_absent | completely_nude + male_absent (事後) |
+
+### Files
+
+- 改修: `hermes_pipeline/hermes_skill/daihon-comfyui-anima/scripts/prepare_prompt.py` (+293/-12)
+- 改修: `gui.py` (+526/-168 — Tier 2 + THEME_GUIDES enrichment + 文字化け修正)
+- 追加: `outputs/hermes_pipeline/中野一花.../images/comparison_v10/` (45 枚 = ジャンプ verbatim)
+- 追加: `outputs/hermes_pipeline/中野一花.../images/comparison_v11/` (45 枚 = Tier 1 適用後)
+
+### Pitfalls 解消ログ
+
+- **`bridge_stage_jump` 後退許容のバグ**: 初版 `if current <= prev: return current` で
+  scene_003 (Grok の Clothing state 空) が dressed に後退 → チェーン崩壊。
+  `return prev` の単調増加に修正
+- **`if physical_state_section and story_context_section:` 結合条件**: scene 1 では
+  `story_context_section` が空 → 脱衣上限ガイドが注入されない。`if physical_state_section:`
+  単独条件に変更し、`story_context_section` 空時は physical_state_section 単独で構築
+- **gui.py 文字化け 16 箇所**: コミット前検査必須 (`grep '\\ufffd'` または Python スクリプト)。
+  本リリースで全件修復
+- **`off-shoulder sweater` 衣装誤検出**: 衣装そのものを stage 2 と誤判定。実害小だが
+  将来 Tier 3 で Grok 側に「衣装ロック」を強化する余地あり
+
+### Next (未実装)
+
+- **Tier 3 (Grok 直前埋め込み)**: `build_grok_input(scene, prev_scene=...)` で
+  scene_NNN.txt に「前シーンの衣装状態」を明示注入。Tier 1+2 でも漏れた場合の
+  追加防御 (今回見送り、品質が不足したら検討)
+- **検出辞書のチューニング**: scene_001 false positive (`off-shoulder sweater` →
+  stage 2) 等の精度向上
+- Phase 2-a: `gui.py` の `_do_export` 改修 → character.json 自動 ZIP 添付 (v9.10 から継続)
+- Phase 4: 他キャラ (二乃 / 三玖 / 四葉 / 五月) の preset 検証 + character.json テンプレ (v9.10 から継続)
+
+### Commit
+
+- `6db5b2f` Tier 1 (prepare_prompt.py) on `feature/hermes-anima-pipeline`
+- `50df63b` Tier 2 (gui.py) on `feature/hermes-anima-pipeline`
+- push 済 (origin) — PR URL: https://github.com/75-zz/Daihon_Rakku/pull/new/feature/hermes-anima-pipeline
+
+---
+
 ## [9.10.0] - 2026-05-12
 
 ### Added (hermes-anima 画像生成パイプライン v9 確立 / 合言葉「エルメスアニマv9」)
