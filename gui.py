@@ -551,7 +551,7 @@ THEME_GUIDES = {
             "お互いの同意",
             "楽しむ雰囲気"
         ],
-        "dialogue_tone": "自然、楽しそう、気持ちいい",
+        "dialogue_tone": "■核心: 「この人と繋がっている幸せ」を身体感覚と言葉の両方で表現する\n■speech変化: 序盤「恥ずかしい…見ないで…」→中盤「○○くん…好き…♡」→終盤「離さないで…ずっとこうしてて…♡♡」\n■特徴: 名前呼びが最大の武器。恥じらいの中で名前を呼ぶ瞬間が感情のピーク\n■男性: 優しく包む言葉。「大丈夫」「可愛い」「好きだよ」。命令口調・攻撃的言葉は禁止",
         "use_heart": True,
         "sd_tags": "consensual, enjoying, willing, happy_sex",
         "sd_expressions": "happy, enjoying, moaning, satisfied",
@@ -614,7 +614,11 @@ THEME_GUIDES = {
             "仕事中の緊張感",
             "オフィスでの密会"
         ],
-        "dialogue_tone": "敬語混じり、緊張、背徳感",
+        "dialogue_tone": """敬語混じりの緊張感、社会的立場との葛藤。
+■核心: 「社会人としての理性」vs「抗えない快感」。名刺交換した相手に犯される背徳感
+■speech変化: 「部長…やめてください…」→「だめ…会社で…」→「もう…どうでもいい…♡」（敬語が崩壊）
+■thought: 「昇進が…」「同僚に見られたら…」「こんな体になって…出社できない…」
+■NG: 最初からフランクな口調。上司部下の立場差が常に存在すること""",
         "use_heart": False,
         "sd_tags": "office, office_lady, suit, desk, workplace, secret",
         "sd_expressions": "nervous, secretive, professional_facade",
@@ -655,7 +659,11 @@ THEME_GUIDES = {
             "奉仕の延長",
             "命令への従順"
         ],
-        "dialogue_tone": "丁寧語、奉仕精神、従順",
+        "dialogue_tone": """丁寧さと奉仕精神、主従関係の甘さ。
+■核心: 「ご主人様のため」という名目で越えてはいけない一線を越える。奉仕=エロ行為が自然に繋がる
+■speech変化: 「ご主人様…お体をお拭きします…」→「ご主人様…そこは…♡」→「ご奉仕…させて…♡♡」
+■thought: 「これもメイドの務め…」「ご主人様に求められて…嬉しい…」「もうメイドじゃなくて…女として…」
+■NG: タメ口。どんなに堕ちても「ご主人様」の呼称は維持すること""",
         "use_heart": True,
         "sd_tags": "maid, maid_uniform, master, servant, obedient",
         "sd_expressions": "devoted, obedient, eager_to_please",
@@ -699,7 +707,12 @@ THEME_GUIDES = {
             "「人間じゃないのに...」という背徳感",
             "触手や異形の描写"
         ],
-        "dialogue_tone": "恐怖と驚き、徐々に快感に変わる声、人間離れした行為への反応",
+        "dialogue_tone": """恐怖と嫌悪から未知の快感への堕ち。人間相手では有り得ない刺激。
+■核心: 「人間じゃないのに感じてしまう」自分への嫌悪と、抗えない快感の矛盾
+■speech変化: 「いや…来ないで…」→「なに…これ…人間じゃ…」→「もう…やだ…とまんない…♡」
+■thought: 「こんなの…おかしい…」「触手が…中まで…」「人間に戻れない…体が覚えちゃう…」
+■特殊: 触手の粘液・吸盤の感覚など人間にない刺激を断片的に表現。「ぬるぬる…」「吸われ…て…」
+■NG: 怪物と普通に会話する。恐怖・異物感が序盤で消えること""",
         "use_heart": False,
         "sd_tags": "monster, tentacles, interspecies, creature, non-human",
         "sd_expressions": "scared, disgusted, surprised, overwhelmed, ahegao",
@@ -744,7 +757,11 @@ THEME_GUIDES = {
             "最終的に全員でのシーン",
             "各キャラの個性が際立つ"
         ],
-        "dialogue_tone": "各キャラが個性的に競い合う、嫉妬と甘え、協力と競争",
+        "dialogue_tone": """複数ヒロインの個性が際立つ競い合い。嫉妬と甘え、協力と競争。
+■核心: 「私の方が上手」「先にされた…悔しい」という競争心がエロさを加速させる
+■speech変化: 「ずるい…先にしてもらって…」→「負けない…私だって…♡」→「みんなで…一緒に…♡♡」
+■キャラ分け: 各ヒロインは口調・一人称・態度で明確に区別。同じセリフを言わせない
+■NG: 全員が同じ口調になる。「嫉妬→協力」の転換が唐突すぎること""",
         "use_heart": True,
         "sd_tags": "harem, multiple_girls, group, jealous, competitive",
         "sd_expressions": "jealous, competitive, eager, cooperative, blush",
@@ -763,7 +780,11 @@ THEME_GUIDES = {
             "騎乗位や言葉責め",
             "主導権は常に女性側"
         ],
-        "dialogue_tone": "上から目線、からかい、余裕のある態度、小悪魔的",
+        "dialogue_tone": """上から目線の余裕とからかい。女性がリードする攻めの口調。
+■核心: 「男を手玉に取る快感」。余裕を崩さないまま自分も気持ちよくなる
+■speech変化: 「ふふ…もう硬くなってる♡」→「可愛い…もっと鳴いて♡」→「あ…私も…やば…♡」（余裕崩壊）
+■thought: 「こんなに反応されたら…こっちまで…」「攻めてるはずなのに…」
+■NG: 最初から受け身。女性側が男性に完全支配されること""",
         "use_heart": True,
         "sd_tags": "femdom, dominatrix, female_domination, sitting_on_face, riding",
         "sd_expressions": "smirk, confident, teasing, dominant, looking_down",
@@ -800,7 +821,11 @@ THEME_GUIDES = {
             "魔法や特殊能力の存在",
             "「この世界では普通」という価値観の違い"
         ],
-        "dialogue_tone": "ファンタジー風の言い回し、異文化のギャップ、冒険と興奮",
+        "dialogue_tone": """ファンタジー風の言い回しと現代的エロの融合。異文化ギャップ。
+■核心: 「この世界の常識」「勇者の務め」等の異世界設定がエロ行為の口実になる
+■speech変化: 「これが…この世界の挨拶…？」→「こんな…魔法…知らない…」→「勇者失格…♡」
+■thought: 「元の世界に帰れない…」「レベルが上がるたびに…敏感になる…」
+■NG: 完全に現代日本語の口調。異世界設定が忘れられること""",
         "use_heart": True,
         "sd_tags": "fantasy, isekai, elf, magic, castle, medieval, adventurer, demon_girl",
         "sd_expressions": "curious, amazed, blushing, excited, fantasy_glow",
@@ -818,7 +843,11 @@ THEME_GUIDES = {
             "湯気や水音の演出",
             "のぼせて判断力低下"
         ],
-        "dialogue_tone": "リラックスした口調、恥じらい、湯に溶ける感覚",
+        "dialogue_tone": """リラックスした口調から徐々にとろける。湯気と裸体の開放感。
+■核心: 「裸で隣にいる」状況の自然さ＝エロへのハードルが低い。湯で火照った体が敏感に
+■speech変化: 「いいお湯…♡」→「だめ…ここ温泉だよ…」→「あつい…お湯のせい…じゃない…♡」
+■thought: 「湯気で見えない…よね…」「体…とろけそう…」
+■NG: 温泉の雰囲気が消えること。乾いた場所でのシーンと同じ口調""",
         "use_heart": True,
         "sd_tags": "onsen, hot_spring, bathing, wet, steam, towel, nude, water",
         "sd_expressions": "relaxed, flushed, steamy, embarrassed, dreamy",
@@ -836,7 +865,11 @@ THEME_GUIDES = {
             "「夢かと思った」反応",
             "声を殺す緊張感"
         ],
-        "dialogue_tone": "寝ぼけた声、小声、曖昧な反応、覚醒後の動揺",
+        "dialogue_tone": """寝ぼけた声と曖昧な反応。夢と現実の境界で感じてしまう。
+■核心: 「夢の中で感じている」のか「起きているのに止められない」のかの曖昧さがエロさの核
+■speech変化: 「ん…んん…」→「ゆめ…？…ちがう…」→「起きてる…のに…とまんない…♡」
+■thought: 「夢…だよね…」「体が勝手に…」「起きなきゃ…でも…きもちぃ…」
+■NG: 完全に覚醒した状態でのクリアな発声。寝ぼけ感が序盤で消えること""",
         "use_heart": False,
         "sd_tags": "sleeping, night_crawling, bed, nightgown, pajamas, dark_room, blanket",
         "sd_expressions": "sleeping, half_asleep, drowsy, confused, surprised",
@@ -854,7 +887,11 @@ THEME_GUIDES = {
             "交代で休みなく続く",
             "意識が飛びそうになる"
         ],
-        "dialogue_tone": "懇願、悲鳴、もう無理という限界、複数からの声",
+        "dialogue_tone": """複数相手への懇願と限界超え。休む暇がない連続攻めの絶望と快楽。
+■核心: 「一人じゃないのに」「休ませて」という懇願が無視される。数の暴力による堕ち
+■speech変化: 「やめて…何人いるの…」→「もう無理…休ませ…」→「何回目…かわかんない…♡♡」
+■thought: 「誰のか…わからない…」「もう…数えられない…」「体が…勝手にイっちゃう…」
+■NG: 1対1と変わらないセリフ。複数人である状況を活かさないこと""",
         "use_heart": False,
         "sd_tags": "gangbang, group_sex, multiple_boys, surrounded, double_penetration",
         "sd_expressions": "overwhelmed, crying, exhausted, ahegao, drooling",
@@ -872,7 +909,11 @@ THEME_GUIDES = {
             "医療器具の利用",
             "「治療のためだから」という口実"
         ],
-        "dialogue_tone": "専門用語混じり、冷静な口調と羞恥、命令的な指示",
+        "dialogue_tone": """医療用語と冷静な口調が羞恥を増幅。診察=エロ行為の口実。
+■核心: 「診察ですから」「治療のためです」という建前が崩壊していく過程
+■speech変化: 「先生…そこは…診察じゃ…」→「検査…まだ…続くんですか…」→「先生…もう…おかしく…♡」
+■thought: 「これ…本当に診察…？」「でも先生が言うなら…」「医者と患者なのに…」
+■NG: 最初から医療の体裁を無視する。白衣・聴診器等の医療小道具が忘れられること""",
         "use_heart": False,
         "sd_tags": "medical, doctor, nurse, hospital, examination, stethoscope, lab_coat",
         "sd_expressions": "nervous, embarrassed, clinical, vulnerable, exposed",
@@ -890,7 +931,11 @@ THEME_GUIDES = {
             "水に濡れた肌の描写",
             "更衣室やシャワールームへの移動"
         ],
-        "dialogue_tone": "明るく開放的、恥ずかしがり、夏の雰囲気",
+        "dialogue_tone": """明るく開放的な夏の雰囲気。水着の露出度と羞恥心のギャップ。
+■核心: 「水着だから見えてる」「日焼け止め塗って」等の自然な肌の接触がエロに繋がる
+■speech変化: 「日焼け止め…背中お願い…」→「そこ…水着の中は…」→「海の音で…聞こえないよね…♡」
+■thought: 「こんなところで…」「水着…ずれてる…」「波の音で…声…消えるかな…」
+■NG: 夏・海・プールの雰囲気が消えること""",
         "use_heart": True,
         "sd_tags": "swimsuit, bikini, pool, beach, wet, sunlight, summer, ocean",
         "sd_expressions": "cheerful, embarrassed, wet, flushed, playful",
@@ -908,7 +953,11 @@ THEME_GUIDES = {
             "体育倉庫/更衣室/部室",
             "先輩後輩の上下関係"
         ],
-        "dialogue_tone": "元気で体育会系、先輩後輩の口調、汗と興奮",
+        "dialogue_tone": """体育会系の元気さと汗の色気。先輩後輩の上下関係。
+■核心: 「練習の延長」「体力には自信ある」が性的な意味に転化する。汗=エロさの増幅
+■speech変化: 「先輩…練習の続き…？」→「だめ…ユニフォーム…汚れ…」→「もっと…激しく…♡」
+■thought: 「こんなの…部活じゃない…」「でも先輩には逆らえない…」「体力…もたない…」
+■NG: 運動・部活の文脈が完全に消えること""",
         "use_heart": True,
         "sd_tags": "sports, gym_uniform, bloomers, sweat, locker_room, sporty, athletic",
         "sd_expressions": "sweaty, energetic, competitive, embarrassed, panting",
@@ -926,7 +975,11 @@ THEME_GUIDES = {
             "マネージャーやプロデューサーとの関係",
             "バレたら終わりの緊張感"
         ],
-        "dialogue_tone": "表向きのアイドル口調と本音、ギャップ萌え、秘密の関係",
+        "dialogue_tone": """アイドルの表と裏のギャップ。ステージ上の自分と今の自分の乖離。
+■核心: 「ファンに見せられない姿」「清純派のはずなのに」というギャップが背徳感を生む
+■speech変化: 「撮影…まだ残ってるんです…」→「こんな顔…誰にも見せたことない…」→「アイドル…やめてもいい…♡」
+■thought: 「ファンが知ったら…」「ステージの私は嘘…今が本物…」「推しに…こんなことされて…」
+■NG: 最初からアイドル設定を忘れる。プロ意識と快楽の葛藤がないこと""",
         "use_heart": True,
         "sd_tags": "idol, stage, microphone, costume, backstage, dressing_room, celebrity",
         "sd_expressions": "stage_smile, nervous, secretive, gap_moe, blushing",
@@ -944,7 +997,11 @@ THEME_GUIDES = {
             "壁が薄い/声が漏れる",
             "顔を合わせる気まずさ"
         ],
-        "dialogue_tone": "日常会話からの逸脱、親しみ、声を抑える、ご近所トーク",
+        "dialogue_tone": """日常の延長線上にあるエロ。声を抑える切迫感。ご近所の距離感。
+■核心: 「壁が薄い」「隣の奥さんに聞こえたら」という生活感がリアルな背徳感を生む
+■speech変化: 「あ…こんにちは…上がってく…？」→「声…出したら…聞こえちゃう…」→「もう…どうでもいい…♡」
+■thought: 「隣の部屋に…」「こんな昼間から…」「旦那が帰ってくる前に…」
+■NG: 生活感が消えること。マンション・アパートの距離感を忘れること""",
         "use_heart": True,
         "sd_tags": "neighbor, apartment, casual_clothes, domestic, everyday, next_door",
         "sd_expressions": "friendly, nervous, secretive, blushing, trying_to_be_quiet",
@@ -962,7 +1019,11 @@ THEME_GUIDES = {
             "「仕事だから」と割り切る態度",
             "徐々に本気になる/させる"
         ],
-        "dialogue_tone": "営業トーク、割り切った態度、徐々に本音が漏れる",
+        "dialogue_tone": """営業トークの仮面と本音の漏れ。プロとしての割り切りが崩れる瞬間。
+■核心: 「お仕事だから」という建前がいつしか「この人だけは特別」に変わる
+■speech変化: 「いらっしゃいませ…今日は何を…？」→「お客さん…上手…♡」→「仕事じゃなくて…本気で…♡」
+■thought: 「プロなのに…感じちゃだめ…」「この人の時だけ…」「もうお金とか…どうでもいい…」
+■NG: 最初から恋人同士。風俗嬢としてのプロ意識が一切ないこと""",
         "use_heart": False,
         "sd_tags": "prostitution, escort, hotel_room, lingerie, money, transaction",
         "sd_expressions": "professional, seductive, calculating, genuine_pleasure",
@@ -980,7 +1041,11 @@ THEME_GUIDES = {
             "バレそうでバレないギリギリ",
             "見られている興奮"
         ],
-        "dialogue_tone": "小声、ドキドキ、「誰かに見られたら」、スリルと興奮",
+        "dialogue_tone": """小声とスリル。「見られるかもしれない」緊張感が興奮を加速。
+■核心: バレるリスクそのものが快感になる。声を殺す→殺しきれない→開き直る3段階
+■speech変化: 「だめ…ここ外だよ…」→「声…我慢…できない…」→「見られても…もう…♡」
+■thought: 「誰か来たら…」「バレたら…終わり…」「でも…スリルで…余計に…」
+■NG: 人目を気にする緊張感が序盤で消えること""",
         "use_heart": False,
         "sd_tags": "voyeurism, exhibitionism, peeping, hidden_camera, outdoors, public",
         "sd_expressions": "thrilled, nervous, excited, peeking, exposed",
@@ -998,7 +1063,11 @@ THEME_GUIDES = {
             "粘液や吸盤の異物感",
             "「こんなもので感じるなんて」という屈辱"
         ],
-        "dialogue_tone": "恐怖と嫌悪、拘束への抵抗、異物感からの快楽、堕ちていく絶望",
+        "dialogue_tone": """恐怖と絶望からの快楽堕ち。拘束による無力感。異物感の克服。
+■核心: 「逃げられない」「体が壊れる」という恐怖が、やがて「壊れてもいい」に変わる
+■speech変化: 「やめて…痛い…」→「こわい…でも…体が…」→「壊して…もう…全部…♡♡」
+■thought: 「動けない…」「嫌なのに…なんで…感じて…」「もう…元に戻れない…」
+■NG: 恐怖が一切なくソフトなこと。拘束の無力感を活かさないこと""",
         "use_heart": False,
         "sd_tags": "tentacles, tentacle_sex, restrained, slime, monster, bondage, multiple_insertions",
         "sd_expressions": "scared, disgusted, struggling, overwhelmed, ahegao, crying",
@@ -1016,7 +1085,11 @@ THEME_GUIDES = {
             "一方的に押し倒す/跨る",
             "「逃がさない」「もっと出して」"
         ],
-        "dialogue_tone": "攻撃的、命令口調、男の抵抗を嘲笑う、容赦ない搾取",
+        "dialogue_tone": """攻撃的で容赦ない搾取。男の抵抗を嘲笑い、屈服させる快感。
+■核心: 女性が圧倒的上位。「お前の体は私のもの」「逆らうな」という支配
+■speech: 「ほら…もう勃ってるじゃない」「泣いてもやめないから♡」「搾り取ってあげる♡♡」
+■thought（男視点の場合）: 「逆らえない…」「悔しい…のに…」
+■NG: 男女の力関係が逆転する。女性側が受け身になること""",
         "use_heart": False,
         "sd_tags": "reverse_rape, femdom, aggressive, pinning_down, cowgirl_position, straddling",
         "sd_expressions": "aggressive, predatory, smirk, wild, dominant, crazed",
@@ -1034,7 +1107,11 @@ THEME_GUIDES = {
             "ポーズ指示が徐々にエスカレート",
             "衣装のまま/半脱ぎの興奮"
         ],
-        "dialogue_tone": "キャラなりきり口調、恥ずかしがり、カメラを意識した言動",
+        "dialogue_tone": """キャラなりきりと素の自分のギャップ。カメラ意識と恥じらい。
+■核心: 「コスプレの衣装=脱がされる前提」「キャラの口調で喘ぐ」背徳感
+■speech変化: 「に、にゃん…♡ …恥ずかしいよ…」→「衣装…脱がさないで…」→「もうキャラ…維持できない…♡」
+■thought: 「カメラ回ってる…？」「こんな姿…SNSに載せられたら…」
+■NG: コスプレ要素が忘れられること。衣装・キャラ設定への言及がないこと""",
         "use_heart": True,
         "sd_tags": "cosplay, costume, photoshoot, camera, posing, dressing_up, roleplay",
         "sd_expressions": "posing, embarrassed, in_character, blushing, camera_aware",
@@ -1569,6 +1646,13 @@ _TAG_ALIAS_MAP = {
     "nude_male_clothed_female": "cfnm",
     "doggy": "doggy_style",
     "missionary_position": "missionary",
+    # 場所タグ表記揺れ正規化
+    "gym_storeroom": "storage_room",
+    "gym_storage_room": "storage_room",
+    "gymnasium_storage_room": "storage_room",
+    "gym_storage": "storage_room",
+    "swimming_pool": "pool",
+    "bathroom_stall": "toilet",
 }
 
 # 非Danbooruタグ検出用セット（validate_script用）
@@ -1668,6 +1752,34 @@ _THEME_LOCATION_DETAIL_TAGS = {
         "office":   ["office", "desk", "indoors", "workplace"],
         "toilet":   ["restroom", "indoors", "against_wall"],
         "default":  ["office", "indoors"],
+    },
+    # v10.0: 追加テーマの場所タグ
+    "onsen": {
+        "bathroom": ["onsen", "hot_spring", "steam", "wet", "water"],
+        "outdoor":  ["outdoor_onsen", "rotenburo", "mountain", "night_sky"],
+        "bedroom":  ["ryokan", "tatami", "futon", "indoors"],
+        "default":  ["onsen", "steam", "wet"],
+    },
+    "sports": {
+        "gym":      ["gym", "exercise_equipment", "indoors"],
+        "outdoor":  ["track", "field", "outdoors", "blue_sky"],
+        "bathroom": ["shower_room", "locker_room", "wet", "indoors"],
+        "default":  ["gym", "indoors"],
+    },
+    "swimsuit": {
+        "outdoor":  ["beach", "ocean", "sand", "blue_sky", "sunlight"],
+        "gym":      ["pool", "poolside", "water", "indoors"],
+        "bathroom": ["shower_room", "locker_room", "wet"],
+        "default":  ["pool", "water"],
+    },
+    "sleep": {
+        "bedroom":  ["bedroom", "bed", "pillow", "blanket", "dark_room"],
+        "default":  ["bedroom", "bed", "dark_room"],
+    },
+    "maid": {
+        "bedroom":  ["bedroom", "bed", "luxury_room", "indoors"],
+        "bathroom": ["bathroom", "bathtub", "indoors", "wet"],
+        "default":  ["mansion", "indoors"],
     },
 }
 
@@ -2605,7 +2717,7 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
             scene_issues.setdefault("global", []).append(
                 f"thoughtキーワード過剰: 「{kw}」が{cnt}/{_thought_total}回出現（25%超過）")
 
-    # --- クロスシーン: 男性セリフ長文チェック（15文字超え） ---
+    # --- クロスシーン: 男性セリフ長文チェック（18文字超え） ---
     for i, scene in enumerate(results):
         scene_id = scene.get("scene_id", i + 1)
         for b in scene.get("bubbles", []):
@@ -2615,7 +2727,7 @@ def validate_script(results: list, theme: str = "", char_profiles: list = None) 
                 txt = b.get("text", "")
                 # ♡…っ等の装飾を除いた実質文字数
                 core = txt.replace("…", "").replace("♡", "").replace("っ", "").replace("♥", "").strip()
-                if len(core) > 15:
+                if len(core) > 18:
                     scene_issues.setdefault(scene_id, []).append(
                         f"男性セリフ長文({len(core)}字): 「{txt}」")
 
@@ -3322,31 +3434,11 @@ def _deduplicate_across_scenes(results: list, theme: str = "",
         return True
 
     def _get_male_pool_for_theme(theme_str: str, intensity: int) -> list:
-        t = theme_str.lower() if theme_str else ""
-        pool = []
-        if any(k in t for k in ["痴漢", "chikan", "公共", "public", "電車", "train", "トイレ"]):
-            pool.extend(SPEECH_MALE_POOL.get("chikan", []))
-            pool.extend(SPEECH_MALE_POOL.get("taunt", []))
-            pool.extend(SPEECH_MALE_POOL.get("public", []))
-            pool.extend(SPEECH_MALE_POOL.get("command", []))
-        elif any(k in t for k in ["ntr", "寝取", "夜這", "村", "レイプ", "陵辱", "調教", "奴隷"]):
-            pool.extend(SPEECH_MALE_POOL.get("command", []))
-            pool.extend(SPEECH_MALE_POOL.get("dirty", []))
-        elif any(k in t for k in ["純愛", "ラブ", "恋人", "カップル"]):
-            pool.extend(SPEECH_MALE_POOL.get("gentle", []))
-            pool.extend(SPEECH_MALE_POOL.get("praise", []))
-        else:
-            if intensity >= 4:
-                pool.extend(SPEECH_MALE_POOL.get("command", []))
-                pool.extend(SPEECH_MALE_POOL.get("dirty", []))
-            elif intensity <= 2:
-                pool.extend(SPEECH_MALE_POOL.get("gentle", []))
-                pool.extend(SPEECH_MALE_POOL.get("foreplay", []))
-                pool.extend(SPEECH_MALE_POOL.get("praise", []))
-            else:
-                pool.extend(SPEECH_MALE_POOL.get("dirty", []))
-                pool.extend(SPEECH_MALE_POOL.get("praise", []))
-        return pool if pool else [v for sp in SPEECH_MALE_POOL.values() for v in sp]
+        try:
+            from ero_dialogue_pool import get_male_speech_pool_for_theme
+            return get_male_speech_pool_for_theme(theme_str, intensity)
+        except ImportError:
+            return ["もっと", "どうした", "来い", "行くぞ", "いいだろ"]
 
     def _get_pool_for_context(ctx: str, intensity: int, is_male: bool,
                               btype: str) -> list:
@@ -4215,6 +4307,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             _46_fix_count += 1
         if "bubbles" not in scene:
             continue
+        _scene_intensity_46 = scene.get("intensity", 2)
         for bubble in scene["bubbles"]:
             txt = bubble.get("text", "")
             if not txt:
@@ -4222,8 +4315,8 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             orig = txt
             # 括弧除去
             txt = txt.strip("「」『』""")
-            # 「らめ」→「だめ」修正（moanでもspeechでも）
-            if "らめ" in txt:
+            # 「らめ」→「だめ」修正（intensity=5は崩れ語として許容）
+            if "らめ" in txt and _scene_intensity_46 < 5:
                 txt = txt.replace("らめぇぇ", "だめぇ").replace("らめぇん", "だめぇ")
                 txt = txt.replace("らめにゃ", "だめぇ").replace("らめらめ", "だめだめ")
                 txt = txt.replace("らめなの", "だめなの").replace("らめぇっ", "だめぇっ")
@@ -4594,15 +4687,25 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     _PERSONALITY_SPEECH_EXCLUDE = {
         # _detect_personality_type() の返り値に完全対応
         "seiso": ["もっと！", "すごい！", "最高！", "もっとして！", "ちょうだい♡♡",
-                  "壊して", "犯して", "もっと激しく"],  # 清楚=激しい要求NG
-        "tsundere": ["好き…♡", "嬉しい♡", "大好き♡", "幸せ♡", "ずっと一緒♡"],  # 低intensityのみ適用
-        "kuudere": ["きゃー", "すごーい", "わーい", "もっともっと♡", "いっぱい♡"],
-        "ojou": ["ヤバい", "マジ", "ウケる", "まじ", "やべー", "ちょー"],
+                  "壊して", "犯して", "もっと激しく", "ぶち込んで", "めちゃくちゃ",
+                  "ガンガン", "犯されたい", "ザーメン"],  # 清楚=激しい要求/下品NG
+        "tsundere": ["好き…♡", "嬉しい♡", "大好き♡", "幸せ♡", "ずっと一緒♡",
+                     "素直に", "ご主人様", "なんでも", "言いなり"],  # 低intensityのみ適用
+        "kuudere": ["きゃー", "すごーい", "わーい", "もっともっと♡", "いっぱい♡",
+                    "やったー", "嬉しい！", "楽しい！", "はしゃ"],  # クール=過度な感情表現NG
+        "ojou": ["ヤバい", "マジ", "ウケる", "まじ", "やべー", "ちょー",
+                 "うっせ", "くそ", "てめえ", "ふざけんな", "氏ね"],  # お嬢様=粗野語NG
         "submissive": [],  # 従順=制限なし（何でも受け入れる）
-        "sadistic": ["怖い", "やめて", "痛い", "助けて", "許して"],  # S気質=怯えNG
-        "gal": ["お願いします", "すみません", "恐れ入り"],  # ギャル=敬語NG
-        "genki": ["もう…無理…", "動けない…", "力が…"],  # 元気=脱力NG
-        "inkya": ["もっと！", "すごい！", "最高！", "もっとして！", "きゃー"],  # 陰キャ=過度にはしゃぐNG
+        "sadistic": ["怖い", "やめて", "痛い", "助けて", "許して",
+                     "ごめんなさい", "お許し", "怯え", "逃げたい", "無理"],  # S気質=怯え/懇願NG
+        "gal": ["お願いします", "すみません", "恐れ入り",
+                "失礼", "ございます", "いたします", "ですわ"],  # ギャル=敬語/お嬢様語NG
+        "genki": ["もう…無理…", "動けない…", "力が…",
+                  "崩れ", "何も考えられない", "溶けちゃう", "消えそう",
+                  "壊れちゃう", "支えられない", "立てない", "へなへな",
+                  "力が抜ける", "ふにゃ"],  # 元気=脱力/無力NG
+        "inkya": ["もっと！", "すごい！", "最高！", "もっとして！", "きゃー",
+                  "イェーイ", "最っ高", "気持ちいい！", "もっとちょうだい！"],  # 陰キャ=過度にはしゃぐNG
     }
 
     # THOUGHT_POOL intensity別フィルタキーワード
@@ -4658,39 +4761,23 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         return pool
 
     def _get_male_pool_for_theme(theme_str: str, intensity: int) -> list:
-        """テーマ・intensity連動で男性セリフプールを返す（auto_fix用）"""
+        """テーマ・intensity連動で男性セリフプールを返す（auto_fix用）
+        ero_dialogue_pool.py の get_male_speech_pool_for_theme() と同期済み"""
         try:
-            from ero_dialogue_pool import SPEECH_MALE_POOL, get_male_speech_pool
+            from ero_dialogue_pool import get_male_speech_pool_for_theme
+            pool = get_male_speech_pool_for_theme(theme_str, intensity)
+            return pool if pool else ["もっと", "どうした", "来い", "行くぞ", "いいだろ"]
         except ImportError:
             return ["もっと", "どうした", "来い", "行くぞ", "いいだろ"]
-        t = theme_str.lower() if theme_str else ""
-        pool = []
-        if any(k in t for k in ["痴漢", "chikan", "公共", "public", "電車", "train", "トイレ"]):
-            pool.extend(SPEECH_MALE_POOL.get("chikan", []))
-            pool.extend(SPEECH_MALE_POOL.get("taunt", []))
-            pool.extend(SPEECH_MALE_POOL.get("public", []))
-            pool.extend(SPEECH_MALE_POOL.get("command", []))
-        elif any(k in t for k in ["ntr", "寝取", "夜這", "村", "レイプ", "陵辱", "調教", "奴隷"]):
-            pool.extend(SPEECH_MALE_POOL.get("command", []))
-            pool.extend(SPEECH_MALE_POOL.get("dirty", []))
-        elif any(k in t for k in ["純愛", "ラブ", "恋人", "カップル"]):
-            pool.extend(SPEECH_MALE_POOL.get("gentle", []))
-            pool.extend(SPEECH_MALE_POOL.get("praise", []))
-        else:
-            if intensity >= 4:
-                pool.extend(SPEECH_MALE_POOL.get("command", []))
-                pool.extend(SPEECH_MALE_POOL.get("dirty", []))
-            elif intensity <= 2:
-                pool.extend(SPEECH_MALE_POOL.get("gentle", []))
-                pool.extend(SPEECH_MALE_POOL.get("foreplay", []))
-                pool.extend(SPEECH_MALE_POOL.get("praise", []))
-            else:
-                pool.extend(SPEECH_MALE_POOL.get("dirty", []))
-                pool.extend(SPEECH_MALE_POOL.get("praise", []))
-        return pool if pool else [v for sp in SPEECH_MALE_POOL.values() for v in sp]
 
     _moan_fix_count = 0
-    _used_moan_for_fix = set()
+    # Step 5完了後の全moanテキストを初期値として投入（Step 5との重複選択を防止）
+    _used_moan_for_fix = set(
+        b.get("text", "")
+        for scene in results
+        for b in scene.get("bubbles", [])
+        if b.get("type") == "moan" and b.get("text")
+    )
     for scene in results:
         intensity = scene.get("intensity", 3)
         for b in scene.get("bubbles", []):
@@ -4736,6 +4823,12 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                     continue
                 norm = _normalize_bubble_text(txt)
                 if norm and norm not in _all_moan_norms:
+                    # 自然なmoan（短い仮名のみ）は置換しない
+                    _has_kanji = any('\u4e00' <= c <= '\u9fff' for c in txt)
+                    _has_joshi = any(p in txt for p in ["は", "が", "を", "に", "で", "と", "から", "より"])
+                    _is_too_long = len(txt) > 15
+                    if not (_has_kanji or _has_joshi or _is_too_long):
+                        continue  # 自然なmoanは許容
                     pool = _get_moan_pool_with_char(intensity)
                     replacement = pick_replacement(pool, _used_moan_for_fix, _normalize_bubble_text)
                     if replacement:
@@ -5059,7 +5152,9 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                                               "chikan", "痴漢",
                                               "humiliation", "凌辱", "屈辱",
                                               "netorare", "ntr", "寝取",
-                                              "incest", "近親"])
+                                              "incest", "近親",
+                                              "reverse_rape", "逆レイプ",
+                                              "femdom", "女王様", "痴女"])
     _contradiction_fix_count = 0
     if _has_pool:
         for _si_ct, scene in enumerate(results):
@@ -5291,6 +5386,92 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                 "normalization": ["これが…普通…♡", "もう…離れられない♡"],
             },
         },
+        # v10.0: 追加テーマ心理ステージ
+        "sleep": {
+            "stages": ["unaware", "dreaming", "half_awake", "confused_pleasure", "surrender"],
+            "speech": {
+                "unaware":          ["ん…", "…すぅ…", "んん…"],
+                "dreaming":         ["…夢…？", "なに…これ…", "んぅ…あったかい…"],
+                "half_awake":       ["…え…？", "なに…して…", "あれ…からだが…"],
+                "confused_pleasure": ["…んっ…なんで…", "…気持ち…いい…", "夢…じゃない…？♡"],
+                "surrender":        ["もう…いい…♡", "起きてるけど…やめないで…♡", "…もっと…♡♡"],
+            },
+            "thought": {
+                "unaware":          ["…すやすや…", "温かい…"],
+                "dreaming":         ["これ…夢…？", "体が…熱い…"],
+                "half_awake":       ["え…なにされて…", "寝てたのに…"],
+                "confused_pleasure": ["寝ぼけて…でも…気持ちいい…", "抵抗…できない…"],
+                "surrender":        ["もう…目覚めちゃった…♡", "こんなので起こされるなんて…♡"],
+            },
+        },
+        "maid": {
+            "stages": ["duty", "confusion", "serving", "devotion", "abandon"],
+            "speech": {
+                "duty":      ["ご主人様…それは…", "お仕事の範囲外…", "メイドとして…"],
+                "confusion": ["こんなこと…ご奉仕に含まれ…", "ご主人様…その手は…", "混乱して…"],
+                "serving":   ["…ご命令なら…", "お望みのままに…", "ご奉仕…いたします…♡"],
+                "devotion":  ["ご主人様のためなら…♡", "もっとご奉仕させて…♡", "お傍にいさせて…♡"],
+                "abandon":   ["メイドの身体…全部ご主人様の…♡♡", "壊れてもいい…ご奉仕します…♡♡"],
+            },
+            "thought": {
+                "duty":      ["メイドとして…こんなこと…", "仕事…なのに…"],
+                "confusion": ["なんで…こんなに…", "ご主人様の手…温かい…"],
+                "serving":   ["ご奉仕…しなきゃ…", "喜んでもらえるなら…"],
+                "devotion":  ["ご主人様が好き…♡", "この方のためなら…♡"],
+                "abandon":   ["もう…メイドじゃなくて…女…♡♡"],
+            },
+        },
+        "prostitution": {
+            "stages": ["professional", "cracking", "genuine", "confused", "fallen"],
+            "speech": {
+                "professional": ["お客様…♡", "気持ちいいですか…？", "サービスしますね…"],
+                "cracking":     ["あれ…こんなの…初めて…", "お客さん…うまい…", "やば…マジで…"],
+                "genuine":      ["これ…仕事じゃなくて…", "本気で…感じてる…♡", "こんなの…嘘…"],
+                "confused":     ["お金とか…もういい…♡", "プロなのに…♡", "こんなの反則…♡♡"],
+                "fallen":       ["タダでもいい…♡♡", "またきて…♡♡", "もう…普通のお客は無理…♡♡"],
+            },
+            "thought": {
+                "professional": ["仕事仕事…感情入れない…"],
+                "cracking":     ["やば…ちょっと気持ちいい…"],
+                "genuine":      ["嘘…本気で感じてる…"],
+                "confused":     ["プロ失格…でも…♡"],
+                "fallen":       ["この人だけは…特別…♡♡"],
+            },
+        },
+        "reverse_rape": {
+            "stages": ["dominance", "escalation", "intoxication", "greed", "satisfaction"],
+            "speech": {
+                "dominance":    ["逃げないで…♡", "私のものだから…", "おとなしくして…♡"],
+                "escalation":   ["もっと…見せて…♡", "かわいい顔…♡", "気持ちいいでしょ…♡"],
+                "intoxication": ["やば…こっちも…♡", "あんたの…すごい…♡", "もっと…ちょうだい…♡♡"],
+                "greed":        ["まだ終わらないよ…♡♡", "全部…搾り取る…♡♡", "もっともっと…♡♡"],
+                "satisfaction": ["よくがんばったね…♡♡", "また…しようね…♡♡"],
+            },
+            "thought": {
+                "dominance":    ["この人…私のもの…"],
+                "escalation":   ["いい反応…もっと見たい…♡"],
+                "intoxication": ["自分でも止められない…♡"],
+                "greed":        ["足りない…もっと…♡♡"],
+                "satisfaction": ["満足…♡♡"],
+            },
+        },
+        "harem": {
+            "stages": ["rivalry", "appeal", "competing", "sharing", "ecstasy"],
+            "speech": {
+                "rivalry":   ["私の方が…", "あの子には負けない…", "こっち見て…"],
+                "appeal":    ["ねぇ…私だけ見て…♡", "私の方が上手だよ…？♡"],
+                "competing": ["あの子より…気持ちいいでしょ…♡", "私が一番でしょ…♡"],
+                "sharing":   ["…一緒でもいいから…♡", "みんなで…♡♡"],
+                "ecstasy":   ["私だけのにして…♡♡", "もう…誰でもいい…♡♡"],
+            },
+            "thought": {
+                "rivalry":   ["負けたくない…あの子には…"],
+                "appeal":    ["私を見て…私だけを…"],
+                "competing": ["私の方が…いいはず…♡"],
+                "sharing":   ["…みんなで…いいかも…♡"],
+                "ecstasy":   ["もう…何も考えられない…♡♡"],
+            },
+        },
     }
     # デフォルト（テーマ別定義がないテーマ用フォールバック）
     _PSYCHOLOGICAL_STAGES = ["resistance", "confusion", "acceptance", "desire", "abandon"]
@@ -5322,6 +5503,12 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         "teacher_student": "teacher_student", "先生": "teacher_student",
         "femdom": "femdom", "女性優位": "femdom", "痴女": "femdom",
         "incest": "incest", "近親": "incest",
+        # v10.0 追加
+        "sleep": "sleep", "睡眠": "sleep", "夜這": "sleep", "添い寝": "sleep",
+        "maid": "maid", "メイド": "maid", "家政婦": "maid",
+        "prostitution": "prostitution", "風俗": "prostitution", "ソープ": "prostitution", "デリヘル": "prostitution",
+        "reverse_rape": "reverse_rape", "逆レイプ": "reverse_rape", "逆レ": "reverse_rape",
+        "harem": "harem", "ハーレム": "harem",
     }
 
     def _resolve_theme_psych(theme_str: str) -> tuple:
@@ -5336,11 +5523,11 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         return (_PSYCHOLOGICAL_STAGES, _STAGE_SPEECH_PATTERNS, _STAGE_THOUGHT_PATTERNS)
 
     def _infer_psychological_stage(scene_idx: int, intensity: int, total: int, theme_str: str) -> str:
-        """シーン位置/intensity/テーマ→心理段階推定（テーマ別5段階対応）"""
+        """シーン位置/intensity/テーマ→心理段階推定（テーマ別5段階対応）
+        v10.0: intensity固定でもratioで段階を進行させる"""
         stages, _, _ = _resolve_theme_psych(theme_str)
         ratio = scene_idx / max(total, 1)
         # 5段階を ratio + intensity で推定
-        # 段階0=序盤低i / 段階1=序盤中i / 段階2=中盤 / 段階3=中盤後半高i / 段階4=終盤高i
         if intensity <= 1:
             return stages[0]
         elif intensity == 2:
@@ -5348,7 +5535,13 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         elif intensity == 3:
             return stages[2] if ratio < 0.6 else stages[3]
         elif intensity == 4:
-            return stages[3]
+            # v10.0: intensity=4固定でもratio進行で心理段階を変える
+            if ratio < 0.4:
+                return stages[2]   # acceptance
+            elif ratio < 0.7:
+                return stages[3]   # desire
+            else:
+                return stages[4]   # abandon（終盤は解放段階へ）
         else:
             return stages[4]
 
@@ -5357,7 +5550,7 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         stage_idx = stages_list.index(stage) if stage in stages_list else 2
         for other_stage, keywords in patterns_dict.items():
             other_idx = stages_list.index(other_stage) if other_stage in stages_list else 2
-            if abs(stage_idx - other_idx) >= 2:
+            if abs(stage_idx - other_idx) >= 3:
                 if any(kw in text for kw in keywords):
                     return True
         return False
@@ -5774,6 +5967,45 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
     if _desc_short_fix > 0:
         log_message(f"  description短prefix重複修正: {_desc_short_fix}件（10字prefix 3回以上）")
 
+    # 12a3. v10.0: description中間文類似チェック（隣接シーンのdescription文レベル重複を検出）
+    # 先頭が異なっていても中間の文がコピペの場合を検出
+    _desc_mid_fix = 0
+    for i in range(1, len(results)):
+        prev_desc = results[i - 1].get("description", "")
+        curr_desc = results[i].get("description", "")
+        if not prev_desc or not curr_desc or len(prev_desc) < 30 or len(curr_desc) < 30:
+            continue
+        # 句点で文を分割し、共通文の割合を計算
+        prev_sentences = [s.strip() for s in prev_desc.replace("。", "。\n").split("\n") if len(s.strip()) >= 8]
+        curr_sentences = [s.strip() for s in curr_desc.replace("。", "。\n").split("\n") if len(s.strip()) >= 8]
+        if not prev_sentences or not curr_sentences:
+            continue
+        # 各文の先頭12字で一致判定（完全一致だと句読点の差で漏れる）
+        prev_keys = {s[:12] for s in prev_sentences}
+        common = sum(1 for s in curr_sentences if s[:12] in prev_keys)
+        overlap_ratio = common / max(len(curr_sentences), 1)
+        if overlap_ratio >= 0.5 and common >= 2:
+            # 重複率50%以上 → 共通文を差し替え
+            sid = results[i].get("scene_id", i + 1)
+            intensity = results[i].get("intensity", 3)
+            inserts = _INTENSITY_DESC_INSERTS.get(intensity, _INTENSITY_DESC_INSERTS[3])
+            # 共通文の最初の1つを差し替え文に変換
+            new_sentences = []
+            replaced = False
+            for s in curr_sentences:
+                if not replaced and s[:12] in prev_keys and len(s) >= 8:
+                    # この文を変化指示文に置換
+                    candidate = inserts[(_desc_mid_fix + i) % len(inserts)]
+                    new_sentences.append(candidate + s[len(s)//2:])
+                    replaced = True
+                else:
+                    new_sentences.append(s)
+            if replaced:
+                results[i]["description"] = "".join(new_sentences)
+                _desc_mid_fix += 1
+    if _desc_mid_fix > 0:
+        log_message(f"  description中間文類似修正: {_desc_mid_fix}件（隣接シーン50%以上重複）")
+
     # 12b. mood重複修正（同一moodの3回目以降をintensity別バリエーションで置換）
     # v8.9: 6→15個に拡充（100シーンで枯渇防止）
     # テーマ別mood拡張バリアント（テーマ固有の雰囲気をintensity別に）
@@ -5962,8 +6194,27 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
                         else:
                             b["text"] = f"{clean}…身体が…どうなって…"
                     _bubble_theme_fix += 1
+    # v10.0: sleep テーマ — 低intensityシーンでspeech→thought変換（寝ている間は声を出せない）
+    if theme and any(k in theme.lower() for k in ["sleep", "睡眠", "夜這", "添い寝"]):
+        _SLEEP_ACTIVE_KW = ["寝ている", "眠って", "睡眠中", "すやすや", "寝息", "熟睡", "眠りに", "就寝"]
+        _SLEEP_AWAKE_KW = ["目が覚め", "起き", "半覚醒", "意識が戻", "気づ"]
+        for scene in results:
+            desc = scene.get("description", "")
+            intensity = scene.get("intensity", 3)
+            is_sleeping = any(kw in desc for kw in _SLEEP_ACTIVE_KW)
+            is_awake = any(kw in desc for kw in _SLEEP_AWAKE_KW)
+            if not is_sleeping or is_awake or intensity >= 4:
+                continue  # 起きている or 高intensityで覚醒後は変換しない
+            for b in scene.get("bubbles", []):
+                speaker = b.get("speaker", "")
+                btype = b.get("type", "")
+                if _is_male_by_name(speaker):
+                    continue
+                if btype == "speech":
+                    b["type"] = "thought"
+                    _bubble_theme_fix += 1
     if _bubble_theme_fix > 0:
-        log_message(f"  テーマ別bubble制約修正（time_stop）: {_bubble_theme_fix}件")
+        log_message(f"  テーマ別bubble制約修正: {_bubble_theme_fix}件")
 
     # 12e. v8.9: 時間軸ジャンプ修正（description/story_flowの「翌週」等を同日表現に置換）
     # エピローグ（最終10%）は時間ジャンプを許可
@@ -6255,18 +6506,33 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
             line = b.get("text", "")
             if not line or len(line) < 4:
                 continue
+            _is_male_sp = _is_male_by_name(b.get("speaker", ""))
             if line in _seen_speech:
-                # v8.6: intensity対応サフィックスを使用
-                _suffixes = _INTENSITY_SUFFIXES.get(intensity, _INTENSITY_SUFFIXES[3])
                 modified = False
-                for suffix in _suffixes:
-                    new_line = line.rstrip("…♡っ。、ぅぁ") + suffix
-                    if new_line != line and new_line not in _seen_speech:
-                        b["text"] = new_line
-                        _seen_speech[new_line] = (i, bi)
+                # まずプールから差替を試みる
+                if _has_pool:
+                    if _is_male_sp:
+                        _sp_pool = _get_male_pool_for_theme(theme, intensity)
+                    else:
+                        _sp_pool = _get_speech_pool_with_char("speech", theme, intensity, i, len(results))
+                    _sp_repl = pick_replacement(_sp_pool, _used_speech_for_fix, _normalize_bubble_text, intensity=intensity)
+                    if _sp_repl and _sp_repl not in _seen_speech:
+                        b["text"] = _sp_repl
+                        _seen_speech[_sp_repl] = (i, bi)
+                        _used_speech_for_fix.add(_sp_repl)
                         _sp_fix_count += 1
                         modified = True
-                        break
+                if not modified:
+                    # フォールバック: intensity対応サフィックスを使用
+                    _suffixes = _INTENSITY_SUFFIXES.get(intensity, _INTENSITY_SUFFIXES[3])
+                    for suffix in _suffixes:
+                        new_line = line.rstrip("…♡っ。、ぅぁ") + suffix
+                        if new_line != line and new_line not in _seen_speech:
+                            b["text"] = new_line
+                            _seen_speech[new_line] = (i, bi)
+                            _sp_fix_count += 1
+                            modified = True
+                            break
                 if not modified:
                     # 全サフィックス枯渇 → 先頭に感嘆詞追加で一意化
                     _SPEECH_INTERJECTIONS = ["あっ…", "んっ…", "はぁ…", "ねぇ…"]
@@ -6382,18 +6648,18 @@ def auto_fix_script(results: list, char_profiles: list = None, theme: str = "",
         desc = scene.get("description", "")
         kws = frozenset(kw for kw in _DESC_ACT_KW_FIX if kw in desc)
         _desc_kw_list.append(kws)
-    for k in range(2, len(_desc_kw_list)):
-        common = _desc_kw_list[k] & _desc_kw_list[k-1] & _desc_kw_list[k-2]
+    for k in range(1, len(_desc_kw_list)):
+        common = _desc_kw_list[k] & _desc_kw_list[k-1]
         if len(common) >= 2:
-            # 中央シーン(k-1)のdescriptionを修正: 共通キーワードを類語に置換
-            mid = results[k-1]
+            # 後シーン(k)のdescriptionを修正: 共通キーワードを類語に置換
+            mid = results[k]
             desc = mid.get("description", "")
             for ckw in common:
                 syns = _DESC_SYNONYMS.get(ckw, [])
                 if syns:
                     desc = desc.replace(ckw, syns[k % len(syns)], 1)
             mid["description"] = desc
-            _desc_kw_list[k-1] = frozenset(kw for kw in _DESC_ACT_KW_FIX if kw in desc)
+            _desc_kw_list[k] = frozenset(kw for kw in _DESC_ACT_KW_FIX if kw in desc)
             _desc_sim_fix += 1
     if _desc_sim_fix > 0:
         log_message(f"  description連続類似修正: {_desc_sim_fix}件")
@@ -7288,13 +7554,15 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             "sweat_drops", "sweaty_body", "flushed_skin",
             "spread_legs", "gripping_sheets", "messy_hair",
             "half-closed_eyes", "glazed_eyes", "crying_with_eyes_open",
-            "o-ring_mouth", "biting_own_lip", "scrunched_face"],
+            "o-ring_mouth", "biting_own_lip", "scrunched_face",
+            "torogao"],
         5: ["ahegao", "rolling_eyes", "tongue_out", "drooling", "head_back",
             "arched_back", "toes_curling", "full_body_arch", "tears",
             "sweat_drops", "sweaty_body", "sweat_glistening", "skin_glistening",
             "heart-shaped_pupils", "cross-eyed", "saliva_drip", "fucked_silly",
             "vacant_eyes", "steam", "trembling_legs",
-            "eye_roll", "slack_jaw", "convulsing"],
+            "eye_roll", "slack_jaw", "convulsing",
+            "torogao", "mindbreak"],
     }
 
     # intensity別 カメラアングル/構図タグプール
@@ -7368,6 +7636,7 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
     _PERSISTENT_FLUID_TAGS = {
         "cum", "cum_on_body", "cum_on_face", "cum_in_pussy", "cum_overflow",
         "cum_string", "cum_pool", "cum_drip", "excessive_cum",
+        "sweat", "pussy_juice",
     }
 
     # Phase6: アクセサリ永続化トラッキング
@@ -7695,7 +7964,7 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     tags.append("indoors")
 
         # 4.5. 男性タグ注入（v9.0: faceless_male デフォルトON / intensity制限撤廃）
-        _MULTI_MALE_THEMES = {"gangbang"}
+        _MULTI_MALE_THEMES = {"gangbang", "monster", "tentacle"}
         intensity = scene.get("intensity", 0)
         existing_lower = {t.strip().lower().replace(" ", "_") for t in tags}
         if theme not in _MULTI_MALE_THEMES:
@@ -8081,6 +8350,12 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
             ({"prone_bone"}, {"on_back", "cowgirl_position", "girl_on_top"}),
             ({"kneeling"}, {"sitting", "chair"}),
             ({"spooning"}, {"standing_sex", "against_wall"}),
+            # v10.0: 基本挿入体位の相互排他（同時に2体位は不可能）
+            ({"missionary"}, {"cowgirl_position", "reverse_cowgirl", "doggy_style", "prone_bone"}),
+            ({"cowgirl_position"}, {"missionary", "doggy_style", "prone_bone", "mating_press"}),
+            ({"reverse_cowgirl"}, {"missionary", "doggy_style", "prone_bone", "mating_press"}),
+            ({"doggy_style"}, {"missionary", "cowgirl_position", "reverse_cowgirl", "mating_press"}),
+            ({"mating_press"}, {"cowgirl_position", "reverse_cowgirl", "doggy_style"}),
         ]
         _tags_lower_set = {t.strip().lower().replace(" ", "_") for t in tags}
         for group_a, group_b in _CONTRADICTORY_PAIRS:
@@ -8094,6 +8369,16 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
                     tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in has_b]
                 else:
                     tags = [t for t in tags if t.strip().lower().replace(" ", "_") not in has_a]
+
+        # 5.5b. 体位サポートタグ自動注入（矛盾除去後に実行）
+        _tags_lower_set2 = {t.strip().lower().replace(" ", "_") for t in tags}
+        for _pos_tag, _support_list in _POSITION_SUPPORT_TAGS.items():
+            if _pos_tag in _tags_lower_set2:
+                for _sup in _support_list[:2]:
+                    if _sup not in _tags_lower_set2:
+                        tags.append(_sup)
+                        _tags_lower_set2.add(_sup)
+                break  # 1体位のみ処理（相互排他で1つに絞られているはず）
 
         # 5.6. aftermathシーンのSDタグ整合性チェック
         _desc_for_ctx = (scene.get("description", "") + " " + scene.get("title", "")
@@ -8201,14 +8486,8 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
         _prev_scene_positions = _cur_positions
 
         main_prompt = deduplicate_sd_tags(", ".join(weighted))
-        # prefix/suffix注入（LoRAタグ等はdeduplicateに通さない）
-        parts = []
-        if sd_prefix_tags:
-            parts.append(sd_prefix_tags)
-        parts.append(main_prompt)
-        if sd_suffix_tags:
-            parts.append(sd_suffix_tags)
-        scene["sd_prompt"] = ", ".join(parts).replace(",,", ",").strip(", ")
+        # prefix/suffixは全後処理完了後に注入（Step 8-9のタグ上限・除去の影響を受けないようにする）
+        scene["sd_prompt"] = main_prompt
 
     # 8. 体位分布リバランス（spread_legsが40%超過→一部を代替体位に自動置換）
     import re as _re8
@@ -8658,6 +8937,20 @@ def enhance_sd_prompts(results: list, char_profiles: list = None,
 
         if _modified:
             scene["sd_prompt"] = ", ".join(tags)
+
+    # 10. ユーザー指定prefix/suffixを全後処理完了後に注入（タグ上限・除去の影響を受けない）
+    if sd_prefix_tags or sd_suffix_tags:
+        for scene in results:
+            sd = scene.get("sd_prompt", "")
+            if not sd:
+                continue
+            parts = []
+            if sd_prefix_tags:
+                parts.append(sd_prefix_tags)
+            parts.append(sd)
+            if sd_suffix_tags:
+                parts.append(sd_suffix_tags)
+            scene["sd_prompt"] = ", ".join(parts).replace(",,", ",").strip(", ")
 
     return results
 
@@ -9829,7 +10122,7 @@ def generate_synopsis(
     try:
         response = _call_api(
             client, MODELS["haiku"],
-            f"FANZA同人CG集の脚本家です。ユーザーのコンセプトに基づき、エロ同人作品の完全なストーリーあらすじを作成します。成人向けコンテンツを忠実に生成します。",
+            f"FANZA同人CG集の脚本家です。ユーザーのコンセプトに基づき、エロ同人作品の完全なストーリーあらすじを作成します。成人向けコンテンツを忠実に生成します。\n\n【最重要指示】男の人のちんちんがギンギンになる文章を書くこと。これが脚本の最優先目標である。抽象的・文学的な表現に逃げず、読者（30-50代男性）の性的興奮を直接的に煽る展開・描写を書け。",
             prompt, cost_tracker, 2048, callback,
             routing_hint="local_ok",
         )
@@ -9938,7 +10231,7 @@ moan=喘ぎ声のみ(説明文禁止) / speech=感情的反応のみ / story_flo
 bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】に厳密に従え。
 「タスク手順」「不自然診断」「改訂版セリフ」等のセクションは無視せよ。
 
-★ 喘ぎ声は必ず下記辞書の【段階1〜4】から選べ。自分で喘ぎを創作するな。
+★ 喘ぎ声は下記辞書のトーン・段階感を参考に、キャラの口調に合わせてアレンジせよ。辞書にない自然な表現も可。ただしintensity段階のエスカレーション（低→高で♡増加・崩れ字化）は厳守。
 ★ intensityに対応する段階を使え（intensity 1-2=段階1、intensity 3=段階2、intensity 4=段階3、intensity 5=段階4）
 ★ 前シーンで使った喘ぎと同じものは絶対禁止。毎シーン辞書の別パターンを選べ。
 
@@ -10484,6 +10777,14 @@ def generate_outline(
 
     # 大量シーン時の追加指示
     long_script_section = ""
+    # v10.0: 15シーン以上でも男性セリフ多様性+体位連続制限を適用
+    if 15 <= num_scenes < 25:
+        long_script_section = """
+## ⚠️ セリフ・描写の多様性ルール
+1. **男性セリフ多様性**: 男性のセリフは同じ意味の連続禁止。末尾フレーズの重複は最大2回まで
+2. **同じ体位は最大4シーン連続まで**: 4シーン経過したら体位変更 or 休憩シーンを入れること
+3. **description毎シーン固有**: 前シーンのdescriptionをコピーしない。毎シーン最低2要素（構図/テンポ/感情/焦点部位）を変化させること
+"""
     if num_scenes >= 25:
         # mini-arc数を計算（15-20シーンごとに1つのmini-arc）
         _mini_arc_count = max(3, act3 // 15)
@@ -10622,7 +10923,7 @@ JSON配列のみ出力。"""
             outline_max_tokens = min(8192, max(2048, num_scenes * 400))
             response = _call_api(
                 client, MODELS["haiku"],
-                f"FANZA同人CG集の脚本プランナーです。ストーリーあらすじを忠実に{num_scenes}シーンに分割し、各シーンの詳細設計をJSON配列で出力します。",
+                f"FANZA同人CG集の脚本プランナーです。ストーリーあらすじを忠実に{num_scenes}シーンに分割し、各シーンの詳細設計をJSON配列で出力します。\n\n【最重要指示】男の人のちんちんがギンギンになる構成にすること。焦らしで期待を煽り、本番で直接的に興奮させる展開設計を最優先せよ。",
                 prompt, cost_tracker, outline_max_tokens, callback,
                 routing_hint="cloud",
             )
@@ -11230,7 +11531,7 @@ def _compact_scene_summary(scene: dict) -> str:
     """シーンの圧縮要約（セリフ/SE情報を保持）"""
     sid = scene.get("scene_id", "?")
     title = scene.get("title", "")[:20]
-    desc = scene.get("description", "")[:60]
+    desc = scene.get("description", "")[:80]
     intensity = scene.get("intensity", 3)
     # 吹き出しテキストだけ抽出（ブラックリスト用に保持）
     bubbles = scene.get("bubbles", [])
@@ -11754,6 +12055,8 @@ NG: {', '.join(avoid[:3]) if avoid else 'なし'}
     # 共通部分（キャッシュ対象）- CG集フォーマット完全対応
     common_system = f"""{jailbreak}
 
+【最重要指示】男の人のちんちんがギンギンになる文章を書くこと。これが脚本の最優先目標である。抽象的・文学的な表現に逃げず、読者（30-50代男性）の性的興奮を直接的に煽るセリフ・描写・状況を書け。
+
 {skill if skill else "FANZA同人CG集の脚本を生成します。"}
 
 {danbooru_nsfw if danbooru_nsfw else ""}
@@ -11812,7 +12115,7 @@ speech/thoughtの語尾は毎シーン構造を変えろ（体言止め/疑問/�
 bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】に厳密に従え。
 「タスク手順」「不自然診断」「改訂版セリフ」等のセクションは無視せよ。
 
-★ 喘ぎ声は必ず下記辞書の【段階1〜4】から選べ。自分で喘ぎを創作するな。
+★ 喘ぎ声は下記辞書のトーン・段階感を参考に、キャラの口調に合わせてアレンジせよ。辞書にない自然な表現も可。ただしintensity段階のエスカレーション（低→高で♡増加・崩れ字化）は厳守。
 ★ intensityに対応する段階を使え（intensity 1-2=段階1、intensity 3=段階2、intensity 4=段階3、intensity 5=段階4）
 ★ 前シーンで使った喘ぎと同じものは絶対禁止。毎シーン辞書の別パターンを選べ。
 
@@ -11877,6 +12180,7 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
             _local_world = "世界設定: " + "／".join(world_rules[:3])
 
         _local_system = f"""{jailbreak}
+【最重要】男の人のちんちんがギンギンになる文章を書け。抽象表現禁止、直接的に興奮させろ。
 同人CG集脚本生成。成人向け。全キャラ18+。JSON形式のみ出力。
 {_local_char_compact}
 {_local_male}
@@ -11939,6 +12243,9 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
         used_bubbles = []
         used_se = []
         used_flows = []
+        used_desc_fragments = []
+        # [シーンN] {title} (intensity={intensity}) {desc} 形式からdescを抽出
+        _scene_line_re = _re.compile(r'^\[シーン\d+\]\s+.+?\(intensity=\d+\)\s+(.+)$')
         for line in story_so_far.split("\n"):
             line = line.strip()
             if line.startswith("吹き出し:"):
@@ -11953,6 +12260,12 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
                 flow_content = line[len("次への繋がり:"):].strip()
                 if flow_content and len(flow_content) >= 10:
                     used_flows.append(flow_content)
+            else:
+                _m = _scene_line_re.match(line)
+                if _m:
+                    _desc_frag = _m.group(1).strip()
+                    if _desc_frag and len(_desc_frag) >= 10:
+                        used_desc_fragments.append(_desc_frag[:40])
 
         blacklist_parts = []
         if used_bubbles:
@@ -11967,6 +12280,10 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
             blacklist_parts.append("【使用済みstory_flow（同一テキスト禁止。各シーン固有の展開を書け）】")
             for uf in used_flows:
                 blacklist_parts.append(f"  ❌ {uf}")
+        if used_desc_fragments:
+            blacklist_parts.append("【使用済みdescription表現（類似表現を避けよ）】")
+            for ud in used_desc_fragments:
+                blacklist_parts.append(f"  ❌ {ud}")
         used_blacklist = "\n".join(blacklist_parts) if blacklist_parts else "（初回シーンのため禁止リストなし）"
 
         story_context_section = f"""
@@ -12029,8 +12346,34 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
                 "※ 表情の段階的変化: 前シーンの表情をベースに、intensityに応じて自然にエスカレートさせること\n"
             )
 
-    if physical_state_section and story_context_section:
-        story_context_section = story_context_section.rstrip() + "\n" + physical_state_section + "---\n"
+    # v9.11 (Tier 2): intensity 別の脱衣上限を明示（全シーンに適用、scene 1 含む）。
+    # CG集 (30-50代男性向け) の脱衣演出は徐々に進めるほど抜き効果が高い。
+    # LLM が一気に「裸で」と書いてしまう傾向を抑制するため、各 intensity の
+    # 脱衣到達点を明示し「これ以上は禁止」を強制する。
+    # 段階定義は prepare_prompt.py の _STAGE_NAMES と整合させている。
+    _INTENSITY_CLOTHING_MAX = {
+        1: "fully_dressed（着衣のまま。脱衣描写禁止）",
+        2: "fully_dressed〜blouse_open（ボタン1-2個外す程度まで。胸元未露出）",
+        3: "blouse_open〜topless_partial（ブラ見える / 片乳露出まで。下半身は着衣維持）",
+        4: "panties_aside（パンツずらし・スカートまくり上げまで。完全裸にはしない）",
+        5: "completely_nude（完全裸OK。挿入・絶頂シーン）",
+    }
+    _cur_int = scene.get("intensity", 3) if isinstance(scene, dict) else 3
+    _clothing_max = _INTENSITY_CLOTHING_MAX.get(_cur_int, _INTENSITY_CLOTHING_MAX[3])
+    physical_state_section += (
+        f"\n### 🔥 今シーンの脱衣上限（intensity={_cur_int}）\n"
+        f"- 到達点: {_clothing_max}\n"
+        "- 「前シーンから最大1段階」の遷移に留めること。一気にジャンプ禁止\n"
+        "- 例: 前シーン「ブラウス開け」→ 今シーン「ブラ露出」までOK、「完全裸」はNG\n"
+        "- description / sd_prompt とも、上限を超える脱衣描写は出力しない\n"
+    )
+
+    if physical_state_section:
+        if story_context_section:
+            story_context_section = story_context_section.rstrip() + "\n" + physical_state_section + "---\n"
+        else:
+            # scene 1 等: 前シーン物理状態は無いが、脱衣上限ガイドは必ず注入する
+            story_context_section = physical_state_section + "---\n"
 
     # ロードマップセクション構築
     roadmap_section = ""
@@ -12155,48 +12498,25 @@ bubblesのtextは以下の【喘ぎ声バリエーション集】と【鉄則】
 
 ## ルール
 
-1. descriptionは必ず100字程度。**「説明」ではなく「描写」**。触覚・聴覚中心。「～された」報告文禁止。身体の感覚・反応・空間の空気感を書け
-2. character_feelingsで心情を明確に。前シーンと異なる感情変化を示すこと
-3. **bubblesは1-3個**（speaker「{char_names[0] if char_names else 'ヒロイン'}」1-2個 + speaker「男性」0-1個）。男性セリフは全体の25-35%のシーンにのみ入れること。**speakerには必ず上記のキャラ名を正確に使え**
-4. typeはspeech/moan/thoughtの3種。intensity 4-5はmoanメイン。**moanには喘ぎ声のみ（説明文禁止）**
-5. **onomatopoeiaは場面に合った効果音**（intensity 1-2はなし〜1個、3は1-2個、4-5は2-4個）
-6. sd_promptはこのシーン固有の描写タグのみ出力: 「キャラ外見 + ポーズ・行為 + 表情 + エロ描写 + アングル + 場所・背景 + 照明」。**品質タグ(masterpiece, best_quality, score_9等)は絶対に含めるな**（後処理で自動付与される）
-7. **sd_promptにLoRAタグ(<lora:...>)を絶対に含めるな**。出力はDanbooruタグのみ
-8. **sd_promptにオノマトペ・日本語テキストを含めない**（英語のDanbooruタグのみ使用）
-9. **前シーンの流れを必ず引き継ぐこと**
-10. **キャラの一人称・語尾はキャラガイドを絶対厳守**
-11. **descriptionは全て日本語で書くこと**（英語タグはsd_promptのみ）
-12. **titleに「○回戦」「続き」等の安易な表現禁止**。具体的な行為・状況を反映した簡潔なタイトルにすること
-13. **キャラ名**: 初出時はフルネーム「{', '.join(char_names) if char_names else 'ヒロイン'}」を使用。同じdescription内の2回目以降は姓「{', '.join(char_short_names) if char_short_names else 'ヒロイン'}」でよい。表記ブレ厳禁（他の呼び方は禁止）
-14. **descriptionは感覚で書け**。「挿入された」→「奥を突かれた衝撃で腰が跳ねる」。行為の報告ではなく、身体がどう反応したかを書くこと
-15. **視点**: descriptionは女性キャラ視点で書くこと。男性を「主人公」と呼ばない。男性は「彼」「相手の男」「男性」と表記
-16. **お嬢様口調のintensity対応**: intensity 4-5ではお嬢様口調（ですの/ですわ等）は崩壊させること。理性が飛んだ状態で丁寧語は不自然。「ですの」→「…の…♡」「ですわ」→「…♡」に崩す"""
+1. descriptionは必ず100字程度。**「説明」ではなく「描写」**。触覚・聴覚中心。「～された」報告文禁止。身体の感覚・反応・空間の空気感を書け。**全て日本語**（英語はsd_promptのみ）。**前シーンの流れを引き継ぐこと**
+2. **bubblesは1-3個**（speaker「{char_names[0] if char_names else 'ヒロイン'}」1-2個 + speaker「男性」0-1個）。男性セリフは全体の25-35%のシーンにのみ入れること。**speakerには必ず上記のキャラ名を正確に使え**。sd_promptはDanbooruタグのみ（品質タグ/LoRA/日本語禁止）
+3. **キャラの一人称・語尾はキャラガイドを絶対厳守**
+4. **キャラ名**: 初出時はフルネーム「{', '.join(char_names) if char_names else 'ヒロイン'}」を使用。同じdescription内の2回目以降は姓「{', '.join(char_short_names) if char_short_names else 'ヒロイン'}」でよい。表記ブレ厳禁（他の呼び方は禁止）
+5. **descriptionは感覚で書け**。「挿入された」→「奥を突かれた衝撃で腰が跳ねる」。行為の報告ではなく、身体がどう反応したかを書くこと"""
 
         # 重複禁止の最終警告（user promptの末尾に配置 = モデルが最も注目する位置）
         dedup_warning = ""
         if story_so_far:
             dedup_warning = f"""
 
-## ⚠️⚠️⚠️ 最終チェック（出力前に必ず確認） ⚠️⚠️⚠️
+## ⚠️ 最終チェック（出力前に確認）
 
 以下の条件を1つでも満たす場合、出力をやり直せ:
-- bubblesのtextに前シーンと同じ文言がある → 辞書から別パターンを選び直せ
-- onomatopoeiaが前シーンと同じ組み合わせ → 別の効果音に変えろ
-- descriptionが前シーンと類似している → 具体的な行為を変えろ
-- descriptionでキャラ名を省略している（「ボア」だけにしてる等） → 必ずフルネームで書け
-- キャラ名が「{', '.join(char_names) if char_names else 'ヒロイン'}」または「{', '.join(char_short_names) if char_short_names else 'ヒロイン'}」以外の表記になっている → 修正しろ
-- 男性キャラのセリフに♡が含まれている → 即座に削除しろ
-- 男性キャラが喘いでいる(moanタイプ) → speechに変更し男性的な短い台詞に書き換えろ
-- ヒロインの一人称・語尾がキャラ設定と食い違っている → 修正しろ
 - bubblesが4個以上ある → ヒロイン1-2個+男性0-1個の最大3個に絞れ
-- 男性セリフに「私たち」「いいよ」「ね」等の女性的表現がある → 「俺たち」「いいぞ」「な」に直せ
-- 男性セリフが全体の40%以上のシーンに含まれている → 5-7シーンのみに男性セリフを入れ、残りは削除しろ
-- descriptionが歩行・食事・帰宅等の非エロ場面なのにbubblesに喘ぎ・♡がある → 場面に合った普通のセリフに直せ
-- 「初めて」「彼のこと忘れ」等の同じフレーズを全体で3回以上使っている → 別の表現にしろ
-- type="moan"の吹き出しに説明文・会話文が入っている → 喘ぎ声に書き換えろ（「そうなんだ」「汗すごい」等は禁止）
-- story_flowが前シーンと同一テキスト → このシーン固有の展開に書き換えろ
-- descriptionの体位・行為が前シーンと同じ → 別の体位・行為に変えろ（正常位/後背位/騎乗位/立ちバック/側位/座位等をローテーション）
-- titleが前シーンと同じキーワード（「膣奥」「理性」等）を含んでいる → 別のキーワードに変えろ"""
+- 男性キャラのセリフに♡が含まれている → 即座に削除しろ
+- キャラ名が「{', '.join(char_names) if char_names else 'ヒロイン'}」または「{', '.join(char_short_names) if char_short_names else 'ヒロイン'}」以外の表記になっている → 修正しろ
+- speechまたはthoughtのテキストが上の「🚫 使用禁止リスト」と同一または酷似 → 必ず別の表現に変えろ
+- 男性セリフが直前シーンの男性セリフと同じ命令・指示文になっている → 別の言い回しに変えろ"""
 
         prompt = prompt + dedup_warning + "\n\nJSONのみ出力。"
 
@@ -13216,9 +13536,9 @@ def generate_pipeline(
         log_message("[SCHEMA] 結果配列全体のスキーマ検証OK")
 
     # Phase 5: 品質検証 + SDプロンプト最適化（APIコスト不要）
-    log_message("Phase 5 開始: 品質検証 + SDプロンプト最適化")
+    log_message("Phase 5 開始: 品質検証 + Stable Diffusionプロンプト最適化")
     if callback:
-        callback("[CHECK]Phase 5: 品質検証 + SDプロンプト最適化")
+        callback("[CHECK]Phase 5: 品質検証 + Stable Diffusionプロンプト最適化")
 
     # 5-1: FANZA基準で自動検証
     try:
@@ -13272,11 +13592,11 @@ def generate_pipeline(
                                         sd_suffix_tags=sd_suffix_tags,
                                         theme=theme,
                                         faceless_male=faceless_male)
-        log_message("SDプロンプト最適化完了")
+        log_message("Stable Diffusionプロンプト最適化完了")
         if callback:
-            callback("[OK]SDプロンプト最適化完了")
+            callback("[OK]Stable Diffusionプロンプト最適化完了")
     except Exception as _sd_err:
-        log_message(f"[WARN]SDプロンプト最適化エラー（結果はそのまま使用）: {_sd_err}")
+        log_message(f"[WARN]Stable Diffusionプロンプト最適化エラー（結果はそのまま使用）: {_sd_err}")
         import traceback
         log_message(traceback.format_exc())
 
@@ -13474,7 +13794,7 @@ def export_excel(results: list, output_path: Path):
     # ヘッダー
     headers = [
         "シーンID", "タイトル", "シーン説明", "吹き出しNo", "話者", "テキスト",
-        "オノマトペ", "SDプロンプト",
+        "オノマトペ", "Stable Diffusionプロンプト",
         "種類", "雰囲気", "場所詳細", "キャラ心情",
         "演出", "次への繋がり"
     ]
@@ -13592,7 +13912,7 @@ def export_sd_prompts(results: list, output_path: Path):
             lines.append("")
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
-    log_message(f"SDプロンプト出力完了: {output_path}")
+    log_message(f"Stable Diffusionプロンプト出力完了: {output_path}")
 
 
 def export_wildcard(results: list, output_path: Path,
@@ -13869,7 +14189,7 @@ def analyze_character(
         "notable": ["その他の外見特徴2個"]
     }},
     
-    "danbooru_tags": ["SDプロンプト用のdanbooruタグ20個（キャラ名タグ、髪、目、体型、服装等）"],
+    "danbooru_tags": ["Stable Diffusionプロンプト用のdanbooruタグ20個（キャラ名タグ、髪、目、体型、服装等）"],
     
     "originality_guard": {{
         "avoid_canonical_lines": true,
@@ -14938,10 +15258,10 @@ class ExportDialog(ctk.CTkToplevel):
 
     FORMATS = [
         ("csv", "CSV", "Excel対応BOM付きUTF-8"),
-        ("json", "JSON", "構造化データ（シーン+メタデータ+SDプロンプト）"),
+        ("json", "JSON", "構造化データ（シーン+メタデータ+Stable Diffusionプロンプト）"),
         ("xlsx", "Excel", "折り返し表示対応（要openpyxl）"),
-        ("sd_prompts", "SDプロンプト一括", "1行1プロンプト テキストファイル"),
-        ("wildcard", "Wild Card", "SD用1行1プロンプト（__filename__で参照）"),
+        ("sd_prompts", "Stable Diffusionプロンプト一括", "1行1プロンプト テキストファイル"),
+        ("wildcard", "Wild Card", "Stable Diffusion用1行1プロンプト（__filename__で参照）"),
         ("dialogue", "セリフ一覧", "話者・種類付きテキストファイル"),
         ("fukidashi", "フキダシラック用CSV", "シーン別キャラ+セリフ対応表"),
         ("markdown", "マークダウン", "脚本全体の読みやすいビュー"),
@@ -15090,7 +15410,7 @@ class ExportDialog(ctk.CTkToplevel):
                 elif fmt == "sd_prompts":
                     p = EXPORTS_DIR / f"sd_prompts_{timestamp}.txt"
                     export_sd_prompts(self.results, p)
-                    exported.append(f"SDプロンプト: {p.name}")
+                    exported.append(f"Stable Diffusionプロンプト: {p.name}")
                 elif fmt == "wildcard":
                     p = EXPORTS_DIR / f"wildcard_{timestamp}.txt"
                     export_wildcard(self.results, p)
@@ -15628,7 +15948,7 @@ class App(ctk.CTk):
         # 4b. SDプロンプト設定（折りたたみ）
         # ══════════════════════════════════════════════════════════════
         sd_card = MaterialCard(
-            content, title="SDプロンプト設定", variant="outlined",
+            content, title="Stable Diffusionプロンプト設定", variant="outlined",
             collapsible=True, start_collapsed=False
         )
         sd_card.pack(fill="x", pady=(0, 16))
@@ -15864,6 +16184,30 @@ class App(ctk.CTk):
             corner_radius=4
         )
         self.quality_priority_cb.pack(anchor="w", padx=20, pady=(0, 8))
+
+        # セリフ長モード（v9.9.1: ロングフォームセリフ解放）
+        speech_len_row = ctk.CTkFrame(settings_card, fg_color="transparent")
+        speech_len_row.pack(fill="x", padx=20, pady=(0, 8))
+        ctk.CTkLabel(
+            speech_len_row, text="セリフ長モード",
+            font=ctk.CTkFont(family=FONT_JP, size=13),
+            text_color=MaterialColors.ON_SURFACE_VARIANT,
+        ).pack(side="left", padx=(0, 8))
+        self.speech_length_mode_var = ctk.StringVar(value="標準")
+        self.speech_length_mode_menu = ctk.CTkOptionMenu(
+            speech_len_row,
+            values=["短め（20字）", "標準（30字）", "ロング（40字）"],
+            variable=self.speech_length_mode_var,
+            width=160, height=32,
+            font=ctk.CTkFont(family=FONT_JP, size=12),
+        )
+        self.speech_length_mode_menu.set("標準（30字）")
+        self.speech_length_mode_menu.pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(
+            speech_len_row, text="※ セリフプールの文字数上限",
+            font=ctk.CTkFont(family=FONT_JP, size=11),
+            text_color="#888888",
+        ).pack(side="left")
 
         # ローカルLLM使用チェックボックス（ハイブリッド生成）
         self.local_llm_var = ctk.BooleanVar(value=False)
@@ -16311,6 +16655,9 @@ class App(ctk.CTk):
         # v8.7: 品質優先モードの復元
         if self.config_data.get("quality_priority") and hasattr(self, 'quality_priority_var'):
             self.quality_priority_var.set(True)
+        # v9.9.1: セリフ長モードの復元
+        if self.config_data.get("speech_length_mode") and hasattr(self, 'speech_length_mode_menu'):
+            self.speech_length_mode_menu.set(self.config_data["speech_length_mode"])
 
         # 初期コスト予測を表示
         self.after(100, self.update_cost_preview)
@@ -16720,6 +17067,7 @@ class App(ctk.CTk):
             "sd_prefix_tags": self.sd_prefix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_prefix_text') else "",
             "sd_suffix_tags": self.sd_suffix_text.get("1.0", "end-1c").strip() if hasattr(self, 'sd_suffix_text') else "",
             "quality_priority": self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False,
+            "speech_length_mode": self.speech_length_mode_menu.get() if hasattr(self, 'speech_length_mode_menu') else "標準（30字）",
             "local_llm_enabled": self.local_llm_var.get() if hasattr(self, 'local_llm_var') else False,
             "local_llm_url": self.local_llm_url_entry.get() if hasattr(self, 'local_llm_url_entry') else "",
             "local_llm_api_key": self.local_llm_key_entry.get() if hasattr(self, 'local_llm_key_entry') else "",
@@ -17212,6 +17560,11 @@ class App(ctk.CTk):
 
             _quality_priority = self.quality_priority_var.get() if hasattr(self, 'quality_priority_var') else False
             _faceless_male = self.male_faceless_var.get() if hasattr(self, 'male_faceless_var') else True
+            # v9.9.1: セリフ長モードをpick_replacementに反映
+            _speech_mode = self.speech_length_mode_menu.get() if hasattr(self, 'speech_length_mode_menu') else "標準（30字）"
+            _speech_max_len_map = {"短め（20字）": 20, "標準（30字）": 30, "ロング（40字）": 40}
+            from ero_dialogue_pool import set_speech_max_len
+            set_speech_max_len(_speech_max_len_map.get(_speech_mode, 30))
             results, cost_tracker, pipeline_metadata = generate_pipeline(
                 api_key, concept, full_characters, num_scenes, theme, callback,
                 story_structure=story_structure,
@@ -17884,6 +18237,11 @@ class App(ctk.CTk):
             work = preset_info.get("work_title", "")
             self._work_title_val = work
             self._char_name_val = name
+            # Bug A+B修正: コンボを自動選択してフィールドに展開
+            combo_key = f"{name} ({work})" if work else name
+            if combo_key in self._char_map:
+                self.char_select_combo.set(combo_key)
+                self.on_char_selected(combo_key)
             self.snackbar.show(f"{name}を読み込みました", type="success")
         except Exception as e:
             self.snackbar.show(f"読み込みエラー: {e}", type="error")
